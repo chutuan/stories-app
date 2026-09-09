@@ -404,12 +404,16 @@ export default function AudioPlayerScreen() {
       setSeeking(null);
       // `autoplay=1` để màn hình đích tự bấm phát; chuyển chương THỦ CÔNG không
       // gắn cờ này, giữ nguyên nếp cũ là người dùng tự bấm nút phát.
-      const query = options?.autoplay ? '?autoplay=1' : '';
+      // `dir` để app/_layout.tsx chọn chiều trượt (lùi chương thì vào từ trái) và
+      // để không trượt lên từ đáy mỗi lần đổi chương — hoạt ảnh đó dành cho lúc MỞ
+      // trình phát, dùng lại khi tự chuyển chương thì rất giật.
+      const dir = chapter && target < chapter.number ? 'prev' : 'next';
+      const query = `?dir=${dir}` + (options?.autoplay ? '&autoplay=1' : '');
       // typedRoutes đang bật nhưng route mới chỉ được sinh kiểu khi chạy expo start,
       // nên ép kiểu Href cho đường dẫn động này.
       router.replace(`/audio/${storyId}/${target}${query}` as Href);
     },
-    [router, storyId],
+    [router, storyId, chapter],
   );
 
   const openReader = useCallback(() => {

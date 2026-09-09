@@ -238,9 +238,11 @@ function ReaderScreen() {
   const goTo = useCallback(
     (target: number | null) => {
       if (target == null) return;
-      router.replace(`/reader/${storyId}/${target}`);
+      // `dir` để app/_layout.tsx chọn chiều trượt: lùi chương thì vào từ trái.
+      const dir = chapter && target < chapter.number ? 'prev' : 'next';
+      router.replace(`/reader/${storyId}/${target}?dir=${dir}`);
     },
-    [router, storyId],
+    [router, storyId, chapter],
   );
 
   const hasAudio = chapter?.audio_url != null;
