@@ -48,13 +48,16 @@
       "env": {
         // Domain API production. Đổi tại đây nếu sau này tách staging riêng.
         // BẮT BUỘC https:// — iOS App Transport Security chặn HTTP thường.
-        "EXPO_PUBLIC_API_URL": "https://api.tunastory.com/api",
-        // TODO: THAY bằng App ID + unit ID thật lấy trong bảng điều khiển AdMob.
-        // Để trống thì code tự fallback về ID TEST của Google (không ra doanh thu).
-        "EXPO_PUBLIC_ADMOB_ANDROID_APP_ID": "",
-        "EXPO_PUBLIC_ADMOB_IOS_APP_ID": "",
-        "EXPO_PUBLIC_ADMOB_BANNER_ID": "",
-        "EXPO_PUBLIC_ADMOB_REWARDED_ID": ""
+        // AdMob: EAS KHÔNG cho phép giá trị rỗng trong "env", nên các khoá dưới đây
+        // được BỎ HẲN thay vì để "". Khi code không thấy biến, nó tự fallback về
+        // App ID / unit ID TEST của Google (chạy được nhưng KHÔNG ra doanh thu).
+        //
+        // Khi có ID thật từ AdMob Console, thêm lại 4 dòng này (có giá trị, không để rỗng):
+        //   "EXPO_PUBLIC_ADMOB_ANDROID_APP_ID": "ca-app-pub-XXXX~XXXX",
+        //   "EXPO_PUBLIC_ADMOB_IOS_APP_ID":     "ca-app-pub-XXXX~XXXX",
+        //   "EXPO_PUBLIC_ADMOB_BANNER_ID":      "ca-app-pub-XXXX/XXXX",
+        //   "EXPO_PUBLIC_ADMOB_REWARDED_ID":    "ca-app-pub-XXXX/XXXX"
+        "EXPO_PUBLIC_API_URL": "https://api.tunastory.com/api"
       }
     }
   },
