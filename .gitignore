@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+
+# Editor
+/.idea
+/.vscode
+/.zed
+
+# Log
+*.log
+
+# File cá nhân, không thuộc project (bỏ dòng này nếu muốn commit)
+hoi-thoai-thanh-tra-banh-mi.txt
