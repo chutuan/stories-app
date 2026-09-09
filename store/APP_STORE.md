@@ -166,7 +166,12 @@ do bạn tự thêm qua trang admin, mức rating sẽ đổi nếu bạn đăng
 
 ## 6. Ảnh chụp màn hình
 
-`store/screenshots/ios-6.9/` — 6 ảnh **1320×2868** (kích thước 6.9" App Store yêu cầu):
+App Store Connect yêu cầu **CẢ HAI** khung, không phải chỉ 6.9":
+
+- `store/screenshots/ios-6.9/` — 6 ảnh **1320×2868** (iPhone 17 Pro Max)
+- `store/screenshots/ios-6.5/` — 6 ảnh **1284×2778** (iPhone 14 Plus)
+
+Nội dung mỗi bộ:
 
 | File | Màn hình |
 |---|---|
@@ -181,7 +186,7 @@ do bạn tự thêm qua trang admin, mức rating sẽ đổi nếu bạn đăng
 > Nút đó **không tồn tại trong bản build thật**. Sau khi có bản TestFlight, chụp lại từ đó rồi
 > thay thế — Apple không chấp nhận ảnh có lẫn giao diện công cụ phát triển.
 
-Apple hiện chỉ bắt buộc bộ 6.9"; các kích thước nhỏ hơn sẽ được tự thu nhỏ.
+Apple bắt buộc riêng từng khung 6.9" và 6.5" — không tự suy ra từ nhau.
 
 ---
 
