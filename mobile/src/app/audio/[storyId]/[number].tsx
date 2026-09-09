@@ -12,12 +12,13 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
+import { useEventListener } from 'expo';
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
 import type { Href } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -35,6 +36,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/empty-state';
+import { Paywall } from '@/components/paywall';
 import { Skeleton } from '@/components/skeleton';
 import {
   coverGradient,
@@ -51,8 +53,7 @@ import {
   withAlpha,
 } from '@/constants/theme';
 import { API_URL } from '@/lib/api';
-import { formatCoins } from '@/lib/format';
-import { COIN_PER_CHAPTER, useWallet } from '@/store/wallet';
+import { useSubscription } from '@/store/subscription';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
@@ -165,13 +166,41 @@ interface ChapterRow {
   locked: boolean;
 }
 
+/** Chương kế tiếp — dữ liệu cần để quyết định làm gì khi nghe hết chương này. */
+interface NextChapter {
+  number: number;
+  title: string;
+  /** nghe được: chương miễn phí, hoặc người dùng có gói Premium */
+  playable: boolean;
+  /** đã có file MP3 chưa; `null` = chưa biết (mục lục chưa tải xong) */
+  hasAudio: boolean | null;
+}
+
 export default function AudioPlayerScreen() {
-  const { storyId, number } = useLocalSearchParams<{ storyId: string; number: string }>();
+  const { storyId, number, autoplay } = useLocalSearchParams<{
+    storyId: string;
+    number: string;
+    /** '1' khi màn hình mở ra do TỰ CHUYỂN CHƯƠNG -> phát ngay sau khi nạp xong */
+    autoplay?: string;
+  }>();
   const chapterNumber = Number(number);
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { width, height } = useWindowDimensions();
-  const { isUnlocked } = useWallet();
+  /**
+   * AUDIO BÁN THEO GÓI ĐĂNG KÝ, KHÔNG BÁN BẰNG XU.
+   * Xu chỉ mở quyền ĐỌC. Chương miễn phí thì ai cũng nghe được; chương trả phí chỉ
+   * người có Premium mới nghe được, nên màn này không đụng tới ví xu nữa.
+   */
+  const { subscribed } = useSubscription();
+  /**
+   * Modal của React Native phủ TOÀN BỘ cửa sổ app, không nằm trong ngăn xếp
+   * điều hướng. Nếu màn này vẫn còn mount bên dưới một màn khác (deep link đẩy
+   * route mới lên trên), modal sẽ nổi đè lên màn đang xem. Suy ra theo tiêu điểm
+   * để mọi modal của màn này tự biến mất khi màn không còn được xem.
+   */
+  const focused = useIsFocused();
+  const autoplayRequested = autoplay === '1';
 
   /** Chương đã tải (kèm số chương của nó để đổi chương là tự về trạng thái tải). */
   const [chapterData, setChapterData] = useState<AudioChapter | null>(null);
@@ -184,6 +213,19 @@ export default function AudioPlayerScreen() {
   /** Vị trí đang kéo trên thanh tiến trình (null = không kéo). */
   const [seeking, setSeeking] = useState<number | null>(null);
   const [coverFailed, setCoverFailed] = useState(false);
+  /**
+   * Màn bán gói — bật khi nghe hết mà chương sau chỉ dành cho thành viên.
+   * Lưu SỐ CHƯƠNG đang nghe lúc bật, nên đổi chương là tự tắt, không cần effect dọn.
+   */
+  const [paywallFor, setPaywallFor] = useState<number | null>(null);
+  /**
+   * Màn bán gói ĐANG CHỜ mục lục đóng xong (chỉ iOS).
+   * UIKit từ chối present một modal khi modal trước còn đang dismiss, và React
+   * Native KHÔNG thử lại lần present bị từ chối — modal sẽ mất luôn. Nên nếu người
+   * dùng đang mở mục lục đúng lúc chương kết thúc, phải chờ sheet biến mất hẳn rồi
+   * mới mở màn bán gói.
+   */
+  const [paywallAfterSheet, setPaywallAfterSheet] = useState<number | null>(null);
 
   /* ---- Tải chương ---- */
   useEffect(() => {
@@ -227,8 +269,8 @@ export default function AudioPlayerScreen() {
   const failed = failedNumber === chapterNumber;
   const loading = !chapter && !failed;
 
-  /* Chương khoá thì không cho nghe — giữ đúng nghiệp vụ xu của app. */
-  const locked = chapter ? !chapter.is_free && !isUnlocked(storyId, chapterNumber) : false;
+  /* Chương trả phí chỉ dành cho thành viên; chương miễn phí thì ai cũng nghe. */
+  const locked = chapter ? !chapter.is_free && !subscribed : false;
   const audioUrl = chapter && !locked ? chapter.audio_url : null;
   const hasAudio = audioUrl != null;
 
@@ -238,15 +280,31 @@ export default function AudioPlayerScreen() {
   const player = useAudioPlayer(audioUrl ? { uri: audioUrl } : null, { updateInterval: 300 });
   const status = useAudioPlayerStatus(player);
 
-  const playing = status.playing;
-  const duration = status.duration > 0 ? status.duration : 0;
-  const position = seeking ?? Math.max(0, status.currentTime);
+  /**
+   * STATUS CÓ THỂ CÒN LÀ CỦA PLAYER CŨ.
+   * `useAudioPlayerStatus` dựng trên `useEvent`, mà `useEvent` chỉ nhận giá trị
+   * khởi tạo ở lần render ĐẦU TIÊN. Đổi chương -> player mới được tạo nhưng state
+   * vẫn giữ bản tin cuối của player cũ cho tới khi player mới bắn sự kiện đầu tiên;
+   * bản tin đó còn mang `didJustFinish: true` và thời lượng của chương trước. Tin
+   * vào nó thì tự chuyển chương sẽ nhảy dây chuyền qua sạch các chương còn lại.
+   * `status.id` rỗng (nền tảng không điền) thì coi như hợp lệ, để không kẹt mãi.
+   */
+  const statusFresh = !status.id || status.id === player.id;
+
+  const playing = statusFresh && status.playing;
+  const duration = statusFresh && status.duration > 0 ? status.duration : 0;
+  const currentTime = statusFresh ? Math.max(0, status.currentTime) : 0;
+  const position = seeking ?? currentTime;
+  const playbackError = statusFresh ? status.error : null;
   /**
    * Đang nạp/đệm file: nút phát hiện vòng xoay thay vì icon.
    * Có lỗi phát thì thôi quay (không để vòng xoay chạy mãi), lỗi đã có thẻ
    * thông báo riêng phía trên thanh tiến trình.
    */
-  const busy = hasAudio && !status.error && (!status.isLoaded || (status.isBuffering && playing));
+  const busy =
+    hasAudio &&
+    !playbackError &&
+    (!statusFresh || !status.isLoaded || (status.isBuffering && playing));
 
   /* ---- Dọn dẹp: dừng phát khi rời màn hoặc khi đổi chương ---- */
   useEffect(() => {
@@ -286,7 +344,7 @@ export default function AudioPlayerScreen() {
     // (Cố tình KHÔNG tự tua về 0 lúc `didJustFinish`: thanh tiến trình cần
     //  đứng ở cuối để người dùng biết đã nghe hết, và để nút tua +15 giây
     //  không bị nhảy ngược về đầu.)
-    if (duration > 0 && status.currentTime >= duration - 0.25) {
+    if (duration > 0 && currentTime >= duration - 0.25) {
       player
         .seekTo(0)
         .then(() => player.play())
@@ -294,16 +352,16 @@ export default function AudioPlayerScreen() {
       return;
     }
     player.play();
-  }, [hasAudio, playing, player, duration, status.currentTime]);
+  }, [hasAudio, playing, player, duration, currentTime]);
 
   const skip = useCallback(
     (delta: number) => {
       if (!hasAudio) return;
-      const upper = duration > 0 ? Math.max(duration - 0.2, 0) : status.currentTime + Math.abs(delta);
-      const target = Math.min(Math.max(status.currentTime + delta, 0), upper);
+      const upper = duration > 0 ? Math.max(duration - 0.2, 0) : currentTime + Math.abs(delta);
+      const target = Math.min(Math.max(currentTime + delta, 0), upper);
       player.seekTo(target).catch(() => {});
     },
-    [hasAudio, player, duration, status.currentTime],
+    [hasAudio, player, duration, currentTime],
   );
 
   const handleSeekStart = useCallback((value: number) => {
@@ -338,13 +396,18 @@ export default function AudioPlayerScreen() {
   }, []);
 
   const goChapter = useCallback(
-    (target: number | null) => {
+    (target: number | null, options?: { autoplay?: boolean }) => {
       if (target == null) return;
       setTocOpen(false);
+      setPaywallFor(null);
+      setPaywallAfterSheet(null);
       setSeeking(null);
+      // `autoplay=1` để màn hình đích tự bấm phát; chuyển chương THỦ CÔNG không
+      // gắn cờ này, giữ nguyên nếp cũ là người dùng tự bấm nút phát.
+      const query = options?.autoplay ? '?autoplay=1' : '';
       // typedRoutes đang bật nhưng route mới chỉ được sinh kiểu khi chạy expo start,
       // nên ép kiểu Href cho đường dẫn động này.
-      router.replace(`/audio/${storyId}/${target}` as Href);
+      router.replace(`/audio/${storyId}/${target}${query}` as Href);
     },
     [router, storyId],
   );
@@ -369,9 +432,93 @@ export default function AudioPlayerScreen() {
       number: c.number,
       title: chapterLabel(c),
       hasAudio: c.has_audio === true,
-      locked: !c.is_free && !isUnlocked(storyId, c.number),
+      locked: !c.is_free && !subscribed,
     }));
-  }, [story, isUnlocked, storyId]);
+  }, [story, subscribed]);
+
+  /* ---- Chương kế tiếp ---- */
+  const nextInfo = useMemo<NextChapter | null>(() => {
+    const target = chapter?.next;
+    if (!chapter || target == null) return null;
+    const meta = story?.chapters?.find((c) => c.number === target) ?? null;
+    // Mục lục chưa về thì suy ra "miễn phí" từ `free_chapters` của truyện.
+    const isFree = meta ? meta.is_free : target <= chapter.story.free_chapters;
+    return {
+      number: target,
+      title: meta ? chapterLabel(meta) : `Chapter ${target}`,
+      playable: isFree || subscribed,
+      hasAudio: meta ? meta.has_audio === true : null,
+    };
+  }, [chapter, story, subscribed]);
+
+  /* ---- Tự phát khi màn hình được mở bằng cách tự chuyển chương ----
+     Mỗi player (mỗi chương) chỉ tự bấm phát ĐÚNG MỘT LẦN: người dùng bấm tạm
+     dừng xong thì không bị hệ thống bật lại. */
+  const autoStartedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!autoplayRequested || !hasAudio) return;
+    if (!statusFresh || !status.isLoaded) return;
+    if (autoStartedRef.current === player.id) return;
+    autoStartedRef.current = player.id;
+    try {
+      player.play();
+    } catch {
+      // player vừa được giải phóng — bỏ qua
+    }
+  }, [autoplayRequested, hasAudio, statusFresh, status.isLoaded, player]);
+
+  /* ---- Nghe hết chương thì làm gì ---- */
+  const handleFinished = useCallback(() => {
+    // Không còn được xem (đã sang màn khác) thì im lặng: không tự chuyển chương
+    // và không bật modal đè lên màn người dùng đang đọc.
+    if (!focused) return;
+    // Hết truyện: không còn chương sau, cứ để thanh tiến trình đứng ở cuối.
+    if (!nextInfo) return;
+    if (!nextInfo.playable) {
+      if (tocOpen && Platform.OS === 'ios') {
+        // Xếp hàng: onDismiss của mục lục sẽ mở màn bán gói (xem paywallAfterSheet).
+        setPaywallAfterSheet(chapterNumber);
+        setTocOpen(false);
+        return;
+      }
+      // Android dùng Dialog, không có xung đột present/dismiss -> mở thẳng.
+      setTocOpen(false);
+      setPaywallFor(chapterNumber);
+      return;
+    }
+    // Chương sau chắc chắn CHƯA có MP3 -> ở lại, nhảy sang cũng không phát được.
+    // `null` (chưa biết) thì vẫn nhảy: màn hình đích tự báo nếu thiếu audio.
+    if (nextInfo.hasAudio === false) return;
+    goChapter(nextInfo.number, { autoplay: true });
+  }, [focused, nextInfo, goChapter, chapterNumber, tocOpen]);
+
+  /**
+   * Bắt lúc nghe hết TRÊN LUỒNG SỰ KIỆN, không đọc từ state đã render.
+   *
+   * `useAudioPlayerStatus` chỉ là `useState` bọc quanh sự kiện, nên hai bản tin bắn
+   * sát nhau sẽ gộp thành MỘT lần render mang giá trị của bản tin SAU. Trên iOS,
+   * ngay sau bản tin `didJustFinish: true` thường còn một bản tin của bộ đếm thời
+   * gian (didJustFinish: false); component không bao giờ render với `true` và cả
+   * tính năng im lặng không chạy. Nghe thẳng sự kiện thì không bản tin nào bị nuốt.
+   *
+   * useEventListener tự giữ listener mới nhất trong ref nên truyền closure thẳng
+   * vào đây không làm đăng ký lại sau mỗi lần render.
+   */
+  const finishRef = useRef<{ id: string; finished: boolean }>({ id: '', finished: false });
+  useEventListener(player, 'playbackStatusUpdate', (s) => {
+    // Bản tin của player CŨ (vừa đổi chương) còn mang didJustFinish của chương trước.
+    if (s.id && s.id !== player.id) return;
+    if (!s.didJustFinish) {
+      finishRef.current = { id: player.id, finished: false };
+      return;
+    }
+    if (finishRef.current.id === player.id && finishRef.current.finished) return;
+    finishRef.current = { id: player.id, finished: true };
+    handleFinished();
+  });
+
+  /* Màn bán gói chỉ thuộc về đúng chương đã bật nó; đổi chương là tự biến mất. */
+  const paywallOpen = focused && paywallFor === chapterNumber;
 
   /* Loại thông báo cần hiện phía trên thanh tiến trình. */
   const notice: 'locked' | 'no-audio' | null = !chapter
@@ -626,13 +773,13 @@ export default function AudioPlayerScreen() {
               />
             ) : notice === 'locked' ? (
               <Notice
-                icon="lock-closed-outline"
-                title="This chapter is locked"
-                description={`Unlock it with ${formatCoins(COIN_PER_CHAPTER)} in the reader, then come back to listen.`}
-                actionLabel="Unlock in reader"
-                onAction={openReader}
+                icon="sparkles-outline"
+                title="Audio is for members"
+                description="Free chapters play for everyone. Go Premium to listen to every chapter."
+                actionLabel="See Premium"
+                onAction={() => setPaywallFor(chapterNumber)}
               />
-            ) : hasAudio && status.error ? (
+            ) : hasAudio && playbackError ? (
               <Notice
                 danger
                 icon="alert-circle-outline"
@@ -749,13 +896,31 @@ export default function AudioPlayerScreen() {
 
       {/* ---------- Mục lục ---------- */}
       <ChapterSheet
-        visible={tocOpen}
+        visible={tocOpen && focused}
+        onDismiss={() => {
+          // Chỉ iOS bắn sự kiện này, và đây là lúc DUY NHẤT chắc chắn sheet đã rời
+          // khỏi màn hình, nên present modal kế tiếp mới không bị UIKit từ chối.
+          if (paywallAfterSheet == null) return;
+          setPaywallFor(paywallAfterSheet);
+          setPaywallAfterSheet(null);
+        }}
         rows={chapterRows}
         current={chapterNumber}
         storyTitle={storyTitle}
         bottomInset={insets.bottom}
         onSelect={goChapter}
         onClose={() => setTocOpen(false)}
+      />
+
+      {/* ---------- Gói Premium ---------- */}
+      <Paywall
+        visible={paywallOpen}
+        reason={
+          nextInfo
+            ? `“${nextInfo.title}” is a members-only chapter. Go Premium to keep listening.`
+            : 'Go Premium to listen to every chapter.'
+        }
+        onClose={() => setPaywallFor(null)}
       />
     </View>
   );
@@ -910,6 +1075,8 @@ interface ChapterSheetProps {
   bottomInset: number;
   onSelect: (n: number) => void;
   onClose: () => void;
+  /** iOS: bắn khi sheet đã biến mất hẳn. Dùng để nối tiếp một modal khác. */
+  onDismiss?: () => void;
 }
 
 function ChapterSheet({
@@ -920,6 +1087,7 @@ function ChapterSheet({
   bottomInset,
   onSelect,
   onClose,
+  onDismiss,
 }: ChapterSheetProps) {
   const currentIndex = rows.findIndex((r) => r.number === current);
 
@@ -967,6 +1135,7 @@ function ChapterSheet({
       animationType="slide"
       statusBarTranslucent
       onRequestClose={onClose}
+      onDismiss={onDismiss}
     >
       <View style={styles.sheetWrap}>
         <Pressable
@@ -1450,4 +1619,5 @@ const styles = StyleSheet.create({
     fontSize: FontSize.micro,
     fontWeight: FontWeight.semibold,
   },
+
 });

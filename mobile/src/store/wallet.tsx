@@ -2,8 +2,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 // ---- Kinh tế xu (SPEC §8) ----
+/**
+ * Xu của LƯỢT xem quảng cáo ĐẦU TIÊN trong ngày. Các lượt sau trả theo bậc
+ * `AD_TASKS` trong `store/rewards` (30/30/40/50) — hằng số này chỉ là mức nền,
+ * mọi khoản thưởng thật đều do `recordAdWatch()` quyết định.
+ */
 export const COIN_PER_REWARD = 30;
-export const COIN_PER_CHAPTER = 10;
+/** Giá mở 1 chương. Bằng đúng 1 lượt quảng cáo -> xem 1 quảng cáo mở 1 chương. */
+export const COIN_PER_CHAPTER = 30;
 export const STARTER_COINS = 0;
 
 const KEY_COINS = 'stories:coins';

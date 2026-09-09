@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Chip } from '@/components/chip';
 import { EmptyState } from '@/components/empty-state';
+import { Paywall } from '@/components/paywall';
 import { SectionHeader } from '@/components/section-header';
 import { Skeleton, SkeletonText } from '@/components/skeleton';
 import { StoryCover } from '@/components/story-card';
@@ -27,6 +28,7 @@ import {
 } from '@/constants/theme';
 import { getStory, type ChapterMeta, type Story } from '@/lib/api';
 import { formatCoins, formatViews, plural, storyStatusLabel } from '@/lib/format';
+import { useSubscription } from '@/store/subscription';
 import { COIN_PER_CHAPTER, useWallet } from '@/store/wallet';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
@@ -91,6 +93,9 @@ export default function StoryDetailScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { isSaved, toggleSaved, isUnlocked } = useWallet();
+  // Premium: đọc mọi chương, nghe mọi chương.
+  const { subscribed } = useSubscription();
+  const [paywallOpen, setPaywallOpen] = useState(false);
 
   const [story, setStory] = useState<Story | null>(null);
   const [loading, setLoading] = useState(true);
@@ -145,12 +150,18 @@ export default function StoryDetailScreen() {
   const openAudio = useCallback(
     (number: number) => {
       if (!story) return;
+      // Audio của chương trả phí là quyền lợi thành viên; xu KHÔNG mở được.
+      const target = chapters.find((c) => c.number === number);
+      if (target && !target.is_free && !subscribed) {
+        setPaywallOpen(true);
+        return;
+      }
       // Màn nghe nằm ở src/app/audio/[storyId]/[number].tsx. typedRoutes chỉ
       // sinh kiểu cho các route đã tồn tại lúc build type, nên ép kiểu Href một
       // lần tại đây; đường dẫn vẫn đúng dạng /audio/<id>/<số chương>.
       router.push(`/audio/${story.id}/${number}` as Href);
     },
-    [router, story],
+    [router, story, chapters, subscribed],
   );
 
   const description = (story?.description ?? '').trim();
@@ -458,6 +469,12 @@ export default function StoryDetailScreen() {
       </ScrollView>
 
       {backButton}
+
+      <Paywall
+        visible={paywallOpen}
+        reason="Audio for this chapter is part of Premium. Free chapters play for everyone."
+        onClose={() => setPaywallOpen(false)}
+      />
     </View>
   );
 }

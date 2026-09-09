@@ -687,7 +687,7 @@ nào cho bất kỳ ai gọi:
 curl -s https://tunastory.com/api/stories/1/chapters/3
 ```
 
-Cơ chế "chương 1 miễn phí, chương 2+ khoá 10 xu" **hoàn toàn do client quản lý**: số xu
+Cơ chế "chương 1 miễn phí, chương 2+ khoá 30 xu" **hoàn toàn do client quản lý**: số xu
 lưu trong AsyncStorage trên máy người dùng, việc mở khoá chỉ là logic trong app. Đây là
 hệ quả trực tiếp của **mô hình guest — không có tài khoản người dùng** (đúng theo
 SPEC.md), không phải lỗi cấu hình.

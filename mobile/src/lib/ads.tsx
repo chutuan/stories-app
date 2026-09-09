@@ -52,6 +52,8 @@ type AdsModule = {
     createForAdRequest: (unitId: string) => RewardedAdInstance;
   };
   RewardedAdEventType: { LOADED: string; EARNED_REWARD: string };
+  /** Sự kiện chung của mọi loại quảng cáo. Khai optional vì bản cũ của thư viện có thể thiếu. */
+  AdEventType?: { ERROR: string; OPENED: string; CLOSED: string };
 };
 
 type RewardedAdInstance = {
@@ -110,9 +112,18 @@ export interface RewardedResult {
   rewarded: boolean;
 }
 
+/** Chờ AdMob trả quảng cáo về. Không có hàng thì 'error' thường tới sớm hơn mốc này. */
+const AD_LOAD_TIMEOUT_MS = 30_000;
+/** Chặn cuối cho trường hợp quảng cáo đã mở nhưng không bao giờ báo đóng. */
+const AD_WATCH_TIMEOUT_MS = 300_000;
+
 /**
  * Hiện rewarded ad. Resolve { rewarded: true } khi nhận thưởng.
  * Fallback (không native): resolve ngay { rewarded: true }.
+ *
+ * Promise này BẮT BUỘC phải kết thúc ở mọi nhánh. Nơi gọi đều theo khuôn
+ * `setBusy(true) ... finally setBusy(false)`, nên một lần không kết thúc là nút bấm
+ * kẹt vĩnh viễn ở trạng thái đang quay, không cách nào thoát ngoài đổi màn hình.
  */
 export function showRewarded(): Promise<RewardedResult> {
   if (!adsModule || !nativeAvailable) {
@@ -120,19 +131,51 @@ export function showRewarded(): Promise<RewardedResult> {
   }
 
   return new Promise<RewardedResult>((resolve) => {
-    try {
-      const mod = adsModule as AdsModule;
-      const rewarded = mod.RewardedAd.createForAdRequest(REWARDED_UNIT_ID);
-      let earned = false;
-      let settled = false;
+    const mod = adsModule as AdsModule;
+    // Bản thư viện cũ có thể chưa xuất AdEventType -> dùng đúng chuỗi mà nó phát ra.
+    const events = mod.AdEventType ?? { ERROR: 'error', OPENED: 'opened', CLOSED: 'closed' };
 
-      const finish = (result: RewardedResult) => {
-        if (settled) return;
-        settled = true;
-        resolve(result);
+    let earned = false;
+    let settled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const unsubs: (() => void)[] = [];
+
+    const finish = (result: RewardedResult) => {
+      if (settled) return;
+      settled = true;
+      if (timer) clearTimeout(timer);
+      // Gỡ listener ở MỌI lối ra. Bản trước chỉ gỡ trong nhánh 'closed' nên khi
+      // quảng cáo lỗi thì listener treo lại mãi.
+      for (const off of unsubs) {
+        try {
+          off();
+        } catch {
+          // đã gỡ rồi — bỏ qua
+        }
+      }
+      resolve(result);
+    };
+
+    /** Đặt lại mốc chờ; hết giờ thì trả về đúng trạng thái thưởng đang có. */
+    const arm = (ms: number) => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => finish({ rewarded: earned }), ms);
+    };
+
+    try {
+      const rewarded = mod.RewardedAd.createForAdRequest(REWARDED_UNIT_ID);
+
+      const on = (type: string, listener: (payload?: unknown) => void) => {
+        const off = rewarded.addAdEventListener(type, listener);
+        if (typeof off === 'function') unsubs.push(off);
       };
 
-      const unsubLoaded = rewarded.addAdEventListener(mod.RewardedAdEventType.LOADED, () => {
+      on(mod.RewardedAdEventType.LOADED, () => {
+        // Đã có hàng -> chắc chắn sẽ hiện, nới ngay mốc chờ. Nếu vẫn để mốc 30s của
+        // lúc tải mà mạng chậm làm tải mất 29s, mốc đó sẽ hết hạn ngay giữa lúc
+        // quảng cáo vừa mở -> trả về "không nhận thưởng" trong khi người dùng đang
+        // ngồi xem, và lát nữa 'closed' tới thì Promise đã chốt, xu mất trắng.
+        arm(AD_WATCH_TIMEOUT_MS);
         try {
           rewarded.show();
         } catch {
@@ -140,21 +183,24 @@ export function showRewarded(): Promise<RewardedResult> {
         }
       });
 
-      const unsubEarned = rewarded.addAdEventListener(mod.RewardedAdEventType.EARNED_REWARD, () => {
+      on(mod.RewardedAdEventType.EARNED_REWARD, () => {
         earned = true;
       });
 
-      // 'closed' là event của AdEventType chung; dùng chuỗi trực tiếp cho fallback đóng
-      const unsubClosed = rewarded.addAdEventListener('closed', () => {
-        unsubLoaded?.();
-        unsubEarned?.();
-        unsubClosed?.();
-        finish({ rewarded: earned });
-      });
+      // Quảng cáo đã hiện: người dùng đang ngồi xem, nới mốc chờ ra.
+      on(events.OPENED, () => arm(AD_WATCH_TIMEOUT_MS));
 
+      on(events.CLOSED, () => finish({ rewarded: earned }));
+
+      // CHỖ BẢN CŨ THIẾU: hết hàng để trả (no fill), rớt mạng, sai unit ID... AdMob
+      // chỉ bắn 'error' và KHÔNG bao giờ bắn 'closed'. Không nghe sự kiện này thì
+      // Promise không bao giờ kết thúc.
+      on(events.ERROR, () => finish({ rewarded: false }));
+
+      arm(AD_LOAD_TIMEOUT_MS);
       rewarded.load();
     } catch {
-      resolve({ rewarded: false });
+      finish({ rewarded: false });
     }
   });
 }

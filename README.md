@@ -58,7 +58,8 @@ npx expo start        # rồi bấm i (iOS) / a (Android) / w (web)
 
 ### Hệ thống xu (guest, lưu local)
 - Không cần đăng nhập. Xu + chương đã mở khóa + truyện đã lưu → AsyncStorage (mất khi gỡ app).
-- **Chương 1 miễn phí**, chương 2+ khóa. Mở 1 chương = **10 xu**. Xem hết 1 rewarded = **+30 xu**.
+- **Chương 1 miễn phí**, chương 2+ khóa. Mở 1 chương = **30 xu**. Xem hết 1 rewarded = **+30 xu**
+  (lượt 1..4 trong ngày: 30/30/40/50, tối đa 4 lượt).
 - Chỉnh trong `mobile/src/store/wallet.tsx`: `COIN_PER_CHAPTER`, `COIN_PER_REWARD`, `STARTER_COINS`.
 
 ### Giọng đọc AI (nghe sách nói)

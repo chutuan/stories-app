@@ -15,6 +15,7 @@ import type { TextStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/empty-state';
+import { Paywall } from '@/components/paywall';
 import { ReaderSettingsSheet } from '@/components/reader-settings-sheet';
 import { Skeleton, SkeletonText } from '@/components/skeleton';
 import {
@@ -37,7 +38,9 @@ import {
   useReaderPrefs,
   type ReaderTheme,
 } from '@/store/reader-prefs';
-import { COIN_PER_CHAPTER, COIN_PER_REWARD, useWallet } from '@/store/wallet';
+import { AD_TASK_LIMIT, useRewards } from '@/store/rewards';
+import { useSubscription } from '@/store/subscription';
+import { COIN_PER_CHAPTER, useWallet } from '@/store/wallet';
 
 /**
  * Tổng số chương theo truyện — chỉ gọi API 1 lần cho mỗi truyện trong 1 phiên,
@@ -103,7 +106,12 @@ function ReaderScreen() {
   const { storyId, number } = useLocalSearchParams<{ storyId: string; number: string }>();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { coins, addCoins, spendCoins, isUnlocked, unlock } = useWallet();
+  const { coins, spendCoins, isUnlocked, unlock } = useWallet();
+  // Sổ cái quảng cáo dùng CHUNG với tab Phần thưởng: mọi lượt xem đều phải đếm
+  // ở đây, nếu không hạn mức mỗi ngày sẽ vô hiệu và xu trở thành vô hạn.
+  const { adsWatched, nextAdCoins, recordAdWatch, ready: rewardsReady } = useRewards();
+  // Premium mở SẴN mọi chương: không cần xu, và nghe được audio của mọi chương.
+  const { subscribed } = useSubscription();
   const {
     fontSize,
     lineHeight,
@@ -125,6 +133,7 @@ function ReaderScreen() {
   );
   const [watchingAd, setWatchingAd] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [paywallOpen, setPaywallOpen] = useState(false);
   const [totalChapters, setTotalChapters] = useState<number | null>(
     () => totalChaptersCache.get(String(storyId)) ?? null,
   );
@@ -178,7 +187,7 @@ function ReaderScreen() {
   }, [chapter]);
 
   const unlockedLocal = isUnlocked(storyId, chapterNumber);
-  const canRead = chapter ? chapter.is_free || unlockedLocal : false;
+  const canRead = chapter ? chapter.is_free || unlockedLocal || subscribed : false;
 
   const notify = useCallback(
     (text: string, ok: boolean) => {
@@ -197,21 +206,34 @@ function ReaderScreen() {
     }
   }, [spendCoins, unlock, notify, storyId, chapterNumber]);
 
+  const adsDone = adsWatched >= AD_TASK_LIMIT;
+
   const handleWatchAd = useCallback(async () => {
+    if (watchingAd || adsDone) return;
     setMessage(null);
     setWatchingAd(true);
     try {
-      const result = await showRewarded();
-      if (result.rewarded) {
-        addCoins(COIN_PER_REWARD);
-        notify(`You got +${formatCoins(COIN_PER_REWARD)}!`, true);
-      } else {
+      const { rewarded } = await showRewarded();
+      if (!rewarded) {
         notify('You did not finish the ad. Please try again.', false);
+        return;
       }
+      // Xu thưởng chỉ được cộng qua recordAdWatch — đó là nơi DUY NHẤT đếm lượt
+      // và chặn tại AD_TASK_LIMIT. Gọi thẳng addCoins ở đây chính là lỗ hổng cũ:
+      // bấm xem quảng cáo bao nhiêu lần cũng nhận xu, mà tab Phần thưởng vẫn báo
+      // "đã nhận 0/150" vì bộ đếm không hề nhúc nhích.
+      const got = recordAdWatch();
+      if (got > 0) {
+        notify(`You got +${formatCoins(got)}!`, true);
+      } else {
+        notify("You've used all ad rewards for today. Come back tomorrow.", false);
+      }
+    } catch {
+      notify('Could not load the ad, please try again later.', false);
     } finally {
       setWatchingAd(false);
     }
-  }, [addCoins, notify]);
+  }, [watchingAd, adsDone, recordAdWatch, notify]);
 
   const goTo = useCallback(
     (target: number | null) => {
@@ -224,10 +246,16 @@ function ReaderScreen() {
   const hasAudio = chapter?.audio_url != null;
 
   const openAudio = useCallback(() => {
+    // Audio của chương trả phí là quyền lợi của thành viên; xu KHÔNG mở được.
+    // Chương miễn phí thì ai cũng nghe, nên vẫn vào thẳng màn nghe.
+    if (chapter && !chapter.is_free && !subscribed) {
+      setPaywallOpen(true);
+      return;
+    }
     // Màn nghe do route riêng đảm nhiệm; ép kiểu vì bảng route sinh tự động
     // chỉ được cập nhật sau khi file /audio/... tồn tại trên đĩa.
     router.push(`/audio/${storyId}/${chapterNumber}` as Href);
-  }, [router, storyId, chapterNumber]);
+  }, [router, storyId, chapterNumber, chapter, subscribed]);
 
   const paragraphs = useMemo(
     () => (chapter && canRead ? toParagraphs(chapter.content) : []),
@@ -244,9 +272,17 @@ function ReaderScreen() {
     ? { text: activeMessage.text, ok: activeMessage.ok }
     : notEnough
       ? {
-          text: `You need ${plural(missingCoins, 'more coin', 'more coins')}. Watch an ad to get +${formatCoins(
-            COIN_PER_REWARD,
-          )}.`,
+          text: adsDone
+            ? `You need ${plural(
+                missingCoins,
+                'more coin',
+                'more coins',
+              )}. No ad rewards left today — check in or keep reading to earn more.`
+            : `You need ${plural(
+                missingCoins,
+                'more coin',
+                'more coins',
+              )}. Watch an ad to get +${formatCoins(nextAdCoins)}.`,
           ok: false,
         }
       : null;
@@ -471,21 +507,34 @@ function ReaderScreen() {
 
             <Pressable
               onPress={handleWatchAd}
-              disabled={watchingAd}
+              disabled={watchingAd || adsDone || !rewardsReady}
               accessibilityRole="button"
-              accessibilityLabel={`Watch an ad to get ${formatCoins(COIN_PER_REWARD)}`}
+              accessibilityState={{ disabled: watchingAd || adsDone || !rewardsReady }}
+              accessibilityLabel={
+                adsDone
+                  ? 'No ad rewards left today'
+                  : `Watch an ad to get ${formatCoins(nextAdCoins)}`
+              }
               style={({ pressed }) => [
                 styles.adBtn,
-                watchingAd && styles.adBtnBusy,
-                pressed && !watchingAd && styles.pressed,
+                (watchingAd || adsDone || !rewardsReady) && styles.adBtnBusy,
+                pressed && !watchingAd && !adsDone && styles.pressed,
               ]}
             >
               {watchingAd ? (
                 <ActivityIndicator color={Palette.coinDeep} size="small" />
               ) : (
                 <>
-                  <Ionicons name="play-circle" size={18} color={Palette.coinDeep} />
-                  <Text style={styles.adBtnText}>Watch ad · +{formatCoins(COIN_PER_REWARD)}</Text>
+                  <Ionicons
+                    name={adsDone ? 'checkmark-circle' : 'play-circle'}
+                    size={18}
+                    color={adsDone ? Palette.freeDeep : Palette.coinDeep}
+                  />
+                  <Text style={[styles.adBtnText, adsDone && { color: Palette.freeDeep }]}>
+                    {adsDone
+                      ? 'No ad rewards left today'
+                      : `Watch ad · +${formatCoins(nextAdCoins)}`}
+                  </Text>
                 </>
               )}
             </Pressable>
@@ -496,6 +545,20 @@ function ReaderScreen() {
                 Balance: <Text style={styles.walletHintValue}>{formatCoins(coins)}</Text>
               </Text>
             </View>
+
+            {/* Xu mở TỪNG chương; Premium mở cả kho + audio. Đặt lối lên ngay đây
+                vì đó là lúc người đọc đang thực sự vướng chương khoá. */}
+            <Pressable
+              onPress={() => setPaywallOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel="See Stories Premium"
+              style={({ pressed }) => [styles.premiumHint, pressed && styles.pressed]}
+            >
+              <Ionicons name="sparkles" size={13} color={Palette.accentDeep} />
+              <Text style={styles.premiumHintText}>
+                Or go Premium to unlock every chapter
+              </Text>
+            </Pressable>
           </LinearGradient>
         </ScrollView>
       )}
@@ -531,6 +594,12 @@ function ReaderScreen() {
 
       {/* Bảng cài đặt đọc */}
       <ReaderSettingsSheet visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
+
+      <Paywall
+        visible={paywallOpen}
+        reason="Read every chapter and listen to the full narration."
+        onClose={() => setPaywallOpen(false)}
+      />
     </View>
   );
 }
@@ -952,6 +1021,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.xs,
     marginTop: Spacing.xs,
+  },
+  premiumHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+  },
+  premiumHintText: {
+    color: Palette.accentDeep,
+    fontSize: FontSize.caption,
+    fontWeight: FontWeight.bold,
+    textDecorationLine: 'underline',
   },
   walletHintText: {
     color: Palette.muted,

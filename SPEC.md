@@ -7,7 +7,7 @@ Mọi tên endpoint, tên field JSON phải khớp CHÍNH XÁC giữa 2 bên.
 - Backend: Laravel + MySQL. Hai vai trò: (a) **Admin web** (Blade) để CRUD thể loại/truyện/chương + upload ảnh; (b) **REST API** công khai cho mobile đọc.
 - Mobile: Expo + TypeScript + expo-router. Chế độ **guest** (không đăng nhập). Xu và danh sách chương đã mở khóa lưu **local** bằng AsyncStorage.
 - Kiếm tiền: **Banner** (trên cùng màn đọc) + **Rewarded** (AdMob).
-- Kinh tế xu: 1 rewarded xem hết = **+30 xu**. Mở 1 chương = **10 xu**.
+- Kinh tế xu: 1 rewarded xem hết = **+30 xu**. Mở 1 chương = **30 xu** (1 quảng cáo = 1 chương).
 - Khóa chương: **Chương 1 miễn phí**, **chương 2 trở đi khóa** (theo `story.free_chapters`, mặc định 1).
 
 ## 2. Data model (MySQL)
@@ -228,9 +228,14 @@ từng khinh thường.
 ## 8. Mobile — cấu trúc & hành vi
 
 ### Kinh tế xu (constants)
-- `COIN_PER_REWARD = 30`
-- `COIN_PER_CHAPTER = 10`
+- `COIN_PER_REWARD = 30` — mức nền; lượt xem thứ 1..4 trong ngày trả theo bậc
+  `AD_TASKS = [30, 30, 40, 50]` của `store/rewards`, tối đa `AD_TASK_LIMIT = 4` lượt/ngày.
+- `COIN_PER_CHAPTER = 30`
 - `STARTER_COINS = 0`
+- MỌI khoản xu thưởng quảng cáo phải đi qua `useRewards().recordAdWatch()` — đó là nơi
+  duy nhất đếm lượt và chặn hạn mức. Gọi thẳng `addCoins()` ở màn hình = lỗ hổng xu vô hạn.
+- `RewardsProvider` bọc ở `app/_layout.tsx` (GỐC) để tab Phần thưởng, màn đọc và màn nghe
+  dùng chung một sổ cái; bọc riêng ở từng màn sẽ tạo nhiều sổ độc lập.
 
 ### Local store (AsyncStorage) — module `store/wallet`
 - `coins: number`
@@ -242,14 +247,15 @@ từng khinh thường.
 - Tabs: `Trang chủ` (index) · `Tìm kiếm` (search) · `Đã lưu` (saved).
 - Stack ngoài tabs: `story/[id]` (chi tiết + danh sách chương có badge khóa) · `reader/[storyId]/[number]` (đọc).
 - Home: hero featured + row "Cập nhật" (updated) + row "Mới nhất" (newest), card có badge số chương + ribbon status.
-- Story detail: cover, title, author, status, categories, mô tả, nút Đã lưu, danh sách chương — chương free badge "Miễn phí" (xanh), chương khóa badge "🔒 10 xu" (vàng).
+- Story detail: cover, title, author, status, categories, mô tả, nút Đã lưu, danh sách chương — chương free badge "Miễn phí" (xanh), chương khóa badge "🔒 30 xu" (vàng).
 - Reader:
   - **Banner AdMob trên cùng**.
   - Header: nút back + ví xu (icon coin + số xu).
   - Nếu chương free hoặc đã unlock -> render content + nút chương trước/sau.
   - Nếu chương khóa & chưa unlock -> màn khóa với 2 nút:
-    - "Mở khóa · 10 xu": nếu coins>=10 -> spend, unlock, đọc; nếu thiếu -> toast gợi ý xem quảng cáo.
-    - "Xem quảng cáo · +30 xu": show rewarded; nhận thưởng -> addCoins(30).
+    - "Mở khóa · 30 xu": nếu coins>=30 -> spend, unlock, đọc; nếu thiếu -> toast gợi ý xem quảng cáo.
+    - "Xem quảng cáo · +N xu": show rewarded; nhận thưởng -> `recordAdWatch()` (KHÔNG gọi addCoins
+      trực tiếp). Hết 4 lượt trong ngày thì nút bị vô hiệu hoá kèm nhãn "No ad rewards left today".
   - **Nghe chương**: nếu `chapter.audio_url != null` -> phát MP3 từ server bằng `expo-audio`.
     `audio_url == null` -> ẩn/disable nút nghe. TUYỆT ĐỐI không dùng TTS trên máy (expo-speech đã gỡ).
 

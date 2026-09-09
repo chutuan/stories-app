@@ -33,7 +33,6 @@ import {
   AD_TASK_LIMIT,
   CHECKIN_COINS,
   READING_MILESTONES,
-  RewardsProvider,
   WEEKDAY_LABELS,
   useRewards,
 } from '@/store/rewards';
@@ -195,11 +194,10 @@ function MilestoneTrack({ items, position, tone }: MilestoneTrackProps) {
 /* ------------------------------------------------------------------ */
 
 export default function RewardsScreen() {
-  return (
-    <RewardsProvider>
-      <RewardsContent />
-    </RewardsProvider>
-  );
+  // RewardsProvider đã nằm ở app/_layout.tsx. Bọc thêm ở đây sẽ tạo SỔ CÁI THỨ
+  // HAI độc lập với màn đọc/màn nghe, hai bên cùng ghi đè một khoá AsyncStorage
+  // -> hạn mức lượt quảng cáo mỗi ngày mất tác dụng.
+  return <RewardsContent />;
 }
 
 /** Vị trí tiến trình của thanh mốc thời gian đọc, theo chỉ số mốc. */
