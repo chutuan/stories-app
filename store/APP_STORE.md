@@ -9,7 +9,7 @@ Cập nhật: 9/9/2026 · Bundle ID `com.chutuan.stories` · Version `1.0.0`
 | # | Việc | Vì sao chặn |
 |---|------|-------------|
 | 1 | **Đăng ký Apple Developer Program** (99 USD/năm) | Không có thì không tạo được app record, không build ký được, không nộp được. Kể cả chỉ TestFlight nội bộ cũng cần. |
-| 2 | **`eas login` + `eas init`** | `extra.eas.projectId` trong `app.config.js` đang **rỗng**. EAS Build sẽ dừng ngay ở bước đầu. |
+| 2 | ~~`eas login` + `eas init`~~ | ✅ XONG — project `01451d8d-4073-4cf4-8e05-2d53c0e761f3` (tài khoản `tunachu`), đã dán vào `app.config.js`. |
 | 3 | **AdMob ID thật** | Hiện dùng ID TEST của Google → app chạy nhưng **không ra doanh thu**. |
 
 Không có tài khoản của bạn thì mình không đăng nhập hộ được — đó là thông tin đăng nhập.
@@ -28,6 +28,9 @@ npx eas init               # tạo project, in ra projectId
 > `eas-cli` đã được cài thành devDependency (pin 23.2.0) nên `npx eas` dùng bản trong
 > `node_modules`, không phụ thuộc cache npx. Nếu vẫn gặp `ERR_MODULE_NOT_FOUND` từ
 > `~/.npm/_npx/...` thì cache npx hỏng — xoá thư mục đó rồi chạy lại.
+
+✅ Đã chạy xong. Project hiện tại: `01451d8d-4073-4cf4-8e05-2d53c0e761f3` (tài khoản `tunachu`),
+đã dán sẵn vào `mobile/app.config.js`. Phần dưới giữ lại để tham khảo khi cần tạo project mới.
 
 Dán `projectId` vừa nhận vào `mobile/app.config.js`:
 

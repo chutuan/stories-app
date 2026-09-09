@@ -88,10 +88,10 @@ module.exports = {
       // nên bản production BẮT BUỘC dùng https://
       apiUrl: process.env.EXPO_PUBLIC_API_URL || DEFAULT_API_URL,
       eas: {
-        // Để trống có chủ đích. Chạy `eas init` trong thư mục mobile/ để tạo
-        // project trên Expo; vì đây là dynamic config, EAS CLI sẽ IN RA projectId
-        // và yêu cầu dán vào đây (hoặc đặt biến môi trường EAS_PROJECT_ID).
-        projectId: process.env.EAS_PROJECT_ID || '',
+        // Project trên Expo, tài khoản `tunachu` (tạo bằng `eas init`).
+        // Vì đây là dynamic config nên EAS CLI không tự ghi được — phải dán tay.
+        // Biến EAS_PROJECT_ID cho phép ghi đè khi cần trỏ sang project khác.
+        projectId: process.env.EAS_PROJECT_ID || '01451d8d-4073-4cf4-8e05-2d53c0e761f3',
       },
     },
     experiments: {
