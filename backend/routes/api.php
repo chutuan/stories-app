@@ -20,6 +20,7 @@ Route::get('/stories/{story}/chapters/{number}', [ChapterController::class, 'sho
  */
 Route::middleware('ingest')->prefix('ingest')->group(function () {
     Route::get('/categories', [IngestController::class, 'categories']);
+    Route::post('/categories', [IngestController::class, 'storeCategory']);
     Route::post('/stories', [IngestController::class, 'storeStory']);
     Route::get('/stories/{story}/status', [IngestController::class, 'status']);
     Route::post('/stories/{story}/chapters', [IngestController::class, 'storeChapter']);

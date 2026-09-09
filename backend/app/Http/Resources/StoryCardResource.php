@@ -15,11 +15,13 @@ class StoryCardResource extends JsonResource
             'slug' => $this->slug,
             'author' => $this->author,
             'thumbnail_url' => $this->thumbnail_url,
-            'status' => $this->status,
-            'status_label' => $this->status_label,
+            // Truyện luôn được nộp đủ chương (status = completed), nhưng chừng nào
+            // còn chương hẹn giờ thì với người đọc nó vẫn đang ra dần.
+            'status' => $this->publicStatus(),
+            'status_label' => $this->publicStatusLabel(),
             'categories' => CategoryResource::collection($this->whenLoaded('categories')),
             'views' => (int) $this->views,
-            'chapters_count' => (int) ($this->chapters_count ?? $this->chapters()->count()),
+            'chapters_count' => (int) ($this->chapters_count ?? $this->publishedChapters()->count()),
             'latest_chapter_number' => $this->resolveLatestChapterNumber(),
             'updated_at' => optional($this->updated_at)->toISOString(),
         ];
@@ -29,7 +31,7 @@ class StoryCardResource extends JsonResource
     {
         $value = $this->chapters_max_number
             ?? $this->latest_chapter_number
-            ?? $this->chapters()->max('number');
+            ?? $this->publishedChapters()->max('number');
 
         return $value !== null ? (int) $value : null;
     }

@@ -53,6 +53,14 @@ class GenerateStoryCovers extends Command
         if (! $this->option('force') && ! $this->option('dry')) {
             $query->whereNull('thumbnail');
         }
+        // Truyện đang có job vẽ bìa thì bỏ qua (trừ khi chỉ xem trước prompt).
+        // whereNull là BẮT BUỘC: `NOT IN` với NULL cho ra NULL, không có nó thì
+        // truyện chưa từng vẽ bìa (cover_status NULL) sẽ bị loại sạch.
+        if (! $this->option('dry')) {
+            $query->where(fn ($q) => $q
+                ->whereNull('cover_status')
+                ->orWhereNotIn('cover_status', ['queued', 'processing']));
+        }
         if ($limit = $this->option('limit')) {
             $query->limit((int) $limit);
         }

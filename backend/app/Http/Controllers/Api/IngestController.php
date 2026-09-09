@@ -11,6 +11,7 @@ use App\Models\Story;
 use App\Services\StoryIngestor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  * API GHI cho máy: một AI khác viết truyện xong thì gọi lần lượt các bước ở đây
@@ -46,6 +47,36 @@ class IngestController extends Controller
                 ->get(['id', 'name', 'slug'])
                 ->map(fn (Category $c) => ['id' => $c->id, 'name' => $c->name, 'slug' => $c->slug]),
         ]);
+    }
+
+    /**
+     * BƯỚC 0 (chỉ khi cần) — tạo hoặc cập nhật một thể loại.
+     * POST /api/ingest/categories
+     *
+     * Chỉ dùng khi thể loại cần thiết CHƯA có trong danh sách ở GET /categories.
+     * Đăng lại cùng `slug` là cập nhật tên, không tạo bản trùng.
+     */
+    public function storeCategory(Request $request): JsonResponse
+    {
+        // Xác định slug đích TRƯỚC khi kiểm tra, để luật unique trên `name` biết
+        // phải bỏ qua bản ghi nào (xem StoryIngestor::categoryRules).
+        $slug = $request->filled('slug')
+            ? (string) $request->input('slug')
+            : Str::slug((string) $request->input('name'));
+
+        $data = $request->validate(StoryIngestor::categoryRules($slug));
+
+        [$category, $created] = $this->ingestor->upsertCategory($data + ['slug' => $slug]);
+
+        return response()->json([
+            'created' => $created,
+            'category' => [
+                'id' => $category->id,
+                'name' => $category->name,
+                'slug' => $category->slug,
+            ],
+            'next' => 'Dùng slug này trong trường `categories` khi POST /api/ingest/stories',
+        ], $created ? 201 : 200);
     }
 
     /**
@@ -145,9 +176,13 @@ class IngestController extends Controller
     {
         $story->load(['categories', 'chapters']);
 
+        $now = now();
         $chapters = $story->chapters->map(fn (Chapter $c) => [
             'number' => $c->number,
             'title' => $c->title,
+            // null = đã đăng; thời điểm tương lai = đang chờ tới giờ.
+            'published_at' => optional($c->published_at)->toISOString(),
+            'is_published' => $c->published_at === null || $c->published_at <= $now,
             'audio_status' => $c->audio_status ?? ($c->audio_path ? 'done' : null),
             'audio_error' => $c->audio_error,
             'has_audio' => $c->audio_path !== null,
@@ -174,6 +209,11 @@ class IngestController extends Controller
             'author' => $story->author,
             'status' => $story->status,
             'free_chapters' => $story->free_chapters,
+            'publish_every_hours' => $story->publish_every_hours,
+            'publish_start_at' => optional($story->publish_start_at)->toISOString(),
+            'published_chapters_count' => $story->chapters
+                ->filter(fn (Chapter $c) => $c->published_at === null || $c->published_at <= now())
+                ->count(),
             'is_featured' => (bool) $story->is_featured,
             'categories' => $story->categories->pluck('slug'),
             'chapters_count' => $story->chapters->count(),

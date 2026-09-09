@@ -6,6 +6,7 @@ namespace App\Jobs;
 
 use App\Models\Story;
 use App\Services\StoryCoverGenerator;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -20,9 +21,23 @@ use Throwable;
  *
  * Trạng thái ghi vào `stories.cover_status`: queued -> processing -> done | failed
  */
-class GenerateStoryCover implements ShouldQueue
+class GenerateStoryCover implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
+
+    /**
+     * MỘT TRUYỆN CHỈ CÓ MỘT ẢNH BÌA — và mỗi lần vẽ là một lần trả tiền.
+     * Khoá theo id truyện: trong lúc một job còn nằm trong hàng đợi hoặc đang chạy,
+     * mọi lần dispatch trùng đều bị bỏ đi thay vì xếp thêm. Khoá tự nhả khi job xong
+     * hoặc sau `uniqueFor` giây (phòng khi tiến trình chết giữa chừng).
+     */
+    public function uniqueId(): string
+    {
+        return 'story-cover-'.$this->story->id;
+    }
+
+    /** Bằng đúng $timeout: job chết bất thường thì khoá không kẹt lâu hơn job. */
+    public int $uniqueFor = 900;
 
     /** Rộng rãi cho 2 request nối nhau (bước vẽ đã có timeout 300s + retry). */
     public int $timeout = 900;

@@ -7,6 +7,7 @@ namespace App\Console\Commands;
 use App\Services\StoryIngestor;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -20,10 +21,15 @@ use Throwable;
  * Định dạng file GIỐNG HỆT thân request của API, nên AI không phải học hai kiểu:
  *
  *   {
+ *     "new_categories": [ { "name": "Sports Romance", "slug": "sports-romance" } ],
  *     "story":    { "title": "...", "author": "...", "categories": ["revenge"] },
  *     "chapters": [ { "number": 1, "title": "...", "content": "..." } ],
  *     "generate": { "cover": true, "audio": true }
  *   }
+ *
+ * `new_categories` (tuỳ chọn) chạy TRƯỚC khi kiểm tra truyện, vì `story.categories`
+ * bắt buộc phải là slug đã tồn tại. Đây là bản đối ứng của POST /api/ingest/categories
+ * cho môi trường không gọi được API.
  *
  * Chấp nhận cả một MẢNG các gói như trên để nạp nhiều truyện một lần, và cả kiểu
  * rút gọn khi các trường của truyện nằm thẳng ở gốc cạnh `chapters`.
@@ -81,14 +87,49 @@ class ImportStoryBundle extends Command
                 continue;
             }
 
+            $bad = false;
+            // Slug sắp được tạo trong chính gói này. Ở chế độ --dry chưa ghi gì vào DB
+            // nên phải nói cho luật kiểm tra biết, nếu không một gói HỢP LỆ sẽ bị báo
+            // là hỏng chỉ vì thể loại của nó chưa kịp tồn tại.
+            $pendingSlugs = [];
+
+            // Thể loại mới phải có TRƯỚC, vì story.categories kiểm tra thể loại đã tồn tại.
+            $newCategories = is_array($bundle['new_categories'] ?? null) ? $bundle['new_categories'] : [];
+            foreach ($newCategories as $k => $definition) {
+                if (! is_array($definition)) {
+                    $this->error("  ✗ {$label} new_categories[{$k}]: không phải object");
+                    $bad = true;
+
+                    continue;
+                }
+                $slug = $definition['slug'] ?? Str::slug((string) ($definition['name'] ?? ''));
+                $check = Validator::make($definition, StoryIngestor::categoryRules($slug));
+                if ($check->fails()) {
+                    $this->error("  ✗ {$label} new_categories[{$k}]: ".implode(' | ', $check->errors()->all()));
+                    $bad = true;
+
+                    continue;
+                }
+                $pendingSlugs[] = $slug;
+                if (! $dry) {
+                    [$category, $madeNew] = $ingestor->upsertCategory($check->validated() + ['slug' => $slug]);
+                    $this->line('  · thể loại '.($madeNew ? 'tạo mới' : 'đã có').": {$category->slug}");
+                }
+            }
+            if ($bad) {
+                $failed++;
+
+                continue;
+            }
+
             // Kiểu rút gọn: các trường truyện nằm thẳng ở gốc.
             $storyData = is_array($bundle['story'] ?? null)
                 ? $bundle['story']
-                : array_diff_key($bundle, array_flip(['chapters', 'generate']));
+                : array_diff_key($bundle, array_flip(['chapters', 'generate', 'new_categories']));
             $chapters = is_array($bundle['chapters'] ?? null) ? $bundle['chapters'] : [];
             $generate = is_array($bundle['generate'] ?? null) ? $bundle['generate'] : [];
 
-            $storyCheck = Validator::make($storyData, StoryIngestor::storyRules());
+            $storyCheck = Validator::make($storyData, StoryIngestor::storyRules($pendingSlugs));
             if ($storyCheck->fails()) {
                 $this->error("  ✗ {$label}: ".implode(' | ', $storyCheck->errors()->all()));
                 $failed++;
@@ -99,7 +140,6 @@ class ImportStoryBundle extends Command
             // Kiểm tra HẾT các chương TRƯỚC khi ghi bất cứ thứ gì: nạp nửa chừng rồi
             // hỏng ở chương cuối sẽ để lại một truyện cụt trong cơ sở dữ liệu.
             $chapterData = [];
-            $bad = false;
             foreach ($chapters as $j => $chapter) {
                 $check = Validator::make(is_array($chapter) ? $chapter : [], StoryIngestor::chapterRules());
                 if ($check->fails()) {

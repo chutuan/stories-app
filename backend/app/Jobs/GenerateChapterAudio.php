@@ -6,6 +6,7 @@ namespace App\Jobs;
 
 use App\Models\Chapter;
 use App\Services\ChapterAudioGenerator;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -21,9 +22,21 @@ use Throwable;
  * Trạng thái được ghi vào `chapters.audio_status` để admin theo dõi:
  *   queued -> processing -> done | failed
  */
-class GenerateChapterAudio implements ShouldQueue
+class GenerateChapterAudio implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
+
+    /**
+     * MỘT CHƯƠNG CHỈ CÓ MỘT FILE AUDIO — và mỗi lần đọc là một lần trả tiền.
+     * Khoá theo id chương: dispatch trùng trong lúc job cũ còn sống đều bị bỏ.
+     */
+    public function uniqueId(): string
+    {
+        return 'chapter-audio-'.$this->chapter->id;
+    }
+
+    /** Bằng đúng $timeout: job chết bất thường thì khoá không kẹt lâu hơn job. */
+    public int $uniqueFor = 900;
 
     /**
      * Đủ dài cho chương nhiều đoạn (mỗi request TTS đã có timeout 180s + retry).

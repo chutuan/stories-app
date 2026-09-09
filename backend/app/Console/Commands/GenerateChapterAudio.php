@@ -54,6 +54,12 @@ class GenerateChapterAudio extends Command
         if (! $this->option('force')) {
             $query->whereNull('audio_path');
         }
+        // Không đụng vào chương đang chờ/đang đọc: job cũ sẽ ra file, xếp thêm là
+        // trả tiền hai lần cho cùng một chương. whereNull là BẮT BUỘC — `NOT IN` với
+        // NULL cho ra NULL nên chương chưa từng xếp hàng sẽ bị loại nhầm.
+        $query->where(fn ($q) => $q
+            ->whereNull('audio_status')
+            ->orWhereNotIn('audio_status', ['queued', 'processing']));
         if ($limit = $this->option('limit')) {
             $query->limit((int) $limit);
         }

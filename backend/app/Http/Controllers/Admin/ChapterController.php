@@ -141,12 +141,29 @@ class ChapterController extends Controller
      * (nhiều đoạn + nối ffmpeg) -> nginx/php-fpm trên production sẽ timeout 502/504.
      * Worker `php artisan queue:work` chạy job và cập nhật `chapters.audio_status`.
      */
-    public function generateAudio(Story $story, Chapter $chapter, ChapterAudioGenerator $generator): RedirectResponse
-    {
+    public function generateAudio(
+        Request $request,
+        Story $story,
+        Chapter $chapter,
+        ChapterAudioGenerator $generator
+    ): RedirectResponse {
         abort_if($chapter->story_id !== $story->id, 404);
 
         if ((string) config('services.openai.key') === '') {
             return back()->with('error', 'Chưa cấu hình OPENAI_API_KEY trong backend/.env');
+        }
+
+        // MỘT CHƯƠNG MỘT FILE AUDIO. Trước đây nút này luôn dispatch với force=true,
+        // nên mỗi lần bấm là một lần gọi OpenAI và một lần trả tiền — kể cả khi chương
+        // đã có sẵn audio. Giờ phải chủ động gửi ?force=1 mới đọc lại.
+        $force = $request->boolean('force');
+
+        if (! $force && $chapter->audio_path) {
+            return back()->with('error', 'Chương này đã có audio rồi. Muốn đọc lại thì dùng nút "Tạo lại".');
+        }
+
+        if (in_array($chapter->audio_status, ['queued', 'processing'], true)) {
+            return back()->with('status', 'Chương này đang trong hàng đợi, chờ chút rồi tải lại trang.');
         }
 
         $chapter->forceFill([
@@ -154,7 +171,7 @@ class ChapterController extends Controller
             'audio_error' => null,
         ])->save();
 
-        GenerateChapterAudio::dispatch($chapter, true);
+        GenerateChapterAudio::dispatch($chapter, $force);
 
         $voice = $generator->profileFor($chapter)['voice'];
 
