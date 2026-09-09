@@ -20,9 +20,14 @@ Không có tài khoản của bạn thì mình không đăng nhập hộ đượ
 
 ```bash
 cd mobile
-npx eas-cli login          # tài khoản Expo
-npx eas-cli init           # tạo project, in ra projectId
+nvm use                    # đọc .nvmrc -> Node 20 (Node 14 mặc định sẽ hỏng)
+npx eas login              # tài khoản Expo
+npx eas init               # tạo project, in ra projectId
 ```
+
+> `eas-cli` đã được cài thành devDependency (pin 23.2.0) nên `npx eas` dùng bản trong
+> `node_modules`, không phụ thuộc cache npx. Nếu vẫn gặp `ERR_MODULE_NOT_FOUND` từ
+> `~/.npm/_npx/...` thì cache npx hỏng — xoá thư mục đó rồi chạy lại.
 
 Dán `projectId` vừa nhận vào `mobile/app.config.js`:
 
@@ -55,12 +60,12 @@ Lấy trong AdMob Console → sửa `mobile/eas.json`, mục `build.production.e
 
 ```bash
 cd mobile
-nvm use 20                                   # BẮT BUỘC: Node mặc định v14 sẽ làm expo/eas sập
+nvm use                                      # BẮT BUỘC: .nvmrc -> Node 20; Node 14 mặc định sẽ làm eas sập
 
-npx eas-cli build --platform ios --profile production
+npx eas build --platform ios --profile production
 # EAS hỏi Apple ID -> đăng nhập, nó tự tạo cert + provisioning profile
 
-npx eas-cli submit --platform ios --latest    # đẩy lên App Store Connect / TestFlight
+npx eas submit --platform ios --latest    # đẩy lên App Store Connect / TestFlight
 ```
 
 `autoIncrement: true` đã bật trong profile `production`, nên `buildNumber` tự tăng mỗi lần build —
