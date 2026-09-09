@@ -64,11 +64,15 @@
         // được BỎ HẲN thay vì để "". Khi code không thấy biến, nó tự fallback về
         // App ID / unit ID TEST của Google (chạy được nhưng KHÔNG ra doanh thu).
         //
-        // Khi có ID thật từ AdMob Console, thêm lại 4 dòng này (có giá trị, không để rỗng):
-        //   "EXPO_PUBLIC_ADMOB_ANDROID_APP_ID": "ca-app-pub-XXXX~XXXX",
-        //   "EXPO_PUBLIC_ADMOB_IOS_APP_ID":     "ca-app-pub-XXXX~XXXX",
-        //   "EXPO_PUBLIC_ADMOB_BANNER_ID":      "ca-app-pub-XXXX/XXXX",
-        //   "EXPO_PUBLIC_ADMOB_REWARDED_ID":    "ca-app-pub-XXXX/XXXX"
+        // Khi có ID thật từ AdMob Console, thêm các dòng này (có giá trị, không để rỗng).
+        // LƯU Ý: iOS và Android là HAI APP RIÊNG trong AdMob -> App ID và ad unit ID
+        // đều khác nhau. Unit ID của bên này KHÔNG chạy cho bên kia.
+        //   "EXPO_PUBLIC_ADMOB_IOS_APP_ID":            "ca-app-pub-XXXX~XXXX",
+        //   "EXPO_PUBLIC_ADMOB_ANDROID_APP_ID":        "ca-app-pub-XXXX~XXXX",
+        //   "EXPO_PUBLIC_ADMOB_BANNER_ID_IOS":         "ca-app-pub-XXXX/XXXX",
+        //   "EXPO_PUBLIC_ADMOB_BANNER_ID_ANDROID":     "ca-app-pub-XXXX/XXXX",
+        //   "EXPO_PUBLIC_ADMOB_REWARDED_ID_IOS":       "ca-app-pub-XXXX/XXXX",
+        //   "EXPO_PUBLIC_ADMOB_REWARDED_ID_ANDROID":   "ca-app-pub-XXXX/XXXX"
         "EXPO_PUBLIC_API_URL": "https://api.tunastory.com/api"
       }
     }

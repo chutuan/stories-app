@@ -74,6 +74,12 @@ return [
     'support_email' => env('SUPPORT_EMAIL', 'support@tunastory.com'),
 
     /*
+    | Publisher ID của AdMob (dạng pub-XXXXXXXXXXXXXXXX), dùng để phục vụ
+    | /app-ads.txt. Để trống -> route trả 404.
+    */
+    'admob_publisher_id' => env('ADMOB_PUBLISHER_ID'),
+
+    /*
     | Ngày cập nhật văn bản pháp lý, hiện trên trang Privacy và Terms.
     */
     'legal_updated' => env('LEGAL_UPDATED', '9 September 2026'),

@@ -1,4 +1,4 @@
-import { NativeModules, StyleSheet, Text, View } from 'react-native';
+import { NativeModules, Platform, StyleSheet, Text, View } from 'react-native';
 
 import { FontSize, FontWeight, Palette, Radius, Spacing } from '@/constants/theme';
 
@@ -19,10 +19,30 @@ const REWARDED_TEST_ID = 'ca-app-pub-3940256099942544/5224354917';
  * Unit ID thật lấy từ biến môi trường EXPO_PUBLIC_* (Expo inline giá trị này
  * vào bundle lúc build, nên phải viết nguyên `process.env.EXPO_PUBLIC_X`,
  * không được destructure hay dựng chuỗi tên biến động).
- * Chuỗi rỗng / không đặt biến -> fallback về ID TEST của Google.
+ *
+ * QUAN TRỌNG: trong AdMob, iOS và Android là HAI APP RIÊNG, mỗi app có bộ ad
+ * unit riêng. Unit ID của app iOS KHÔNG phục vụ quảng cáo cho bản Android và
+ * ngược lại — Google sẽ không trả quảng cáo. Vì vậy mỗi vị trí quảng cáo cần
+ * hai biến, tách theo nền tảng.
+ *
+ * Thứ tự ưu tiên: biến theo nền tảng -> biến chung (nếu chỉ phát hành 1 nền
+ * tảng) -> ID TEST của Google.
  */
-const BANNER_UNIT_ID = process.env.EXPO_PUBLIC_ADMOB_BANNER_ID || BANNER_TEST_ID;
-const REWARDED_UNIT_ID = process.env.EXPO_PUBLIC_ADMOB_REWARDED_ID || REWARDED_TEST_ID;
+const BANNER_UNIT_ID =
+  Platform.select({
+    ios: process.env.EXPO_PUBLIC_ADMOB_BANNER_ID_IOS,
+    android: process.env.EXPO_PUBLIC_ADMOB_BANNER_ID_ANDROID,
+  }) ||
+  process.env.EXPO_PUBLIC_ADMOB_BANNER_ID ||
+  BANNER_TEST_ID;
+
+const REWARDED_UNIT_ID =
+  Platform.select({
+    ios: process.env.EXPO_PUBLIC_ADMOB_REWARDED_ID_IOS,
+    android: process.env.EXPO_PUBLIC_ADMOB_REWARDED_ID_ANDROID,
+  }) ||
+  process.env.EXPO_PUBLIC_ADMOB_REWARDED_ID ||
+  REWARDED_TEST_ID;
 
 type AdsModule = {
   default: () => { initialize: () => Promise<unknown> };
