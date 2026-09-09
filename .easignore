@@ -1,0 +1,14 @@
+# EAS đóng gói cả repo để build. Những thứ dưới đây không cần cho việc build,
+# loại ra để mỗi lần upload không phải gửi thừa hàng chục MB.
+
+# Ảnh chụp màn hình nộp store (~18MB)
+store/screenshots/
+
+# Tài liệu
+DEPLOY.md
+SPEC.md
+store/APP_STORE.md
+
+# Hạ tầng server, không liên quan app mobile
+deploy/
+backend/
