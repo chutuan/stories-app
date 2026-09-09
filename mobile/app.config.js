@@ -34,6 +34,9 @@ module.exports = {
       bundleIdentifier: 'com.chutuan.stories',
       supportsTablet: false,
       infoPlist: {
+        // Tuân thủ xuất khẩu mã hoá: app chỉ dùng HTTPS/TLS tiêu chuẩn, thuộc diện
+        // miễn trừ. Khai false để App Store Connect không hỏi lại mỗi lần nộp build.
+        ITSAppUsesNonExemptEncryption: false,
         // Bắt buộc khi dùng AdMob trên iOS 14+: App Tracking Transparency.
         // Thiếu chuỗi này App Store sẽ từ chối build có SDK quảng cáo.
         NSUserTrackingUsageDescription:
