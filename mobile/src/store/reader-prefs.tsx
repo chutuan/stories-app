@@ -54,7 +54,7 @@ export type ReaderThemeKey = ReaderSurfaceKey;
 
 export interface ReaderTheme {
   key: ReaderThemeKey;
-  /** nhãn TIẾNG VIỆT hiện trong bảng cài đặt */
+  /** nhãn TIẾNG ANH hiện trong bảng cài đặt */
   label: string;
   /** nền trang đọc */
   bg: string;
@@ -72,12 +72,12 @@ export interface ReaderTheme {
   dark: boolean;
 }
 
-/** Nhãn tiếng Việt của từng nền đọc; MÀU lấy từ `ReaderSurfaces` trong theme.ts. */
+/** Nhãn tiếng Anh của từng nền đọc; MÀU lấy từ `ReaderSurfaces` trong theme.ts. */
 const READER_THEME_LABELS: Record<ReaderThemeKey, string> = {
-  white: 'Trắng',
-  sepia: 'Kem',
-  mint: 'Xanh',
-  night: 'Đêm',
+  white: 'White',
+  sepia: 'Sepia',
+  mint: 'Mint',
+  night: 'Night',
 };
 
 export const READER_THEMES: Record<ReaderThemeKey, ReaderTheme> = {
@@ -376,7 +376,7 @@ export function ReaderPrefsProvider({ children }: { children: React.ReactNode })
 export function useReaderPrefs(): ReaderPrefsValue {
   const ctx = useContext(ReaderPrefsContext);
   if (!ctx) {
-    throw new Error('useReaderPrefs phải nằm trong <ReaderPrefsProvider>');
+    throw new Error('useReaderPrefs must be used within a ReaderPrefsProvider');
   }
   return ctx;
 }

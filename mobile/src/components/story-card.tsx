@@ -21,6 +21,7 @@ import {
   withAlpha,
 } from '@/constants/theme';
 import type { StoryCard } from '@/lib/api';
+import { storyRibbonLabel } from '@/lib/format';
 
 /** Lấy chữ cái đầu của tên truyện để làm bìa dự phòng. */
 function initialOf(title?: string | null): string {
@@ -38,8 +39,6 @@ export interface StoryCoverProps {
   chaptersCount?: number;
   /** 'completed' | 'ongoing' */
   status?: string;
-  /** nhãn trạng thái từ API (vd 'Đang ra') */
-  statusLabel?: string;
   /** mặc định 3/4 */
   aspectRatio?: number;
   /** mặc định Radius.cover = 14 */
@@ -64,7 +63,6 @@ export function StoryCover({
   title,
   chaptersCount,
   status,
-  statusLabel,
   aspectRatio = Layout.coverAspect,
   radius = Radius.cover,
   showRibbon = true,
@@ -89,7 +87,8 @@ export function StoryCover({
   };
 
   const completed = status === 'completed';
-  const ribbonLabel = completed ? 'FULL' : (statusLabel ?? 'Đang ra');
+  // nhãn ribbon lấy từ `status`, KHÔNG dùng `status_label` tiếng Việt của API
+  const ribbonLabel = storyRibbonLabel(status ?? '');
   const hasChapters = showChapters && typeof chaptersCount === 'number' && chaptersCount > 0;
   const fallback = coverGradient(seed ?? title ?? '');
 
@@ -132,7 +131,7 @@ export function StoryCover({
       <LinearGradient colors={Gradients.scrimCover} style={styles.scrim} pointerEvents="none" />
 
       {/* Ribbon trạng thái — góc trên trái, gọn */}
-      {showRibbon && (status || statusLabel) ? (
+      {showRibbon && status ? (
         <View style={[styles.ribbon, completed ? styles.ribbonFull : styles.ribbonOngoing]}>
           <Text style={styles.ribbonText} numberOfLines={1}>
             {ribbonLabel}
@@ -182,7 +181,6 @@ export function StoryCardView({ story, width, showCategory = true, style }: Stor
               title={story.title}
               chaptersCount={story.chapters_count}
               status={story.status}
-              statusLabel={story.status_label}
               radius={Radius.md}
               seed={story.id}
             />

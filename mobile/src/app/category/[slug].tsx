@@ -31,13 +31,14 @@ import {
   withAlpha,
 } from '@/constants/theme';
 import { getCategories, getStories, type Category, type StoryCard } from '@/lib/api';
+import { plural } from '@/lib/format';
 
 /** Số thẻ giả hiển thị khi lưới đang tải. */
 const SKELETON_COUNT = 6;
 /** Chiều cao ảnh bìa thể loại (chưa cộng safe-area trên). */
 const BANNER_HEIGHT = 132;
 
-const NETWORK_ERROR = 'Không tải được danh sách truyện. Kiểm tra kết nối máy chủ rồi thử lại nhé.';
+const NETWORK_ERROR = 'Unable to load the story list. Check your connection and try again.';
 
 export default function CategoryScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -145,7 +146,7 @@ export default function CategoryScreen() {
     else router.replace('/');
   }, [router]);
 
-  const title = category?.name ?? 'Thể loại';
+  const title = category?.name ?? 'Genre';
   const count = category?.stories_count ?? total;
 
   return (
@@ -165,9 +166,9 @@ export default function CategoryScreen() {
           <EmptyState
             danger
             icon="alert-circle-outline"
-            title="Thiếu thông tin thể loại"
-            description="Đường dẫn không kèm mã thể loại nên không tải được danh sách."
-            actionLabel="Quay lại"
+            title="Genre not found"
+            description="This link has no genre id, so the list could not be loaded."
+            actionLabel="Go back"
             onAction={goBack}
           />
         </View>
@@ -182,9 +183,9 @@ export default function CategoryScreen() {
           <EmptyState
             danger
             icon="cloud-offline-outline"
-            title="Mất kết nối"
+            title="Connection lost"
             description={error}
-            actionLabel="Thử lại"
+            actionLabel="Retry"
             onAction={retry}
           />
         </View>
@@ -192,9 +193,9 @@ export default function CategoryScreen() {
         <View style={styles.stateWrap}>
           <EmptyState
             icon="library-outline"
-            title="Chưa có truyện nào"
-            description={`Thể loại ${title} hiện chưa có truyện. Quay lại sau hoặc chọn thể loại khác nhé.`}
-            actionLabel="Quay lại"
+            title="No stories in this genre yet"
+            description={`${title} has no stories yet. Check back later or pick another genre.`}
+            actionLabel="Go back"
             onAction={goBack}
           />
         </View>
@@ -209,7 +210,7 @@ export default function CategoryScreen() {
           showsVerticalScrollIndicator={false}
           onEndReached={loadMore}
           onEndReachedThreshold={0.4}
-          ListHeaderComponent={<Text style={styles.countText}>Xếp theo cập nhật mới nhất</Text>}
+          ListHeaderComponent={<Text style={styles.countText}>Sorted by recently updated</Text>}
           ListFooterComponent={
             loadingMore ? (
               <View style={styles.footer}>
@@ -217,7 +218,7 @@ export default function CategoryScreen() {
               </View>
             ) : !hasMore ? (
               <View style={styles.footer}>
-                <Text style={styles.footerText}>Đã hiện hết truyện</Text>
+                <Text style={styles.footerText}>No more stories</Text>
               </View>
             ) : null
           }
@@ -297,7 +298,7 @@ function Banner({
           onPress={onBack}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="Quay lại"
+          accessibilityLabel="Back"
           style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]}>
           <Ionicons name="chevron-back" size={20} color={Palette.white} />
         </Pressable>
@@ -312,7 +313,7 @@ function Banner({
           </Text>
         )}
         <Text style={styles.bannerCount} numberOfLines={1}>
-          {count} truyện
+          {plural(count, 'story', 'stories')}
         </Text>
       </View>
     </View>

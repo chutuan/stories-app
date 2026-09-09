@@ -18,7 +18,10 @@ use RuntimeException;
  *  - App chỉ tải `audio_url` về phát (expo-audio), không dùng TTS của hệ điều hành.
  *
  * Giọng và sắc thái được chọn theo THỂ LOẠI của truyện, nhờ tham số `instructions`
- * của gpt-4o-mini-tts (model này điều khiển được cách đọc bằng câu lệnh tiếng Việt).
+ * của gpt-4o-mini-tts (model này điều khiển được cách đọc bằng câu lệnh).
+ *
+ * LƯU Ý: nội dung truyện là TIẾNG ANH, nên mọi câu lệnh `instructions` phải viết
+ * bằng tiếng Anh và yêu cầu model đọc bằng tiếng Anh.
  */
 class ChapterAudioGenerator
 {
@@ -31,43 +34,43 @@ class ChapterAudioGenerator
      * @var array<string, array{voice: string, instructions: string}>
      */
     private const PROFILES = [
-        'tien-hiep' => [
+        'billionaire' => [
             'voice' => 'onyx',
-            'instructions' => 'Bạn là người kể chuyện truyện tiên hiệp Việt Nam. Giọng nam trầm, khí phách và có chiều sâu. Kể chậm rãi, trang trọng; nhấn mạnh ở các đoạn đột phá cảnh giới và giao chiến, hạ giọng ở đoạn tả cảnh. Ngắt nghỉ rõ giữa các đoạn để tạo không khí sử thi.',
+            'instructions' => 'Narrate in English. You are the narrator of a modern hidden-billionaire drama. Use a confident, composed male voice with quiet authority and a steady, unhurried pace. Stay understated while the hero is dismissed as poor, then let controlled power fill the voice when his fortune surfaces. Never sound theatrical or rushed.',
         ],
-        'kiem-hiep' => [
+        'ceo' => [
             'voice' => 'onyx',
-            'instructions' => 'Bạn là người kể chuyện kiếm hiệp Việt Nam. Giọng nam trầm, dứt khoát, hào sảng. Đọc nhanh và gấp gáp ở đoạn tỉ thí, chậm và lắng lại ở đoạn tâm tình. Tạo kịch tính bằng khoảng lặng ngắn trước các câu quyết định.',
+            'instructions' => 'Narrate in English. You are the narrator of a corporate boardroom drama. Use a confident, level male voice with executive calm and a firm, measured rhythm. Keep boardroom dialogue crisp and controlled; drop the pitch and slow down on the lines where the chairman finally speaks. Authority, not aggression.',
         ],
-        'huyen-huyen' => [
-            'voice' => 'ash',
-            'instructions' => 'Bạn là người kể chuyện huyền huyễn Việt Nam. Giọng nam vang, huyền bí, nhiều biến hoá. Nhấn nhá ở các chi tiết pháp thuật và bí cảnh, giữ nhịp dồn dập ở cao trào.',
-        ],
-        'ngon-tinh' => [
-            'voice' => 'coral',
-            'instructions' => 'Bạn là người kể chuyện ngôn tình Việt Nam. Giọng nữ ấm áp, dịu dàng và giàu cảm xúc. Đọc chậm, tình cảm; mềm giọng ở lời thoại nhân vật nữ, lắng xuống ở đoạn tâm trạng. Tránh đọc đều đều như máy.',
-        ],
-        'dam-my' => [
-            'voice' => 'sage',
-            'instructions' => 'Bạn là người kể chuyện đam mỹ Việt Nam. Giọng nhẹ nhàng, tinh tế, nhiều cảm xúc tiết chế. Đọc êm, chú ý ngắt nghỉ tự nhiên ở lời thoại.',
-        ],
-        'do-thi' => [
-            'voice' => 'ash',
-            'instructions' => 'Bạn là người kể chuyện đô thị hiện đại Việt Nam. Giọng nam trẻ trung, tiết tấu nhanh, tự nhiên như đang kể cho bạn bè nghe. Sinh động ở lời thoại, gọn gàng ở đoạn tường thuật.',
-        ],
-        'trong-sinh' => [
-            'voice' => 'ash',
-            'instructions' => 'Bạn là người kể chuyện trọng sinh Việt Nam. Giọng nam chắc chắn, có chút bồi hồi khi nhắc chuyện kiếp trước, quyết đoán khi nhân vật hành động ở kiếp này.',
-        ],
-        'linh-di' => [
+        'secret-identity' => [
             'voice' => 'ballad',
-            'instructions' => 'Bạn là người kể chuyện linh dị Việt Nam. Giọng trầm, chậm, thì thầm và rợn người. Kéo dài khoảng lặng trước các chi tiết đáng sợ, hạ giọng gần như thì thào ở đoạn cao trào.',
+            'instructions' => 'Narrate in English. You are the narrator of a hidden-identity story. Use a low, mysterious voice that holds something back. Read quietly and deliberately, leaving a beat of silence before the moment the true identity is revealed, then land that reveal with calm weight. Let the tension come from restraint, not volume.',
+        ],
+        'romance' => [
+            'voice' => 'coral',
+            'instructions' => 'Narrate in English. You are the narrator of a modern romance. Use a warm, tender female voice full of feeling. Read slowly and affectionately, softening on intimate dialogue and lingering on emotional beats. Never sound flat or robotic.',
+        ],
+        'revenge' => [
+            'voice' => 'ash',
+            'instructions' => 'Narrate in English. You are the narrator of a revenge story. Use a cold, sharp voice with tightly held-back anger. Keep the pace controlled and clipped as the humiliation builds, then let the payoff lines land hard and decisively. Cold precision, never shouting.',
+        ],
+        'family-drama' => [
+            'voice' => 'sage',
+            'instructions' => "Narrate in English. You are the narrator of a family drama. Use a warm, grounded storyteller's voice, as if telling the story of a household you know well. Keep the pace natural and conversational, give each family member's dialogue its own colour, and soften on moments of hurt or reconciliation.",
+        ],
+        'rags-to-riches' => [
+            'voice' => 'ash',
+            'instructions' => 'Narrate in English. You are the narrator of a rags-to-riches story. Use an inspiring voice that gathers momentum. Start plain and humble in the early hardship, then build energy and lift through the rise, ending scenes with confident, uplifting drive.',
+        ],
+        'second-chance' => [
+            'voice' => 'sage',
+            'instructions' => 'Narrate in English. You are the narrator of a second-chance story. Use a hopeful, gentle voice with quiet resilience. Read softly and reflectively when looking back on what was lost, and let the tone rise steadily with renewed determination as the character climbs back.',
         ],
     ];
 
     private const FALLBACK_PROFILE = [
         'voice' => 'ash',
-        'instructions' => 'Bạn là người kể chuyện tiếng Việt. Giọng ấm, truyền cảm, tiết tấu vừa phải. Ngắt nghỉ tự nhiên theo dấu câu, nhấn nhá theo cảm xúc của đoạn văn. Tránh đọc đều đều như máy.',
+        'instructions' => 'Narrate in English. You are an audiobook narrator. Use a warm, expressive voice at a moderate pace. Pause naturally at punctuation and shade the delivery with the emotion of each passage. Never read flatly like a machine.',
     ];
 
     /**
@@ -125,8 +128,8 @@ class ChapterAudioGenerator
 
     /**
      * Thứ tự ƯU TIÊN khi truyện thuộc nhiều thể loại.
-     * Thể loại có chất giọng đặc trưng hơn được ưu tiên trước (linh dị, ngôn tình...),
-     * thể loại chung chung (huyền huyễn) xếp sau.
+     * Thể loại có chất giọng đặc trưng hơn được ưu tiên trước (revenge, romance, secret-identity...),
+     * thể loại chung chung về địa vị/tài sản (ceo, billionaire) xếp sau.
      *
      * Duyệt theo danh sách CỐ ĐỊNH này thay vì theo thứ tự thể loại do DB trả về,
      * để cùng một truyện luôn cho ra cùng một giọng ở mọi lần chạy.
@@ -134,14 +137,14 @@ class ChapterAudioGenerator
      * @var list<string>
      */
     private const PROFILE_PRIORITY = [
-        'linh-di',
-        'ngon-tinh',
-        'dam-my',
-        'kiem-hiep',
-        'tien-hiep',
-        'trong-sinh',
-        'do-thi',
-        'huyen-huyen',
+        'revenge',
+        'romance',
+        'secret-identity',
+        'family-drama',
+        'second-chance',
+        'rags-to-riches',
+        'ceo',
+        'billionaire',
     ];
 
     /** Chọn hồ sơ giọng theo thể loại đặc trưng nhất của truyện (tất định). */
@@ -216,7 +219,7 @@ class ChapterAudioGenerator
     {
         $instructions = $profile['instructions'];
         if ($total > 1) {
-            $instructions .= " Đây là phần {$index}/{$total} của một chương, hãy giữ giọng điệu nhất quán với các phần khác.";
+            $instructions .= " This is part {$index} of {$total} of one chapter; keep the tone and pacing consistent with the other parts.";
         }
 
         $response = Http::withToken($apiKey)

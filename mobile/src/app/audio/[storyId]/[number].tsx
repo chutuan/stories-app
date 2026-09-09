@@ -51,6 +51,7 @@ import {
   withAlpha,
 } from '@/constants/theme';
 import { API_URL } from '@/lib/api';
+import { formatCoins } from '@/lib/format';
 import { COIN_PER_CHAPTER, useWallet } from '@/store/wallet';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
@@ -105,8 +106,8 @@ async function fetchJson<T>(path: string): Promise<T> {
 
 /** Các mức tốc độ phát, áp thẳng vào player bằng setPlaybackRate. */
 const SPEEDS = [1, 1.25, 1.5, 2] as const;
-/** Nhãn tiếng Việt (dấu phẩy thập phân) cho từng mức tốc độ. */
-const SPEED_LABELS = ['1x', '1,25x', '1,5x', '2x'] as const;
+/** Nhãn hiển thị (dấu chấm thập phân) cho từng mức tốc độ. */
+const SPEED_LABELS = ['1x', '1.25x', '1.5x', '2x'] as const;
 /** Số giây tua mỗi lần bấm nút lùi/tiến. */
 const SKIP_SECONDS = 15;
 /** Chiều cao 1 dòng trong bảng mục lục (cố định để FlatList nhảy đúng vị trí). */
@@ -141,7 +142,7 @@ function simulatedRating(storyId: string | number): number {
 /** Bỏ tiền tố "Chương N:" trùng lặp trong tên chương (số chương đã hiện riêng). */
 function chapterLabel(chapter: { number: number; title: string }): string {
   const raw = (chapter.title ?? '').trim();
-  if (!raw) return `Chương ${chapter.number}`;
+  if (!raw) return `Chapter ${chapter.number}`;
   const prefix = new RegExp(`^(chương|chuong|chapter)\\s*0*${chapter.number}\\b\\s*[:.\\-–—]*\\s*`, 'i');
   const stripped = raw.replace(prefix, '').trim();
   return stripped.length > 0 ? stripped : raw;
@@ -356,11 +357,11 @@ export default function AudioPlayerScreen() {
 
   const storyTitle = story?.title ?? chapter?.story.title ?? null;
   const author = story?.author?.trim();
-  const authorLabel = author && author.length > 0 ? author : 'Chưa rõ tác giả';
+  const authorLabel = author && author.length > 0 ? author : 'Unknown author';
   const title = chapter ? chapterLabel(chapter) : null;
   const totalChapters = story?.chapters_count ?? null;
   const rating = useMemo(() => simulatedRating(storyId), [storyId]);
-  const ratingText = rating.toFixed(1).replace('.', ',');
+  const ratingText = rating.toFixed(1);
 
   const chapterRows = useMemo<ChapterRow[]>(() => {
     const list = story?.chapters ?? [];
@@ -425,14 +426,14 @@ export default function AudioPlayerScreen() {
           onPress={() => router.back()}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="Thu gọn trình phát"
+          accessibilityLabel="Collapse player"
           style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
         >
           <Ionicons name="chevron-down" size={22} color={Palette.text} />
         </Pressable>
 
         <View style={styles.headerCenter}>
-          <Text style={styles.headerLabel}>ĐANG NGHE</Text>
+          <Text style={styles.headerLabel}>NOW PLAYING</Text>
           {storyTitle ? (
             <Text style={styles.headerTitle} numberOfLines={1}>
               {storyTitle}
@@ -447,7 +448,7 @@ export default function AudioPlayerScreen() {
           disabled={!hasAudio}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel={`Tốc độ phát ${SPEED_LABELS[speedIndex]}, chạm để đổi`}
+          accessibilityLabel={`Speed ${SPEED_LABELS[speedIndex]}, tap to change`}
           style={({ pressed }) => [
             styles.speedBtn,
             !hasAudio && styles.speedBtnOff,
@@ -471,9 +472,9 @@ export default function AudioPlayerScreen() {
           <EmptyState
             danger
             icon="cloud-offline-outline"
-            title="Không tải được chương"
-            description="Kiểm tra kết nối mạng rồi thử lại nhé."
-            actionLabel="Thử lại"
+            title="Couldn't load this chapter"
+            description="Check your connection and try again."
+            actionLabel="Retry"
             onAction={retry}
           />
         </View>
@@ -607,8 +608,8 @@ export default function AudioPlayerScreen() {
               <View style={styles.metaDot} />
               <Text style={styles.metaText} numberOfLines={1}>
                 {totalChapters != null
-                  ? `Chương ${chapterNumber}/${totalChapters}`
-                  : `Chương ${chapterNumber}`}
+                  ? `Chapter ${chapterNumber}/${totalChapters}`
+                  : `Chapter ${chapterNumber}`}
               </Text>
             </View>
           </ScrollView>
@@ -618,26 +619,26 @@ export default function AudioPlayerScreen() {
             {notice === 'no-audio' ? (
               <Notice
                 icon="mic-off-outline"
-                title="Chương này chưa có bản audio"
-                description="Bạn có thể đọc chữ, hoặc chuyển sang chương khác đã có audio."
-                actionLabel="Đọc chữ"
+                title="No audio for this chapter yet"
+                description="You can read the text instead, or pick another chapter that has audio."
+                actionLabel="Read text instead"
                 onAction={openReader}
               />
             ) : notice === 'locked' ? (
               <Notice
                 icon="lock-closed-outline"
-                title="Chương này đang khoá"
-                description={`Mở khoá bằng ${COIN_PER_CHAPTER} xu ở màn đọc rồi quay lại nghe nhé.`}
-                actionLabel="Mở khoá ở màn đọc"
+                title="This chapter is locked"
+                description={`Unlock it with ${formatCoins(COIN_PER_CHAPTER)} in the reader, then come back to listen.`}
+                actionLabel="Unlock in reader"
                 onAction={openReader}
               />
             ) : hasAudio && status.error ? (
               <Notice
                 danger
                 icon="alert-circle-outline"
-                title="Không phát được audio"
-                description="Kiểm tra kết nối mạng rồi thử lại nhé."
-                actionLabel="Tải lại chương"
+                title="Couldn't play this audio"
+                description="Check your connection and try again."
+                actionLabel="Retry"
                 onAction={retry}
               />
             ) : null}
@@ -656,7 +657,7 @@ export default function AudioPlayerScreen() {
               onSlidingStart={handleSeekStart}
               onValueChange={handleSeekChange}
               onSlidingComplete={handleSeekEnd}
-              accessibilityLabel="Tiến trình nghe"
+              accessibilityLabel="Playback progress"
             />
 
             {/* Nút tua · thời gian */}
@@ -680,15 +681,15 @@ export default function AudioPlayerScreen() {
             <View style={styles.controls}>
               <ControlItem
                 icon="list-outline"
-                label="Mục lục"
-                accessibilityLabel="Mở mục lục các chương"
+                label="Contents"
+                accessibilityLabel="Open chapter contents"
                 disabled={chapterRows.length === 0}
                 onPress={() => setTocOpen(true)}
               />
               <ControlItem
                 icon="play-skip-back"
-                label="Trước"
-                accessibilityLabel="Chương trước"
+                label="Prev"
+                accessibilityLabel="Previous chapter"
                 disabled={chapter?.prev == null}
                 onPress={() => goChapter(chapter?.prev ?? null)}
               />
@@ -697,7 +698,7 @@ export default function AudioPlayerScreen() {
                 onPress={togglePlay}
                 disabled={!hasAudio}
                 accessibilityRole="button"
-                accessibilityLabel={playing ? 'Tạm dừng' : 'Phát'}
+                accessibilityLabel={playing ? 'Pause' : 'Play'}
                 accessibilityState={{ disabled: !hasAudio }}
                 style={({ pressed }) => [
                   styles.playBtn,
@@ -730,15 +731,15 @@ export default function AudioPlayerScreen() {
 
               <ControlItem
                 icon="play-skip-forward"
-                label="Sau"
-                accessibilityLabel="Chương sau"
+                label="Next"
+                accessibilityLabel="Next chapter"
                 disabled={chapter?.next == null}
                 onPress={() => goChapter(chapter?.next ?? null)}
               />
               <ControlItem
                 icon="book-outline"
-                label="Đọc chữ"
-                accessibilityLabel="Quay về đọc chữ"
+                label="Read text"
+                accessibilityLabel="Back to reading"
                 onPress={openReader}
               />
             </View>
@@ -802,7 +803,7 @@ function SkipButton({
       disabled={disabled}
       hitSlop={6}
       accessibilityRole="button"
-      accessibilityLabel={back ? 'Lùi 15 giây' : 'Tiến 15 giây'}
+      accessibilityLabel={back ? `Back ${SKIP_SECONDS} seconds` : `Forward ${SKIP_SECONDS} seconds`}
       accessibilityState={{ disabled }}
       style={({ pressed }) => [
         styles.skipBtn,
@@ -928,8 +929,8 @@ function ChapterSheet({
         onPress={() => onSelect(item.number)}
         accessibilityRole="button"
         accessibilityState={{ selected: item.number === current }}
-        accessibilityLabel={`Chương ${item.number}. ${item.title}. ${
-          item.hasAudio ? 'Đã có audio' : 'Chưa có audio'
+        accessibilityLabel={`Chapter ${item.number}. ${item.title}. ${
+          item.hasAudio ? 'Audio available' : 'No audio yet'
         }`}
         style={({ pressed }) => [
           styles.row,
@@ -952,7 +953,7 @@ function ChapterSheet({
         {item.hasAudio ? (
           <Ionicons name="headset" size={16} color={Palette.accentDeep} />
         ) : (
-          <Text style={styles.rowNoAudio}>Chưa có</Text>
+          <Text style={styles.rowNoAudio}>No audio</Text>
         )}
       </Pressable>
     ),
@@ -972,13 +973,13 @@ function ChapterSheet({
           style={StyleSheet.absoluteFill}
           onPress={onClose}
           accessibilityRole="button"
-          accessibilityLabel="Đóng mục lục"
+          accessibilityLabel="Close contents"
         />
         <View style={[styles.sheet, { paddingBottom: Math.max(bottomInset, Spacing.md) }]}>
           <View style={styles.sheetHandle} />
           <View style={styles.sheetHead}>
             <View style={styles.flex}>
-              <Text style={styles.sheetTitle}>Mục lục</Text>
+              <Text style={styles.sheetTitle}>Contents</Text>
               {storyTitle ? (
                 <Text style={styles.sheetSubtitle} numberOfLines={1}>
                   {storyTitle}
@@ -989,7 +990,7 @@ function ChapterSheet({
               onPress={onClose}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Đóng mục lục"
+              accessibilityLabel="Close contents"
               style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
             >
               <Ionicons name="close" size={20} color={Palette.text} />

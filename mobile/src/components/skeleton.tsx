@@ -62,7 +62,7 @@ export function Skeleton({
   return (
     <Animated.View
       accessibilityRole="progressbar"
-      accessibilityLabel="Đang tải"
+      accessibilityLabel="Loading"
       style={[
         styles.block,
         { width, borderRadius: radius, opacity },

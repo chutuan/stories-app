@@ -64,7 +64,15 @@ export const AD_MAX_COINS = AD_TASKS.reduce((sum, n) => sum + n, 0);
 export const CHECKIN_COINS: readonly number[] = [30, 10, 10, 15, 15, 20, 30] as const;
 
 /** Nhãn thứ trong tuần, thứ tự khớp `Date.getDay()` (0 = CN). */
-export const WEEKDAY_LABELS: readonly string[] = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'] as const;
+export const WEEKDAY_LABELS: readonly string[] = [
+  'Sun',
+  'Mon',
+  'Tue',
+  'Wed',
+  'Thu',
+  'Fri',
+  'Sat',
+] as const;
 
 /** Trần thời gian đọc ghi nhận mỗi ngày (giây) — chặn số liệu vô lý. */
 const MAX_READING_SECONDS = 12 * 60 * 60;
@@ -490,7 +498,7 @@ export function RewardsProvider({ children }: { children: React.ReactNode }) {
 export function useRewards(): RewardsContextValue {
   const ctx = useContext(RewardsContext);
   if (!ctx) {
-    throw new Error('useRewards phải nằm trong <RewardsProvider>');
+    throw new Error('useRewards must be used within a RewardsProvider');
   }
   return ctx;
 }

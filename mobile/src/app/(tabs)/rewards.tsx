@@ -26,6 +26,7 @@ import {
   Typography,
 } from '@/constants/theme';
 import { showRewarded } from '@/lib/ads';
+import { formatCoins } from '@/lib/format';
 import {
   AD_MAX_COINS,
   AD_TASKS,
@@ -171,7 +172,7 @@ function MilestoneTrack({ items, position, tone }: MilestoneTrackProps) {
                 key={item.key}
                 onPress={item.onPress}
                 accessibilityRole="button"
-                accessibilityLabel={`Nhận thưởng mốc ${item.label}`}
+                accessibilityLabel={`Claim ${item.label} reward`}
                 style={({ pressed }) => [styles.trackCell, pressed && styles.pressed]}>
                 {body}
               </Pressable>
@@ -260,13 +261,13 @@ function RewardsContent() {
         return {
           key: String(m.minutes),
           value: `+${m.coins}`,
-          label: `${m.minutes} phút`,
+          label: `${m.minutes} min`,
           state,
           onPress:
             state === 'ready'
               ? () => {
                   const got = claimReading(m.minutes);
-                  if (got > 0) notify(`Tuyệt vời! Bạn nhận được +${got} xu.`, true);
+                  if (got > 0) notify(`Nice! You earned +${formatCoins(got)}.`, true);
                 }
               : undefined,
         };
@@ -277,7 +278,7 @@ function RewardsContent() {
   const onPrimaryPress = useCallback(() => {
     if (claimableReading) {
       const got = claimReading(claimableReading.minutes);
-      if (got > 0) notify(`Tuyệt vời! Bạn nhận được +${got} xu.`, true);
+      if (got > 0) notify(`Nice! You earned +${formatCoins(got)}.`, true);
       return;
     }
     router.navigate('/');
@@ -287,9 +288,9 @@ function RewardsContent() {
   const onCheckIn = useCallback(() => {
     const got = checkIn();
     if (got > 0) {
-      notify(`Điểm danh thành công, +${got} xu!`, true);
+      notify(`Checked in, +${formatCoins(got)}!`, true);
     } else {
-      notify('Hôm nay bạn đã điểm danh rồi, mai quay lại nhé!', false);
+      notify("You've already checked in today. Come back tomorrow!", false);
     }
   }, [checkIn, notify]);
 
@@ -299,7 +300,7 @@ function RewardsContent() {
       AD_TASKS.map((coinValue, i) => ({
         key: `ad-${i}`,
         value: `+${coinValue}`,
-        label: `Lần ${i + 1}`,
+        label: `Task ${i + 1}`,
         state: i < adsWatched ? 'done' : i === adsWatched ? 'ready' : 'todo',
       })),
     [adsWatched],
@@ -313,17 +314,17 @@ function RewardsContent() {
     try {
       const { rewarded } = await showRewarded();
       if (!rewarded) {
-        notify('Bạn chưa xem hết quảng cáo nên chưa nhận được xu.', false);
+        notify("You didn't finish the ad, so no coins were added.", false);
         return;
       }
       const got = recordAdWatch();
       if (got > 0) {
-        notify(`Đã nhận +${got} xu từ quảng cáo!`, true);
+        notify(`Got +${formatCoins(got)} from the ad!`, true);
       } else {
-        notify('Hôm nay bạn đã nhận đủ xu từ quảng cáo.', false);
+        notify("You've earned all ad coins for today.", false);
       }
     } catch {
-      notify('Không tải được quảng cáo, thử lại sau nhé.', false);
+      notify('Could not load the ad, please try again later.', false);
     } finally {
       setWatchingAd(false);
     }
@@ -331,8 +332,8 @@ function RewardsContent() {
 
   // --- Chữ phụ dưới nút lớn ---
   const readHint = nextReading
-    ? `Đọc thêm ${Math.max(1, nextReading.minutes - readingMinutes)} phút để nhận +${nextReading.coins} xu`
-    : 'Bạn đã hoàn thành tất cả mốc đọc hôm nay';
+    ? `Read ${Math.max(1, nextReading.minutes - readingMinutes)} more min to get +${formatCoins(nextReading.coins)}`
+    : "You've completed every reading milestone today";
 
   return (
     <ScrollView
@@ -345,10 +346,10 @@ function RewardsContent() {
       {/* --- Đầu trang: tiêu đề + ví xu --- */}
       <View style={styles.header}>
         <View style={styles.headerText}>
-          <Text style={styles.heading}>Phần thưởng đọc truyện</Text>
+          <Text style={styles.heading}>Reading Rewards</Text>
           <View style={styles.refreshRow}>
             <Ionicons name="refresh-outline" size={12} color={Palette.faint} />
-            <Text style={styles.subheading}>Làm mới lúc 00:00 mỗi ngày</Text>
+            <Text style={styles.subheading}>Resets daily at 00:00</Text>
           </View>
         </View>
 
@@ -357,7 +358,7 @@ function RewardsContent() {
             <Ionicons name="logo-usd" size={12} color={Palette.white} />
           </View>
           <Text style={styles.walletValue}>{coins}</Text>
-          <Text style={styles.walletUnit}>xu</Text>
+          <Text style={styles.walletUnit}>{coins === 1 ? 'coin' : 'coins'}</Text>
         </View>
       </View>
 
@@ -385,11 +386,11 @@ function RewardsContent() {
             <Ionicons name="time" size={17} color={Palette.accentDeep} />
           </View>
           <View style={styles.cardHeadText}>
-            <Text style={styles.cardTitle}>Mốc thời gian đọc</Text>
-            <Text style={styles.cardSub}>Nhận xu theo thời gian đọc</Text>
+            <Text style={styles.cardTitle}>Reading milestones</Text>
+            <Text style={styles.cardSub}>Earn coins as you read</Text>
           </View>
           <View style={styles.cardBadge}>
-            <Text style={styles.cardBadgeText}>{readingMinutes} phút</Text>
+            <Text style={styles.cardBadgeText}>{readingMinutes} min</Text>
           </View>
         </View>
 
@@ -419,13 +420,13 @@ function RewardsContent() {
               color={Palette.onAccent}
             />
             <Text style={styles.primaryText}>
-              {claimableReading ? `Nhận +${claimableReading.coins} xu` : 'Đọc ngay'}
+              {claimableReading ? `Get +${formatCoins(claimableReading.coins)}` : 'Read now'}
             </Text>
           </LinearGradient>
         </Pressable>
 
         <Text style={styles.primaryHint}>
-          Bạn đã đọc <Text style={styles.primaryHintStrong}>{readingMinutes} phút</Text> hôm nay ·{' '}
+          You&apos;ve read <Text style={styles.primaryHintStrong}>{readingMinutes} min</Text> today ·{' '}
           {readHint}
         </Text>
       </View>
@@ -448,14 +449,14 @@ function RewardsContent() {
               color={checkedToday ? Palette.freeDeep : Palette.accentDeep}
             />
           </View>
-          <Text style={styles.tileTitle}>Điểm danh</Text>
+          <Text style={styles.tileTitle}>Check in</Text>
           <Text
             style={[
               styles.tileStatus,
               { color: checkedToday ? Palette.freeDeep : Palette.accentDeep },
             ]}
             numberOfLines={1}>
-            {checkedToday ? 'Đã điểm danh' : `Nhận +${todayCheckInCoins} xu`}
+            {checkedToday ? 'Checked in' : `Get +${formatCoins(todayCheckInCoins)}`}
           </Text>
         </Pressable>
 
@@ -463,9 +464,9 @@ function RewardsContent() {
           <View style={[styles.tileIcon, { backgroundColor: Palette.surfaceAlt }]}>
             <Ionicons name="disc" size={19} color={Palette.faint} />
           </View>
-          <Text style={styles.tileTitle}>Vòng quay may mắn</Text>
+          <Text style={styles.tileTitle}>Lucky draw</Text>
           <Text style={[styles.tileStatus, { color: Palette.faint }]} numberOfLines={1}>
-            Sắp có
+            Coming soon
           </Text>
         </View>
       </View>
@@ -477,10 +478,9 @@ function RewardsContent() {
             <Ionicons name="videocam" size={17} color={Palette.coinDeep} />
           </View>
           <View style={styles.cardHeadText}>
-            <Text style={styles.cardTitle}>Nhiệm vụ quảng cáo</Text>
+            <Text style={styles.cardTitle}>Daily ad tasks</Text>
             <Text style={styles.cardSub}>
-              Đã nhận <Text style={styles.cardSubStrong}>{adsCoins} xu</Text> / Có thể nhận{' '}
-              {AD_MAX_COINS} xu
+              Earned <Text style={styles.cardSubStrong}>{adsCoins}</Text> / {AD_MAX_COINS} coins
             </Text>
           </View>
         </View>
@@ -513,15 +513,15 @@ function RewardsContent() {
             style={[styles.adButtonText, adsDone && { color: Palette.freeDeep }]}
             numberOfLines={1}>
             {watchingAd
-              ? 'Đang tải quảng cáo…'
+              ? 'Loading ad…'
               : adsDone
-                ? 'Đã hoàn thành hôm nay'
-                : `Xem quảng cáo nhận +${nextAdCoins} xu`}
+                ? 'All done for today'
+                : `Watch ad · +${formatCoins(nextAdCoins)}`}
           </Text>
         </Pressable>
 
         <Text style={styles.adHint}>
-          Còn {Math.max(0, AD_TASK_LIMIT - adsWatched)} lượt xem hôm nay
+          {Math.max(0, AD_TASK_LIMIT - adsWatched)} left today
         </Text>
       </View>
 
@@ -532,8 +532,8 @@ function RewardsContent() {
             <Ionicons name="calendar-number" size={17} color={Palette.accentDeep} />
           </View>
           <View style={styles.cardHeadText}>
-            <Text style={styles.cardTitle}>Điểm danh tuần này</Text>
-            <Text style={styles.cardSub}>Đã điểm danh {checkedDays.length}/7 ngày</Text>
+            <Text style={styles.cardTitle}>This week</Text>
+            <Text style={styles.cardSub}>Checked in {checkedDays.length}/7 days</Text>
           </View>
         </View>
 
@@ -577,7 +577,7 @@ function RewardsContent() {
         </View>
 
         <Text style={styles.weekHint}>
-          Điểm danh mỗi ngày để giữ chuỗi. Thứ Bảy và Chủ Nhật có quà lớn hơn.
+          Check in every day to keep your streak. Saturday and Sunday give bigger rewards.
         </Text>
       </View>
     </ScrollView>

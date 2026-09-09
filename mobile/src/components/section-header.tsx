@@ -15,25 +15,25 @@ import {
 export type IoniconName = keyof typeof Ionicons.glyphMap;
 
 export interface SectionHeaderProps {
-  /** tiêu đề mục (TIẾNG VIỆT) */
+  /** tiêu đề mục (TIẾNG ANH) */
   title: string;
   /** dòng phụ mờ dưới tiêu đề */
   subtitle?: string;
   /** icon Ionicons đứng trước tiêu đề (thay cho thanh cam) */
   icon?: IoniconName;
-  /** chữ của nút bên phải, mặc định 'Xem thêm' */
+  /** chữ của nút bên phải, mặc định 'More' */
   actionLabel?: string;
-  /** có onPress mới hiện nút "Xem thêm ›" */
+  /** có onPress mới hiện nút "More ›" */
   onPress?: () => void;
   style?: StyleProp<ViewStyle>;
 }
 
-/** Tiêu đề một mục + nút "Xem thêm ›" tuỳ chọn. */
+/** Tiêu đề một mục + nút "More ›" tuỳ chọn. */
 export function SectionHeader({
   title,
   subtitle,
   icon,
-  actionLabel = 'Xem thêm',
+  actionLabel = 'More',
   onPress,
   style,
 }: SectionHeaderProps) {

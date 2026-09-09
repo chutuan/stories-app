@@ -19,7 +19,7 @@ export type IoniconName = keyof typeof Ionicons.glyphMap;
 export interface EmptyStateProps {
   /** icon Ionicons, mặc định 'sparkles-outline' */
   icon?: IoniconName;
-  /** tiêu đề (TIẾNG VIỆT) */
+  /** tiêu đề (TIẾNG ANH) */
   title: string;
   /** mô tả gợi ý người dùng làm gì tiếp */
   description?: string;

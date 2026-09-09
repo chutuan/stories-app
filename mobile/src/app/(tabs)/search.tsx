@@ -26,6 +26,7 @@ import {
   Typography,
 } from '@/constants/theme';
 import { getCategories, getStories, type Category, type StoryCard } from '@/lib/api';
+import { plural } from '@/lib/format';
 
 /** Số thẻ giả hiển thị khi đang tải. */
 const SKELETON_COUNT = 6;
@@ -80,7 +81,7 @@ export default function SearchScreen() {
       setResults(res.data);
     } catch {
       if (requestId.current !== id) return;
-      setError('Không kết nối được máy chủ. Kiểm tra đường truyền rồi thử lại nhé.');
+      setError('Could not reach the server. Check your connection and try again.');
       setResults([]);
     } finally {
       if (requestId.current === id) setLoading(false);
@@ -110,8 +111,8 @@ export default function SearchScreen() {
   return (
     <View style={[styles.screen, { paddingTop: insets.top + Spacing.sm }]}>
       <View style={styles.header}>
-        <Text style={styles.heading}>Tìm kiếm</Text>
-        <Text style={styles.subheading}>Tìm theo tên truyện, tác giả hoặc thể loại</Text>
+        <Text style={styles.heading}>Search</Text>
+        <Text style={styles.subheading}>Find stories by title, author or genre</Text>
       </View>
 
       {/* Ô nhập từ khoá */}
@@ -123,7 +124,7 @@ export default function SearchScreen() {
         />
         <TextInput
           style={styles.input}
-          placeholder="Tìm truyện, tác giả..."
+          placeholder="Search stories or authors"
           placeholderTextColor={Palette.faint}
           value={query}
           onChangeText={setQuery}
@@ -132,14 +133,14 @@ export default function SearchScreen() {
           returnKeyType="search"
           autoCorrect={false}
           selectionColor={Palette.accentDeep}
-          accessibilityLabel="Ô tìm truyện"
+          accessibilityLabel="Search field"
         />
         {query.length > 0 ? (
           <Pressable
             onPress={() => setQuery('')}
             hitSlop={10}
             accessibilityRole="button"
-            accessibilityLabel="Xoá từ khoá"
+            accessibilityLabel="Clear search"
             style={({ pressed }) => (pressed ? styles.pressed : undefined)}>
             <Ionicons name="close-circle" size={19} color={Palette.faint} />
           </Pressable>
@@ -157,7 +158,7 @@ export default function SearchScreen() {
         contentContainerStyle={styles.chipsList}
         ListHeaderComponent={
           <Chip
-            label="Tất cả"
+            label="All"
             icon="apps-outline"
             selected={activeCategory === null}
             onPress={() => setActiveCategory(null)}
@@ -188,9 +189,9 @@ export default function SearchScreen() {
           <EmptyState
             danger
             icon="cloud-offline-outline"
-            title="Không tải được kết quả"
+            title="Couldn't load results"
             description={error}
-            actionLabel="Thử lại"
+            actionLabel="Retry"
             onAction={() => search(query, activeCategory)}
           />
         </View>
@@ -198,13 +199,13 @@ export default function SearchScreen() {
         <View style={styles.stateWrap}>
           <EmptyState
             icon="search-outline"
-            title="Không tìm thấy truyện nào"
+            title="No stories found"
             description={
               hasFilter
-                ? 'Thử từ khoá khác hoặc bỏ bớt bộ lọc thể loại nhé.'
-                : 'Nhập tên truyện hoặc chọn một thể loại để bắt đầu.'
+                ? 'Try another keyword or clear the genre filter.'
+                : 'Type a story title or pick a genre to get started.'
             }
-            actionLabel={hasFilter ? 'Xoá bộ lọc' : undefined}
+            actionLabel={hasFilter ? 'Clear filters' : undefined}
             onAction={hasFilter ? clearFilters : undefined}
           />
         </View>
@@ -222,8 +223,8 @@ export default function SearchScreen() {
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
             <Text style={styles.resultCount}>
-              Tìm thấy {results.length} truyện
-              {activeCategoryName ? ` thuộc ${activeCategoryName}` : ''}
+              Found {plural(results.length, 'story', 'stories')}
+              {activeCategoryName ? ` in ${activeCategoryName}` : ''}
             </Text>
           }
           renderItem={({ item }) => <StoryCardView story={item} width={cardWidth} />}

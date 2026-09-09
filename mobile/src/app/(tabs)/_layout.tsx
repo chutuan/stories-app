@@ -84,7 +84,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Trang chủ',
+          title: 'Home',
           tabBarIcon: ({ color, focused }) => (
             <TabIcon solid="home" outline="home-outline" focused={focused} color={color} />
           ),
@@ -93,7 +93,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="search"
         options={{
-          title: 'Tìm kiếm',
+          title: 'Search',
           tabBarIcon: ({ color, focused }) => (
             <TabIcon solid="search" outline="search-outline" focused={focused} color={color} />
           ),
@@ -102,7 +102,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="rewards"
         options={{
-          title: 'Phần thưởng',
+          title: 'Rewards',
           tabBarIcon: ({ color, focused }) => (
             <TabIcon solid="gift" outline="gift-outline" focused={focused} color={color} />
           ),
@@ -111,7 +111,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="saved"
         options={{
-          title: 'Đã lưu',
+          title: 'Library',
           tabBarIcon: ({ color, focused }) => (
             <TabIcon solid="bookmark" outline="bookmark-outline" focused={focused} color={color} />
           ),

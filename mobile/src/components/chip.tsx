@@ -55,7 +55,7 @@ const TONES: Record<ChipVariant, Tone> = {
 };
 
 export interface ChipProps {
-  /** chữ hiển thị (TIẾNG VIỆT) */
+  /** chữ hiển thị (TIẾNG ANH) */
   label: string;
   /** biến thể màu, mặc định 'default' */
   variant?: ChipVariant;

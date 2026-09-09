@@ -18,7 +18,7 @@ export const adsAvailable = false;
 export function BannerAd() {
   return (
     <View style={styles.placeholder}>
-      <Text style={styles.placeholderText}>Quảng cáo</Text>
+      <Text style={styles.placeholderText}>Advertisement</Text>
     </View>
   );
 }

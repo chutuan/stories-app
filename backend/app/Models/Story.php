@@ -41,8 +41,8 @@ class Story extends Model
     protected function statusLabel(): Attribute
     {
         return Attribute::get(fn () => match ($this->status) {
-            'ongoing' => 'Đang ra',
-            'completed' => 'Hoàn thành',
+            'ongoing' => 'Ongoing',
+            'completed' => 'Completed',
             default => $this->status,
         });
     }

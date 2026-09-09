@@ -45,6 +45,7 @@ import {
   type StoryCard,
   type StorySort,
 } from '@/lib/api';
+import { formatViews, plural, storyStatusLabel } from '@/lib/format';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
@@ -62,30 +63,21 @@ const GRID_SKELETON_COUNT = 6;
 /** Số hàng giả khi bảng xếp hạng đang tải. */
 const RANK_SKELETON_COUNT = 5;
 
-const NETWORK_ERROR = 'Không tải được dữ liệu. Kiểm tra kết nối máy chủ rồi thử lại nhé.';
+const NETWORK_ERROR = 'Could not load data. Check your connection and try again.';
 
 /** 4 tab ngang dưới header — đổi tab là đổi nguồn dữ liệu. */
 type TabKey = 'discover' | 'newest' | 'ranking' | 'free';
 
 const TABS: { key: TabKey; label: string }[] = [
-  { key: 'discover', label: 'Khám phá' },
-  { key: 'newest', label: 'Mới' },
-  { key: 'ranking', label: 'Xếp hạng' },
-  { key: 'free', label: 'Miễn phí' },
+  { key: 'discover', label: 'Discover' },
+  { key: 'newest', label: 'New' },
+  { key: 'ranking', label: 'Ranking' },
+  { key: 'free', label: 'Free' },
 ];
 
 /* ------------------------------------------------------------------ */
 /* TIỆN ÍCH                                                            */
 /* ------------------------------------------------------------------ */
-
-/** Rút gọn lượt xem: 481530 -> "481,5 N". Giống màn chi tiết truyện. */
-function formatViews(value: number): string {
-  if (!Number.isFinite(value) || value <= 0) return '0';
-  const short = (n: number) => n.toFixed(1).replace(/\.0$/, '').replace('.', ',');
-  if (value >= 1_000_000) return `${short(value / 1_000_000)} Tr`;
-  if (value >= 1_000) return `${short(value / 1_000)} N`;
-  return String(Math.round(value));
-}
 
 /** Bề rộng 1 ô trong lưới 2 cột, đã trừ lề màn hình và khe giữa. */
 function twoColumnWidth(screenWidth: number): number {
@@ -124,8 +116,8 @@ export default function HomeScreen() {
           <Text style={styles.logoAccent}>Sto</Text>ries
         </Text>
         <View style={styles.headerActions}>
-          <IconButton icon="search-outline" label="Tìm kiếm truyện" onPress={openSearch} />
-          <IconButton icon="grid-outline" label="Xem các thể loại" onPress={focusCategories} />
+          <IconButton icon="search-outline" label="Search stories" onPress={openSearch} />
+          <IconButton icon="grid-outline" label="Browse genres" onPress={focusCategories} />
         </View>
       </View>
 
@@ -144,13 +136,17 @@ export default function HomeScreen() {
             sort={tab === 'newest' ? 'newest' : undefined}
             free={tab === 'free'}
             emptyIcon={tab === 'free' ? 'gift-outline' : 'sparkles-outline'}
-            emptyTitle={tab === 'free' ? 'Chưa có truyện miễn phí' : 'Chưa có truyện mới'}
+            emptyTitle={tab === 'free' ? 'No free stories yet' : 'No new stories yet'}
             emptyDescription={
               tab === 'free'
-                ? 'Hiện chưa có truyện nào được mở miễn phí toàn bộ. Quay lại sau nhé.'
-                : 'Kệ truyện đang trống. Kéo xuống để tải lại.'
+                ? 'No fully free stories right now. Check back soon.'
+                : 'The shelf is empty. Pull down to refresh.'
             }
-            countLabel={(n) => (tab === 'free' ? `${n} truyện miễn phí toàn bộ` : `${n} truyện mới lên kệ`)}
+            countLabel={(n) =>
+              tab === 'free'
+                ? plural(n, 'free story', 'free stories')
+                : plural(n, 'new story', 'new stories')
+            }
           />
         )}
       </View>
@@ -327,9 +323,9 @@ function DiscoverTab({ focusToken, onSeeNewest }: { focusToken: number; onSeeNew
           <EmptyState
             danger
             icon="cloud-offline-outline"
-            title="Mất kết nối"
+            title="Connection lost"
             description={error}
-            actionLabel="Thử lại"
+            actionLabel="Retry"
             onAction={reload}
           />
         </View>
@@ -337,9 +333,9 @@ function DiscoverTab({ focusToken, onSeeNewest }: { focusToken: number; onSeeNew
         <View style={[styles.stateWrap, { minHeight: height * 0.45 }]}>
           <EmptyState
             icon="library-outline"
-            title="Chưa có truyện nào"
-            description="Kệ truyện đang trống. Kéo xuống hoặc bấm nút bên dưới để tải lại."
-            actionLabel="Tải lại"
+            title="No stories yet"
+            description="The shelf is empty. Pull down or tap the button below to reload."
+            actionLabel="Reload"
             onAction={reload}
           />
         </View>
@@ -348,15 +344,15 @@ function DiscoverTab({ focusToken, onSeeNewest }: { focusToken: number; onSeeNew
           {home?.featured ? <Hero story={home.featured} height={heroHeight} /> : null}
 
           <Row
-            title="Cập nhật"
-            subtitle="Truyện vừa có chương mới"
+            title="Recently updated"
+            subtitle="Stories with new chapters"
             icon="flame"
             stories={updated}
             onSeeMore={openSearch}
           />
           <Row
-            title="Mới nhất"
-            subtitle="Truyện mới lên kệ"
+            title="Newest"
+            subtitle="Just added to the shelf"
             icon="sparkles"
             stories={newest}
             onSeeMore={onSeeNewest}
@@ -364,7 +360,7 @@ function DiscoverTab({ focusToken, onSeeNewest }: { focusToken: number; onSeeNew
 
           {categories.length > 0 ? (
             <View style={styles.section} onLayout={onCategoryLayout}>
-              <SectionHeader title="Thể loại" subtitle="Chọn dòng truyện bạn thích" icon="grid" />
+              <SectionHeader title="Genres" subtitle="Pick a genre you love" icon="grid" />
               <View style={styles.catGrid}>
                 {categories.map((category) => (
                   <CategoryTile key={category.id} category={category} width={tileWidth} />
@@ -391,7 +387,10 @@ function Hero({ story, height }: { story: Story; height: number }) {
   const completed = story.status === 'completed';
   const canRead = story.chapters_count > 0;
   const categories = story.categories.slice(0, 2);
-  const meta = [story.author, canRead ? `${story.chapters_count} chương` : null]
+  const meta = [
+    story.author,
+    canRead ? plural(story.chapters_count, 'chapter', 'chapters') : null,
+  ]
     .filter(Boolean)
     .join('  ·  ');
 
@@ -450,17 +449,17 @@ function Hero({ story, height }: { story: Story; height: number }) {
         style={StyleSheet.absoluteFill}
         onPress={openDetail}
         accessibilityRole="button"
-        accessibilityLabel={`Truyện nổi bật: ${story.title}`}
+        accessibilityLabel={`Featured story: ${story.title}`}
       />
 
       <View style={styles.heroBadge} pointerEvents="box-none">
-        <Chip label="Nổi bật" icon="sparkles" variant="accent" size="sm" solid />
+        <Chip label="Featured" icon="sparkles" variant="accent" size="sm" solid />
       </View>
 
       <View style={styles.heroContent} pointerEvents="box-none">
         <View style={styles.chipRow} pointerEvents="none">
           <Chip
-            label={completed ? 'Hoàn thành' : story.status_label}
+            label={storyStatusLabel(story.status)}
             icon={completed ? 'checkmark-circle' : 'flash'}
             variant={completed ? 'free' : 'accent'}
             size="sm"
@@ -487,7 +486,7 @@ function Hero({ story, height }: { story: Story; height: number }) {
               <Pressable
                 onPress={openFirstChapter}
                 accessibilityRole="button"
-                accessibilityLabel="Đọc ngay chương 1"
+                accessibilityLabel="Read chapter 1 now"
                 style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}>
                 <LinearGradient
                   colors={Gradients.accent}
@@ -495,24 +494,24 @@ function Hero({ story, height }: { story: Story; height: number }) {
                   end={{ x: 1, y: 1 }}
                   style={styles.primaryFill}>
                   <Ionicons name="play" size={15} color={Palette.onAccent} />
-                  <Text style={styles.primaryText}>Đọc ngay</Text>
+                  <Text style={styles.primaryText}>Read now</Text>
                 </LinearGradient>
               </Pressable>
 
               <Pressable
                 onPress={openDetail}
                 accessibilityRole="button"
-                accessibilityLabel="Xem chi tiết truyện"
+                accessibilityLabel="View story details"
                 style={({ pressed }) => [styles.ghostBtn, pressed && styles.pressed]}>
                 <Ionicons name="list-outline" size={15} color={Palette.text} />
-                <Text style={styles.ghostText}>Chi tiết</Text>
+                <Text style={styles.ghostText}>Details</Text>
               </Pressable>
             </>
           ) : (
             <Pressable
               onPress={openDetail}
               accessibilityRole="button"
-              accessibilityLabel="Xem chi tiết truyện"
+              accessibilityLabel="View story details"
               style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}>
               <LinearGradient
                 colors={Gradients.accent}
@@ -520,7 +519,7 @@ function Hero({ story, height }: { story: Story; height: number }) {
                 end={{ x: 1, y: 1 }}
                 style={styles.primaryFill}>
                 <Ionicons name="information-circle-outline" size={15} color={Palette.onAccent} />
-                <Text style={styles.primaryText}>Xem chi tiết</Text>
+                <Text style={styles.primaryText}>View details</Text>
               </LinearGradient>
             </Pressable>
           )}
@@ -585,7 +584,7 @@ function CategoryTile({ category, width }: { category: Category; width: number }
     <Pressable
       onPress={open}
       accessibilityRole="link"
-      accessibilityLabel={`Thể loại ${category.name}, ${category.stories_count} truyện`}
+      accessibilityLabel={`${category.name} genre, ${plural(category.stories_count, 'story', 'stories')}`}
       style={({ pressed }) => [styles.catTile, { width }, pressed && styles.pressed]}>
       {showImage && category.cover_url ? (
         <Image
@@ -616,7 +615,7 @@ function CategoryTile({ category, width }: { category: Category; width: number }
           {category.name}
         </Text>
         <Text style={styles.catCount} numberOfLines={1}>
-          {category.stories_count} truyện
+          {plural(category.stories_count, 'story', 'stories')}
         </Text>
       </View>
     </Pressable>
@@ -728,7 +727,7 @@ function FeedFooter({
   if (!hasMore && count > 0) {
     return (
       <View style={styles.footer}>
-        <Text style={styles.footerText}>Đã hiện hết truyện</Text>
+        <Text style={styles.footerText}>No more stories</Text>
       </View>
     );
   }
@@ -774,9 +773,9 @@ function GridFeed({
         <EmptyState
           danger
           icon="cloud-offline-outline"
-          title="Mất kết nối"
+          title="Connection lost"
           description={feed.error}
-          actionLabel="Thử lại"
+          actionLabel="Retry"
           onAction={feed.retry}
         />
       </View>
@@ -790,7 +789,7 @@ function GridFeed({
           icon={emptyIcon}
           title={emptyTitle}
           description={emptyDescription}
-          actionLabel="Tải lại"
+          actionLabel="Reload"
           onAction={feed.retry}
         />
       </View>
@@ -852,9 +851,9 @@ function RankFeed() {
         <EmptyState
           danger
           icon="cloud-offline-outline"
-          title="Mất kết nối"
+          title="Connection lost"
           description={feed.error}
-          actionLabel="Thử lại"
+          actionLabel="Retry"
           onAction={feed.retry}
         />
       </View>
@@ -866,9 +865,9 @@ function RankFeed() {
       <View style={styles.stateFlex}>
         <EmptyState
           icon="trophy-outline"
-          title="Chưa có bảng xếp hạng"
-          description="Chưa đủ dữ liệu lượt xem để xếp hạng. Quay lại sau nhé."
-          actionLabel="Tải lại"
+          title="No ranking yet"
+          description="Not enough view data to rank stories yet. Check back soon."
+          actionLabel="Reload"
           onAction={feed.retry}
         />
       </View>
@@ -883,7 +882,7 @@ function RankFeed() {
       showsVerticalScrollIndicator={false}
       onEndReached={feed.loadMore}
       onEndReachedThreshold={0.4}
-      ListHeaderComponent={<Text style={styles.countText}>Xếp theo lượt xem nhiều nhất</Text>}
+      ListHeaderComponent={<Text style={styles.countText}>Ranked by most views</Text>}
       ListFooterComponent={
         <FeedFooter
           loadingMore={feed.loadingMore}
@@ -917,7 +916,7 @@ function RankRow({ story, rank }: { story: StoryCard; rank: number }) {
     <Pressable
       onPress={open}
       accessibilityRole="link"
-      accessibilityLabel={`Hạng ${rank}: ${story.title}`}
+      accessibilityLabel={`Rank ${rank}: ${story.title}`}
       style={({ pressed }) => [styles.rankRow, pressed && styles.pressed]}>
       <View style={styles.rankBadge}>
         <Text style={[styles.rankNum, top && styles.rankNumTop]}>{rank}</Text>
@@ -927,7 +926,6 @@ function RankRow({ story, rank }: { story: StoryCard; rank: number }) {
         thumbnailUrl={story.thumbnail_url}
         title={story.title}
         status={story.status}
-        statusLabel={story.status_label}
         showRibbon={false}
         showChapters={false}
         radius={Radius.md}
@@ -946,9 +944,11 @@ function RankRow({ story, rank }: { story: StoryCard; rank: number }) {
         ) : null}
         <View style={styles.rankMeta}>
           <Ionicons name="eye-outline" size={12} color={Palette.accentDeep} />
-          <Text style={styles.rankViews}>{formatViews(story.views)} lượt xem</Text>
+          <Text style={styles.rankViews}>
+            {formatViews(story.views)} {story.views === 1 ? 'view' : 'views'}
+          </Text>
           <Text style={styles.rankSep}>·</Text>
-          <Text style={styles.rankChapters}>{story.chapters_count} chương</Text>
+          <Text style={styles.rankChapters}>{plural(story.chapters_count, 'chapter', 'chapters')}</Text>
         </View>
       </View>
 

@@ -31,6 +31,7 @@ import {
 } from '@/constants/theme';
 import { BannerAd, showRewarded } from '@/lib/ads';
 import { API_URL, getStory, type Chapter } from '@/lib/api';
+import { formatCoins, plural } from '@/lib/format';
 import {
   ReaderPrefsProvider,
   useReaderPrefs,
@@ -192,7 +193,7 @@ function ReaderScreen() {
     if (spendCoins(COIN_PER_CHAPTER)) {
       unlock(storyId, chapterNumber);
     } else {
-      notify('Không đủ xu. Xem quảng cáo để nhận thêm xu nhé!', false);
+      notify('Not enough coins. Watch an ad to get more coins.', false);
     }
   }, [spendCoins, unlock, notify, storyId, chapterNumber]);
 
@@ -203,9 +204,9 @@ function ReaderScreen() {
       const result = await showRewarded();
       if (result.rewarded) {
         addCoins(COIN_PER_REWARD);
-        notify(`Đã nhận +${COIN_PER_REWARD} xu!`, true);
+        notify(`You got +${formatCoins(COIN_PER_REWARD)}!`, true);
       } else {
-        notify('Chưa xem hết quảng cáo, thử lại nhé.', false);
+        notify('You did not finish the ad. Please try again.', false);
       }
     } finally {
       setWatchingAd(false);
@@ -243,7 +244,9 @@ function ReaderScreen() {
     ? { text: activeMessage.text, ok: activeMessage.ok }
     : notEnough
       ? {
-          text: `Bạn còn thiếu ${missingCoins} xu. Xem quảng cáo để nhận +${COIN_PER_REWARD} xu nhé!`,
+          text: `You need ${plural(missingCoins, 'more coin', 'more coins')}. Watch an ad to get +${formatCoins(
+            COIN_PER_REWARD,
+          )}.`,
           ok: false,
         }
       : null;
@@ -270,7 +273,7 @@ function ReaderScreen() {
           onPress={() => router.back()}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="Quay lại"
+          accessibilityLabel="Back"
           style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
         >
           <Ionicons name="chevron-back" size={22} color={Palette.text} />
@@ -297,7 +300,7 @@ function ReaderScreen() {
           onPress={() => setSettingsOpen(true)}
           hitSlop={6}
           accessibilityRole="button"
-          accessibilityLabel="Cài đặt hiển thị khi đọc"
+          accessibilityLabel="Reading settings"
           style={({ pressed }) => [styles.iconBtn, pressed && styles.pressed]}
         >
           <Text style={styles.aaLabel}>Aa</Text>
@@ -308,7 +311,7 @@ function ReaderScreen() {
           disabled={!hasAudio}
           hitSlop={6}
           accessibilityRole="button"
-          accessibilityLabel={hasAudio ? 'Nghe chương này' : 'Chương này chưa có bản đọc'}
+          accessibilityLabel={hasAudio ? 'Listen to this chapter' : 'No audio for this chapter yet'}
           accessibilityState={{ disabled: !hasAudio }}
           style={({ pressed }) => [
             styles.iconBtn,
@@ -331,9 +334,9 @@ function ReaderScreen() {
           <EmptyState
             danger
             icon="cloud-offline-outline"
-            title="Không tải được chương"
-            description="Kiểm tra kết nối mạng rồi thử lại nhé."
-            actionLabel="Thử lại"
+            title="Couldn't load this chapter"
+            description="Check your connection and try again."
+            actionLabel="Retry"
             onAction={retry}
           />
         </View>
@@ -347,14 +350,14 @@ function ReaderScreen() {
           {/* Đầu chương */}
           <View style={styles.chapterHead}>
             <View style={styles.chapterMeta}>
-              <PageTag rt={rt} icon="reader-outline" label={`Chương ${chapter.number}`} kind="accent" />
+              <PageTag rt={rt} icon="reader-outline" label={`Chapter ${chapter.number}`} kind="accent" />
               {chapter.is_free ? (
-                <PageTag rt={rt} icon="gift-outline" label="Miễn phí" kind="free" />
+                <PageTag rt={rt} icon="gift-outline" label="Free" kind="free" />
               ) : unlockedLocal ? (
-                <PageTag rt={rt} icon="lock-open-outline" label="Đã mở khóa" kind="coin" />
+                <PageTag rt={rt} icon="lock-open-outline" label="Unlocked" kind="coin" />
               ) : null}
               {hasAudio ? (
-                <PageTag rt={rt} icon="headset-outline" label="Có bản đọc" kind="accent" />
+                <PageTag rt={rt} icon="headset-outline" label="Audio available" kind="accent" />
               ) : null}
             </View>
 
@@ -386,7 +389,7 @@ function ReaderScreen() {
           <View style={styles.endMark}>
             <View style={[styles.endLine, { backgroundColor: rt.border }]} />
             <Text style={[styles.endText, { color: rt.faint }]}>
-              Hết chương {chapter.number}
+              End of Chapter {chapter.number}
             </Text>
             <View style={[styles.endLine, { backgroundColor: rt.border }]} />
           </View>
@@ -417,14 +420,15 @@ function ReaderScreen() {
             </LinearGradient>
 
             <View style={styles.lockChip}>
-              <Text style={styles.lockChipText}>Chương {chapter.number}</Text>
+              <Text style={styles.lockChipText}>Chapter {chapter.number}</Text>
             </View>
 
             <Text style={styles.lockTitle} numberOfLines={3}>
               {chapter.title}
             </Text>
             <Text style={styles.lockSubtitle}>
-              Chương này đang khóa. Mở khóa một lần bằng {COIN_PER_CHAPTER} xu để đọc mãi mãi.
+              This chapter is locked. Unlock it once for {formatCoins(COIN_PER_CHAPTER)} and read it
+              forever.
             </Text>
 
             {banner ? (
@@ -448,7 +452,7 @@ function ReaderScreen() {
             <Pressable
               onPress={handleUnlock}
               accessibilityRole="button"
-              accessibilityLabel={`Mở khóa chương với ${COIN_PER_CHAPTER} xu`}
+              accessibilityLabel={`Unlock chapter for ${formatCoins(COIN_PER_CHAPTER)}`}
               style={({ pressed }) => [
                 styles.primaryBtn,
                 notEnough && styles.primaryBtnDim,
@@ -462,14 +466,14 @@ function ReaderScreen() {
                 style={StyleSheet.absoluteFill}
               />
               <Ionicons name="lock-open" size={18} color={Palette.onAccent} />
-              <Text style={styles.primaryBtnText}>Mở khóa · {COIN_PER_CHAPTER} xu</Text>
+              <Text style={styles.primaryBtnText}>Unlock · {formatCoins(COIN_PER_CHAPTER)}</Text>
             </Pressable>
 
             <Pressable
               onPress={handleWatchAd}
               disabled={watchingAd}
               accessibilityRole="button"
-              accessibilityLabel={`Xem quảng cáo nhận ${COIN_PER_REWARD} xu`}
+              accessibilityLabel={`Watch an ad to get ${formatCoins(COIN_PER_REWARD)}`}
               style={({ pressed }) => [
                 styles.adBtn,
                 watchingAd && styles.adBtnBusy,
@@ -481,7 +485,7 @@ function ReaderScreen() {
               ) : (
                 <>
                   <Ionicons name="play-circle" size={18} color={Palette.coinDeep} />
-                  <Text style={styles.adBtnText}>Xem quảng cáo · +{COIN_PER_REWARD} xu</Text>
+                  <Text style={styles.adBtnText}>Watch ad · +{formatCoins(COIN_PER_REWARD)}</Text>
                 </>
               )}
             </Pressable>
@@ -489,7 +493,7 @@ function ReaderScreen() {
             <View style={styles.walletHint}>
               <Ionicons name="logo-usd" size={13} color={Palette.coinDeep} />
               <Text style={styles.walletHintText}>
-                Số dư: <Text style={styles.walletHintValue}>{coins} xu</Text>
+                Balance: <Text style={styles.walletHintValue}>{formatCoins(coins)}</Text>
               </Text>
             </View>
           </LinearGradient>
@@ -501,14 +505,14 @@ function ReaderScreen() {
       {chapter && !loading ? (
         <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, Spacing.md) }]}>
           <NavButton
-            label="Chương trước"
+            label="Previous"
             direction="prev"
             disabled={chapter.prev == null}
             onPress={() => goTo(chapter.prev)}
           />
 
           <View style={styles.progress}>
-            <Text style={styles.progressLabel}>CHƯƠNG</Text>
+            <Text style={styles.progressLabel}>CHAPTER</Text>
             <Text style={styles.progressValue}>
               {totalChapters != null
                 ? `${chapter.number}/${totalChapters}`
@@ -517,7 +521,7 @@ function ReaderScreen() {
           </View>
 
           <NavButton
-            label="Chương sau"
+            label="Next"
             direction="next"
             disabled={chapter.next == null}
             onPress={() => goTo(chapter.next)}

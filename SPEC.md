@@ -179,11 +179,44 @@ Nội dung 1 chương.
 - Upload ảnh lưu vào `storage/app/public/stories`, chạy `php artisan storage:link`.
 
 ## 7. Seed data
-- 6–8 thể loại tiếng Việt: Tiên Hiệp, Huyền Huyễn, Ngôn Tình, Đô Thị, Kiếm Hiệp, Trọng Sinh, Đam Mỹ, Linh Dị.
-- 8–10 truyện mẫu, mỗi truyện 4–6 chương (content lorem tiếng Việt ~vài đoạn). 1–2 truyện `is_featured`.
-- 2 truyện có `free_chapters = tổng số chương` (đọc free toàn bộ) để tab "Miễn phí" (`?free=1`) có dữ liệu.
-- Seeder KHÔNG tạo file audio; audio upload thủ công qua admin.
-- Không cần ảnh thật (thumbnail null -> placeholder). Gán mỗi truyện 1–3 category.
+
+Nội dung là truyện **tiếng Anh**, theo mô-típ **"hidden billionaire"**: nhân vật chính bị coi thường
+vì trông nghèo (lao công, shipper, chồng "vô dụng", con rể nghèo, khách đi xe cũ...) rồi lộ ra là
+chủ tịch / người thừa kế cực giàu. Cao trào là khoảnh khắc lộ thân phận và bộ mặt của những kẻ
+từng khinh thường.
+
+### 8 thể loại (name | slug)
+| Name | Slug |
+|---|---|
+| Billionaire | `billionaire` |
+| CEO | `ceo` |
+| Secret Identity | `secret-identity` |
+| Romance | `romance` |
+| Revenge | `revenge` |
+| Family Drama | `family-drama` |
+| Rags to Riches | `rags-to-riches` |
+| Second Chance | `second-chance` |
+
+### 10 truyện mẫu
+| # | Title | Slug | Author | Status | Featured | free_chapters | Thể loại |
+|---|---|---|---|---|---|---|---|
+| 1 | The Janitor Owns the Company | `the-janitor-owns-the-company` | Marcus Vale | ongoing | ✅ | 1 | secret-identity, ceo |
+| 2 | My Broke Husband Is a Billionaire | `my-broke-husband-is-a-billionaire` | Elena Hart | ongoing | ✅ | 2 | romance, billionaire |
+| 3 | The Beggar at the Board Meeting | `the-beggar-at-the-board-meeting` | Daniel Cross | ongoing | — | 1 | ceo, secret-identity |
+| 4 | Return of the Hidden Heir | `return-of-the-hidden-heir` | Victor Lang | completed | — | 1 | revenge, billionaire |
+| 5 | She Laughed at His Old Car | `she-laughed-at-his-old-car` | Sophie Bennett | ongoing | — | 3 | romance, revenge |
+| 6 | Son-in-Law of the Silver Empire | `son-in-law-of-the-silver-empire` | Adrian Wolfe | ongoing | — | 1 | family-drama, billionaire |
+| 7 | The Delivery Boy Who Bought the Mall | `the-delivery-boy-who-bought-the-mall` | Ryan Cole | completed | — | 2 | rags-to-riches, secret-identity |
+| 8 | Ten Years Poor, One Day King | `ten-years-poor-one-day-king` | Nathan Reed | ongoing | — | 1 | rags-to-riches, second-chance |
+| 9 | My Landlord Is a Secret CEO | `my-landlord-is-a-secret-ceo` | Grace Miller | ongoing | — | 2 | romance, ceo |
+| 10 | The Pauper's Revenge Empire | `the-paupers-revenge-empire` | Lucas Grant | completed | — | 1 | revenge, second-chance |
+
+- Mỗi truyện 4–6 chương, `content` là văn xuôi **tiếng Anh** (vài đoạn/chương). 2 truyện `is_featured` (#1, #2).
+- Mỗi truyện gán 2 thể loại theo bảng trên (tên + slug phải khớp CHÍNH XÁC — giọng đọc AI khoá theo slug này).
+- Tab "Miễn phí" (`?free=1`) chỉ có dữ liệu khi tồn tại truyện thoả `free_chapters >= tổng số chương`;
+  seeder cần đảm bảo có 1–2 truyện như vậy (cho truyện đó ít chương hơn `free_chapters` đã chốt).
+- Seeder KHÔNG tạo file audio; audio sinh bằng `php artisan chapters:audio` hoặc upload thủ công qua admin.
+- Không bắt buộc ảnh thật (thumbnail null -> placeholder).
 
 ## 8. Mobile — cấu trúc & hành vi
 
@@ -252,22 +285,29 @@ Hoặc trong admin: sửa chương -> nút **🎙️ Tạo giọng đọc AI**.
 
 ### Giọng theo thể loại
 `App\Services\ChapterAudioGenerator` chọn giọng + sắc thái theo thể loại truyện, dùng tham số
-`instructions` của `gpt-4o-mini-tts` (ra lệnh cách đọc bằng tiếng Việt).
+`instructions` của `gpt-4o-mini-tts`.
 
-| Thể loại | Giọng | Sắc thái |
-|---|---|---|
-| Linh Dị | ballad | trầm, chậm, thì thầm, rợn người |
-| Ngôn Tình | coral | nữ ấm áp, dịu dàng, giàu cảm xúc |
-| Đam Mỹ | sage | nhẹ nhàng, tinh tế, tiết chế |
-| Kiếm Hiệp | onyx | nam trầm, dứt khoát, hào sảng |
-| Tiên Hiệp | onyx | nam trầm, khí phách, sử thi |
-| Trọng Sinh | ash | chắc chắn, bồi hồi khi nhắc kiếp trước |
-| Đô Thị | ash | nam trẻ, tiết tấu nhanh, tự nhiên |
-| Huyền Huyễn | ash | vang, huyền bí |
+> Nội dung truyện là **tiếng Anh**, nên `instructions` được viết **bằng tiếng Anh** và luôn mở đầu
+> bằng "Narrate in English." để model đọc đúng ngôn ngữ.
 
-Truyện nhiều thể loại: duyệt theo danh sách ưu tiên **cố định** (`PROFILE_PRIORITY`), thể loại đặc
-trưng hơn thắng — nên cùng một truyện luôn ra cùng một giọng ở mọi lần chạy (không phụ thuộc thứ tự
-DB trả về).
+| Thể loại | Slug | Giọng | Sắc thái |
+|---|---|---|---|
+| Revenge | `revenge` | ash | lạnh, sắc, dồn nén; cao trào dứt khoát |
+| Romance | `romance` | coral | nữ ấm áp, dịu dàng, giàu cảm xúc |
+| Secret Identity | `secret-identity` | ballad | trầm, bí ẩn, nhiều khoảng lặng trước lúc lộ thân phận |
+| Family Drama | `family-drama` | sage | ấm, mộc mạc, giọng kể chuyện gia đình |
+| Second Chance | `second-chance` | sage | hy vọng, nhẹ nhàng, vươn lên dần |
+| Rags to Riches | `rags-to-riches` | ash | truyền cảm hứng, tăng dần khí thế |
+| CEO | `ceo` | onyx | nam điềm tĩnh, uy quyền phòng họp, nhịp chắc |
+| Billionaire | `billionaire` | onyx | nam tự tin, quyền lực ngầm, nhịp chắc |
+| _(không khớp thể loại nào)_ | — | ash | fallback: ấm, truyền cảm, nhịp vừa phải |
+
+Truyện nhiều thể loại: duyệt theo danh sách ưu tiên **cố định** `PROFILE_PRIORITY` —
+`revenge > romance > secret-identity > family-drama > second-chance > rags-to-riches > ceo > billionaire`
+(thể loại có chất giọng đặc trưng hơn thắng; `ceo`/`billionaire` mang tính bối cảnh nên xếp cuối).
+Nhờ vậy cùng một truyện luôn ra cùng một giọng ở mọi lần chạy, không phụ thuộc thứ tự DB trả về.
+Ví dụ: *She Laughed at His Old Car* (romance + revenge) -> **revenge/ash**;
+*The Janitor Owns the Company* (secret-identity + ceo) -> **secret-identity/ballad**.
 
 ### Chi tiết kỹ thuật
 - Nội dung dài bị cắt theo **ranh giới câu** (giới hạn 4096 ký tự/request của API), mặc định 3500

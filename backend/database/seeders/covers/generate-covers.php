@@ -5,15 +5,19 @@ declare(strict_types=1);
 /**
  * Sinh ARTWORK bìa truyện cho seed data — vẽ 100% bằng PHP GD, KHÔNG CÓ BẤT KỲ CHỮ NÀO.
  *
+ * Mô-típ: ĐÔ THỊ / GIÀU SANG — nhân vật bị coi thường vì trông nghèo rồi lộ ra là
+ * chủ tịch / thừa kế cực giàu. Ngôn ngữ hình ảnh: tháp kính, cửa sổ vàng kim, đèn thành phố,
+ * bóng người đơn độc dưới vệt đèn rọi, bão trên nóc phố, dinh thự, hừng đông.
+ *
  * Tên truyện / tác giả do app tự hiển thị đè lên, nên ảnh chỉ là artwork thuần.
  *
  * Chạy lại khi muốn đổi thiết kế bìa:
  *   php database/seeders/covers/generate-covers.php
  *
- * Đặc điểm kỹ thuật:
+ * Đặc điểm kỹ thuật (giữ nguyên như bản trước):
  *  - Vẽ ở 1200x1600 (siêu lấy mẫu x2) rồi thu nhỏ về 600x800 -> khử răng cưa toàn ảnh.
  *  - Gradient nhiều điểm dừng + nội suy smoothstep.
- *  - Mọi hình mềm (quầng sáng, bokeh, sương, cánh hoa, vệt kiếm) đều tự trộn alpha theo pixel
+ *  - Mọi hình mềm (quầng sáng, bokeh, sương, bóng người, tia sét) đều tự trộn alpha theo pixel
  *    nên bờ mượt, không bị viền cứng.
  *  - Ngẫu nhiên TẤT ĐỊNH: mt_srand(crc32($slug)) -> chạy lại luôn ra ảnh y hệt.
  *  - Xuất JPEG 600x800, chất lượng 90, tên file theo slug (StorySeeder copy theo slug).
@@ -68,6 +72,18 @@ function smoothstep(float $edge0, float $edge1, float $x): float
     $t = clamp01(($x - $edge0) / ($edge1 - $edge0));
 
     return $t * $t * (3 - 2 * $t);
+}
+
+/** Số ngẫu nhiên 0..1 (tất định theo mt_srand). */
+function rnd(): float
+{
+    return mt_rand(0, 10000) / 10000;
+}
+
+/** Số ngẫu nhiên trong [$a, $b]. */
+function rndf(float $a, float $b): float
+{
+    return $a + ($b - $a) * rnd();
 }
 
 /** Trộn một pixel màu $c với độ đục $a (0..1) lên ảnh siêu lấy mẫu. */
@@ -182,8 +198,8 @@ function softRing($img, float $cx, float $cy, float $radius, float $thickness, a
     }
 }
 
-/** Ellipse mềm có xoay — dùng làm cánh hoa. */
-function softPetal($img, float $cx, float $cy, float $rx, float $ry, float $angle, array $color, float $alpha): void
+/** Ellipse mềm có xoay — vũng đèn, bóng đổ, tán cây. */
+function softEllipse($img, float $cx, float $cy, float $rx, float $ry, float $angle, array $color, float $alpha, float $edge = 0.10, float $power = 1.0): void
 {
     $rad = max($rx, $ry) + 2;
     $x0 = (int) max(0, floor($cx - $rad));
@@ -192,7 +208,7 @@ function softPetal($img, float $cx, float $cy, float $rx, float $ry, float $angl
     $y1 = (int) min(H - 1, ceil($cy + $rad));
     $cos = cos(-$angle);
     $sin = sin(-$angle);
-    $feather = 1.6 * SS;
+    $inner = max(0.0, 1.0 - max($edge, 1.6 * SS / max($rx, $ry)));
 
     for ($y = $y0; $y <= $y1; $y++) {
         for ($x = $x0; $x <= $x1; $x++) {
@@ -201,11 +217,13 @@ function softPetal($img, float $cx, float $cy, float $rx, float $ry, float $angl
             $u = $dx * $cos - $dy * $sin;
             $v = $dx * $sin + $dy * $cos;
             $q = sqrt(($u / $rx) * ($u / $rx) + ($v / $ry) * ($v / $ry));
-            if ($q >= 1.15) {
+            if ($q >= 1.0) {
                 continue;
             }
-            // đầu cánh hơi nhọn: kéo nhẹ theo trục dài
-            $f = 1.0 - smoothstep(1.0 - $feather / max($rx, $ry), 1.0, $q);
+            $f = 1.0 - smoothstep($inner, 1.0, $q);
+            if ($power !== 1.0) {
+                $f = pow($f, $power);
+            }
             px($img, $x, $y, $color, $alpha * $f);
         }
     }
@@ -250,7 +268,7 @@ function softSegment($img, float $x1, float $y1, float $x2, float $y2, float $co
     }
 }
 
-/** Dải sương ngang uốn lượn (tổng các sóng sin tất định). */
+/** Dải sương / khói đèn ngang uốn lượn (tổng các sóng sin tất định). */
 function fogBand($img, float $baseY, float $thickness, float $wobble, array $color, float $alpha): void
 {
     $p1 = mt_rand(0, 628) / 100;
@@ -278,7 +296,80 @@ function fogBand($img, float $baseY, float $thickness, float $wobble, array $col
     }
 }
 
-/* ────────────────────────────── Nhiễu 1D cho đường chân núi ────────────────────────────── */
+/** Kiểm tra điểm nằm trong đa giác (ray casting). */
+function pointInPoly(array $pts, float $x, float $y): bool
+{
+    $inside = false;
+    $n = count($pts);
+    for ($i = 0, $j = $n - 1; $i < $n; $j = $i++) {
+        $xi = $pts[$i][0];
+        $yi = $pts[$i][1];
+        $xj = $pts[$j][0];
+        $yj = $pts[$j][1];
+        if (($yi > $y) !== ($yj > $y) && $x < ($xj - $xi) * ($y - $yi) / (($yj - $yi) ?: 1e-9) + $xi) {
+            $inside = ! $inside;
+        }
+    }
+
+    return $inside;
+}
+
+/** Đa giác mềm (khử răng cưa bằng 2x2 mẫu con), tô gradient dọc. */
+function softPoly($img, array $pts, array $cTop, array $cBot, float $alpha, ?float $yTop = null, ?float $yBot = null): void
+{
+    $minx = $maxx = $pts[0][0];
+    $miny = $maxy = $pts[0][1];
+    foreach ($pts as [$x, $y]) {
+        $minx = min($minx, $x);
+        $maxx = max($maxx, $x);
+        $miny = min($miny, $y);
+        $maxy = max($maxy, $y);
+    }
+    $yTop ??= $miny;
+    $yBot ??= $maxy;
+    $span = max(1.0, $yBot - $yTop);
+
+    $x0 = (int) max(0, floor($minx));
+    $x1 = (int) min(W - 1, ceil($maxx));
+    $y0 = (int) max(0, floor($miny));
+    $y1 = (int) min(H - 1, ceil($maxy));
+    $sub = [[0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]];
+
+    for ($y = $y0; $y <= $y1; $y++) {
+        $c = lerpColor($cTop, $cBot, clamp01(($y - $yTop) / $span));
+        for ($x = $x0; $x <= $x1; $x++) {
+            $cov = 0.0;
+            foreach ($sub as [$ox, $oy]) {
+                if (pointInPoly($pts, $x + $ox, $y + $oy)) {
+                    $cov += 0.25;
+                }
+            }
+            if ($cov <= 0) {
+                continue;
+            }
+            px($img, $x, $y, $c, $alpha * $cov);
+        }
+    }
+}
+
+/** Chữ nhật gradient dọc (nhanh hơn softPoly cho khối chữ nhật lớn). */
+function rectV($img, float $x0, float $y0, float $x1, float $y1, array $cTop, array $cBot, float $alpha): void
+{
+    $ix0 = (int) max(0, floor($x0));
+    $ix1 = (int) min(W - 1, ceil($x1));
+    $iy0 = (int) max(0, floor($y0));
+    $iy1 = (int) min(H - 1, ceil($y1));
+    $span = max(1.0, $y1 - $y0);
+
+    for ($y = $iy0; $y <= $iy1; $y++) {
+        $c = lerpColor($cTop, $cBot, clamp01(($y - $y0) / $span));
+        for ($x = $ix0; $x <= $ix1; $x++) {
+            px($img, $x, $y, $c, $alpha);
+        }
+    }
+}
+
+/* ────────────────────────────── Nhiễu 1D cho đường chân trời mềm ────────────────────────────── */
 
 function noiseSeries(int $n): array
 {
@@ -305,21 +396,15 @@ function noiseAt(array $a, float $t, bool $smooth = true): float
     return $a[$i0] + ($a[$i1] - $a[$i0]) * $f;
 }
 
-/**
- * Tạo hàm chiều cao của một rặng núi.
- * $ridged = true -> tạo nếp gấp nhọn (kiếm hiệp); $smooth = false -> đỉnh góc cạnh.
- */
-function makeRidge(float $baseY, float $amp, int $pts, bool $ridged = false, bool $smooth = true, float $sharp = 1.0): callable
+/** Hàm chiều cao của một gò đất / rặng cây xa. */
+function makeRidge(float $baseY, float $amp, int $pts, bool $smooth = true, float $sharp = 1.0): callable
 {
     $a = noiseSeries($pts);
     $b = noiseSeries($pts * 3);
 
-    return function (int $x) use ($a, $b, $baseY, $amp, $ridged, $smooth, $sharp) {
+    return function (int $x) use ($a, $b, $baseY, $amp, $smooth, $sharp) {
         $t = $x / (W - 1);
         $v = 0.74 * noiseAt($a, $t, $smooth) + 0.26 * noiseAt($b, $t, $smooth);
-        if ($ridged) {
-            $v = 1.0 - abs(2 * $v - 1);
-        }
         if ($sharp !== 1.0) {
             $v = pow(clamp01($v), $sharp);
         }
@@ -328,7 +413,7 @@ function makeRidge(float $baseY, float $amp, int $pts, bool $ridged = false, boo
     };
 }
 
-/** Tô khối núi/tòa nhà từ đường chân trên xuống đáy ảnh, có gradient trong thân + AA mép trên. */
+/** Tô khối từ đường chân trên xuống đáy ảnh, gradient trong thân + AA mép trên. */
 function fillTerrain($img, callable $heightFn, array $cTop, array $cBot, float $alpha): void
 {
     for ($x = 0; $x < W; $x++) {
@@ -350,187 +435,350 @@ function fillTerrain($img, callable $heightFn, array $cTop, array $cBot, float $
     }
 }
 
-/* ────────────────────────────── Thành phần cảnh ────────────────────────────── */
+/* ────────────────────────────── Thành phần đô thị ────────────────────────────── */
 
-/** Sao li ti — dày ở trên, thưa dần xuống dưới; vài ngôi có quầng sáng. */
+/** Sao li ti — dày ở trên, thưa dần xuống dưới. */
 function starField($img, int $count, float $maxY, array $color, float $baseAlpha = 0.9): void
 {
     for ($i = 0; $i < $count; $i++) {
         $x = mt_rand(0, W - 1);
         $y = mt_rand(0, (int) $maxY);
-        // thưa dần khi xuống thấp
         $depth = 1.0 - ($y / max($maxY, 1));
-        if (mt_rand(0, 100) / 100 > 0.25 + 0.75 * $depth) {
+        if (rnd() > 0.25 + 0.75 * $depth) {
             continue;
         }
-        $a = $baseAlpha * (0.25 + 0.75 * (mt_rand(0, 100) / 100)) * (0.35 + 0.65 * $depth);
-        $r = (mt_rand(60, 175) / 100) * SS * 0.55;
+        $a = $baseAlpha * (0.25 + 0.75 * rnd()) * (0.35 + 0.65 * $depth);
+        $r = rndf(0.6, 1.75) * SS * 0.55;
         softDisc($img, (float) $x, (float) $y, $r, $color, $a, 0.9, 1.2);
 
-        if (mt_rand(0, 100) < 7) {
+        if (mt_rand(0, 100) < 6) {
             softDisc($img, (float) $x, (float) $y, $r * 7, $color, $a * 0.22, 1.0, 2.2);
         }
     }
 }
 
-/** Mặt trăng: quầng ngoài + đĩa + gợn miệng núi lửa mờ. */
-function drawMoon($img, float $cx, float $cy, float $r, array $core, array $glow, float $glowStrength = 0.5, bool $craters = true): void
+/** Một ô cửa sổ sáng + quầng hắt ra kính. */
+function litWindow($img, float $x, float $y, float $w, float $h, array $color, float $alpha, float $glowChance = 0.18, float $glowScale = 3.6): void
 {
-    softDisc($img, $cx, $cy, $r * 5.2, $glow, $glowStrength * 0.30, 1.0, 2.6);
-    softDisc($img, $cx, $cy, $r * 2.4, $glow, $glowStrength * 0.38, 1.0, 2.0);
-    softDisc($img, $cx, $cy, $r * 1.35, $glow, $glowStrength * 0.34, 1.0, 1.6);
-    softDisc($img, $cx, $cy, $r, $core, 1.0, 0.035, 1.0);
+    $ex = (int) ($x + $w);
+    $ey = (int) ($y + $h);
+    for ($yy = (int) $y; $yy < $ey; $yy++) {
+        for ($xx = (int) $x; $xx < $ex; $xx++) {
+            px($img, $xx, $yy, $color, $alpha);
+        }
+    }
+    if (rnd() < $glowChance) {
+        softDisc($img, $x + $w / 2, $y + $h / 2, max($w, $h) * $glowScale, $color, $alpha * 0.20, 1.0, 2.1);
+    }
+}
 
-    if ($craters) {
-        $shade = lerpColor($core, [10, 10, 30], 0.16);
-        for ($i = 0; $i < 7; $i++) {
-            $ang = mt_rand(0, 628) / 100;
-            $dist = ($r * 0.78) * sqrt(mt_rand(0, 100) / 100);
-            $cr = $r * (mt_rand(7, 20) / 100);
-            softDisc($img, $cx + cos($ang) * $dist, $cy + sin($ang) * $dist, $cr, $shade, 0.42, 0.85, 1.4);
+/** Lưới cửa sổ sáng trong một vùng chữ nhật. */
+function windowGrid($img, float $x0, float $y0, float $x1, float $y1, float $cw, float $ch, float $gx, float $gy, array $color, float $alpha, float $chance, float $glowChance = 0.18): void
+{
+    if ($x1 - $x0 < $cw || $y1 - $y0 < $ch) {
+        return;
+    }
+    for ($wy = $y0; $wy + $ch <= $y1; $wy += $ch + $gy) {
+        for ($wx = $x0; $wx + $cw <= $x1; $wx += $cw + $gx) {
+            if (rnd() > $chance) {
+                continue;
+            }
+            litWindow($img, $wx, $wy, $cw, $ch, $color, $alpha * (0.45 + 0.55 * rnd()), $glowChance);
         }
     }
 }
 
 /**
- * Trăng khuyết — vẽ thẳng hình lưỡi liềm (trong đĩa chính NHƯNG ngoài đĩa khoét),
- * không tô đè đĩa màu nền nên không để lại vệt tối lộ ra trên quầng sáng.
+ * Một dải nhà chạy ngang khung hình: khối cao thấp ngẫu nhiên, chóp lùi / chóp vát,
+ * cột ăng-ten và lưới cửa sổ sáng.
+ * Chiều cao tính theo tỉ lệ H, bề ngang theo tỉ lệ W.
  */
-function drawCrescent($img, float $cx, float $cy, float $r, array $core, array $glow, float $offset = 0.44): void
+function skylineBand($img, array $c): void
 {
-    softDisc($img, $cx, $cy, $r * 4.6, $glow, 0.20, 1.0, 2.6);
-    softDisc($img, $cx, $cy, $r * 1.9, $glow, 0.24, 1.0, 1.9);
+    $baseY = $c['baseY'] * H;
+    $cTop = $c['cTop'];
+    $cBot = $c['cBot'];
+    $alpha = $c['alpha'];
+    $win = $c['win'];
+    $winAlpha = $c['winAlpha'];
+    $winChance = $c['winChance'];
+    $ws = $c['winScale'] ?? 1.0;
+    $gap = $c['gap'] ?? 0.010;
 
-    $ox = $cx + $r * $offset;
-    $oy = $cy - $r * $offset * 0.55;
-    $or = $r * 0.94;
+    $x = ($c['startX'] ?? -0.06) * W;
+    $end = ($c['endX'] ?? 1.06) * W;
 
-    $x0 = (int) max(0, floor($cx - $r));
-    $x1 = (int) min(W - 1, ceil($cx + $r));
-    $y0 = (int) max(0, floor($cy - $r));
-    $y1 = (int) min(H - 1, ceil($cy + $r));
+    while ($x < $end) {
+        $bw = lerp($c['minW'], $c['maxW'], rnd()) * W;
+        $bh = lerp($c['minH'], $c['maxH'], pow(rnd(), 1.55)) * H;
+        $top = $baseY - $bh;
+        $l = $x;
+        $r = $x + $bw;
 
-    for ($y = $y0; $y <= $y1; $y++) {
-        for ($x = $x0; $x <= $x1; $x++) {
-            $d = sqrt(($x - $cx) ** 2 + ($y - $cy) ** 2);
-            $inside = 1.0 - smoothstep($r - 1.2 * SS, $r + 0.4 * SS, $d);
-            if ($inside <= 0) {
+        softPoly($img, [[$l, $top], [$r, $top], [$r, $baseY], [$l, $baseY]], $cTop, $cBot, $alpha, $top, $baseY);
+
+        $roll = mt_rand(0, 100);
+        if ($roll < 22 && $bh > 0.10 * H) {                     // khối lùi trên nóc
+            $ins = $bw * 0.20;
+            $h2 = $bh * rndf(0.10, 0.24);
+            softPoly($img, [[$l + $ins, $top - $h2], [$r - $ins, $top - $h2], [$r - $ins, $top + 1], [$l + $ins, $top + 1]],
+                $cTop, $cTop, $alpha, $top - $h2, $top);
+        } elseif ($roll < 36 && $bh > 0.08 * H) {               // chóp vát
+            $h2 = $bh * rndf(0.08, 0.18);
+            softPoly($img, [[$l, $top + 1], [$r, $top + 1], [$r - $bw * 0.32, $top - $h2], [$l + $bw * 0.32, $top - $h2]],
+                $cTop, $cTop, $alpha, $top - $h2, $top);
+        }
+
+        if (mt_rand(0, 100) < 28 && $bh > 0.11 * H) {           // cột ăng-ten + đèn báo không
+            $ax = $l + $bw * rndf(0.30, 0.70);
+            $ah = rndf(0.018, 0.055) * H;
+            softSegment($img, $ax, $top, $ax, $top - $ah, 0.8 * SS, 1.1 * SS, $cTop, $alpha);
+            if (mt_rand(0, 100) < 55) {
+                softDisc($img, $ax, $top - $ah, 2.0 * SS, $win, $winAlpha * 0.9, 0.9, 1.4);
+                softDisc($img, $ax, $top - $ah, 7.0 * SS, $win, $winAlpha * 0.18, 1.0, 2.2);
+            }
+        }
+
+        windowGrid($img,
+            $l + 5 * SS, $top + 7 * SS, $r - 5 * SS, $baseY - 5 * SS,
+            3 * SS * $ws, 4 * SS * $ws, 5 * SS * $ws, 7 * SS * $ws,
+            $win, $winAlpha, $winChance
+        );
+
+        $x = $r + lerp(0.0015, $gap, rnd()) * W;
+    }
+}
+
+/**
+ * Tháp kính "nhân vật chính": thân vát nhẹ, mặt kính có sọc dọc, cửa sổ vàng kim,
+ * cạnh sáng phản chiếu, đỉnh có quầng sáng + cột thu lôi.
+ */
+function heroTower($img, array $c): void
+{
+    $cx = $c['x'] * W;
+    $baseY = $c['baseY'] * H;
+    $wB = $c['w'] * W;
+    $wT = $wB * ($c['taper'] ?? 0.78);
+    $topY = $baseY - $c['h'] * H;
+    $alpha = $c['alpha'] ?? 1.0;
+
+    softPoly($img, [
+        [$cx - $wT / 2, $topY], [$cx + $wT / 2, $topY],
+        [$cx + $wB / 2, $baseY], [$cx - $wB / 2, $baseY],
+    ], $c['cTop'], $c['cBot'], $alpha, $topY, $baseY);
+
+    $span = max(1.0, $baseY - $topY);
+    $halfAt = fn (float $y) => lerp($wT, $wB, clamp01(($y - $topY) / $span)) / 2;
+
+    // sọc kính dọc
+    $mn = $c['mullions'] ?? 4;
+    for ($i = 1; $i <= $mn; $i++) {
+        $f = $i / ($mn + 1);
+        $x1 = $cx - $wT / 2 + $wT * $f;
+        $x2 = $cx - $wB / 2 + $wB * $f;
+        softSegment($img, $x1, $topY, $x2, $baseY, 0.6 * SS, 1.6 * SS, $c['glass'], ($c['glassAlpha'] ?? 0.12));
+    }
+
+    // cửa sổ sáng, mật độ có thể tăng dần lên đỉnh
+    $cw = ($c['winW'] ?? 3) * SS;
+    $ch = ($c['winH'] ?? 4) * SS;
+    $gx = ($c['winGapX'] ?? 5) * SS;
+    $gy = ($c['winGapY'] ?? 7) * SS;
+    $chTop = $c['winChanceTop'] ?? $c['winChance'] ?? 0.4;
+    $chBot = $c['winChanceBot'] ?? $c['winChance'] ?? 0.4;
+
+    for ($y = $topY + 9 * SS; $y + $ch < $baseY - 6 * SS; $y += $ch + $gy) {
+        $t = ($y - $topY) / $span;
+        $hw = $halfAt($y) - 5 * SS;
+        if ($hw <= $cw) {
+            continue;
+        }
+        $chance = lerp($chTop, $chBot, $t);
+        for ($x = $cx - $hw; $x + $cw < $cx + $hw; $x += $cw + $gx) {
+            if (rnd() > $chance) {
                 continue;
             }
-            $d2 = sqrt(($x - $ox) ** 2 + ($y - $oy) ** 2);
-            $cut = smoothstep($or - 1.2 * SS, $or + 0.4 * SS, $d2);
-            $f = $inside * $cut;
+            litWindow($img, $x, $y, $cw, $ch, $c['win'], ($c['winAlpha'] ?? 0.6) * (0.5 + 0.5 * rnd()), 0.16);
+        }
+    }
+
+    // cạnh sáng (phản chiếu ánh đèn thành phố)
+    $side = $c['litSide'] ?? 1;
+    softSegment($img,
+        $cx + $side * $wT / 2, $topY,
+        $cx + $side * $wB / 2, $baseY,
+        1.1 * SS, 3.4 * SS, $c['edge'], $c['edgeAlpha'] ?? 0.30
+    );
+
+    // đỉnh tháp
+    softDisc($img, $cx, $topY, $wB * ($c['crownR'] ?? 1.1), $c['crown'] ?? $c['win'], $c['crownAlpha'] ?? 0.32, 1.0, 2.1);
+    if ($c['spire'] ?? true) {
+        $sh = ($c['spireH'] ?? 0.05) * H;
+        softSegment($img, $cx, $topY + 2, $cx, $topY - $sh, 0.9 * SS, 1.3 * SS, $c['cTop'], $alpha);
+        softDisc($img, $cx, $topY - $sh, 2.4 * SS, $c['crown'] ?? $c['win'], 0.85, 0.9, 1.3);
+        softDisc($img, $cx, $topY - $sh, 12.0 * SS, $c['crown'] ?? $c['win'], 0.16, 1.0, 2.3);
+    }
+}
+
+/** Mặt nước phản chiếu: soi ngược phần ảnh phía trên đường nước, gợn sóng + nhòe dần. */
+function waterReflection($img, float $waterYF, float $strength, float $wobble, array $tint): void
+{
+    $wy = (int) round($waterYF * H);
+    if ($wy >= H - 2) {
+        return;
+    }
+    $depth = H - $wy;
+    $ph = mt_rand(0, 628) / 100;
+
+    for ($y = $wy; $y < H; $y++) {
+        $d = $y - $wy;
+        $src = $wy - (int) round($d * 0.94);
+        if ($src < 1) {
+            continue;
+        }
+        $fade = exp(-$d / ($depth * 0.55));
+        $amp = $wobble * SS * (0.35 + 1.7 * ($d / $depth));
+        for ($x = 0; $x < W; $x++) {
+            $sx = (int) round($x + $amp * sin($y * 0.085 + $x * 0.011 + $ph));
+            if ($sx < 0 || $sx >= W) {
+                $sx = $x;
+            }
+            $c = imagecolorat($img, $sx, $src);
+            $col = [($c >> 16) & 0xFF, ($c >> 8) & 0xFF, $c & 0xFF];
+            px($img, $x, $y, lerpColor($col, $tint, 0.40), $strength * $fade);
+        }
+    }
+}
+
+/** Vệt sáng loang trên mặt nước. */
+function waterStreaks($img, float $y0F, int $count, array $color, float $alphaMax): void
+{
+    for ($i = 0; $i < $count; $i++) {
+        $y = lerp($y0F * H, H * 0.995, pow(rnd(), 0.8));
+        $x = rndf(0.05, 0.95) * W;
+        $len = rndf(0.03, 0.14) * W;
+        $a = $alphaMax * (0.25 + 0.75 * rnd());
+        softSegment($img, $x - $len / 2, $y, $x + $len / 2, $y, 0.8 * SS, 3.0 * SS, $color, $a, true);
+    }
+}
+
+/** Nón đèn rọi từ trên xuống (đỉnh hẹp, chân loe). */
+function lightBeam($img, float $apexXF, float $apexYF, float $x0F, float $x1F, float $baseYF, array $color, float $alpha, float $soft = 0.45): void
+{
+    $ax = $apexXF * W;
+    $ay = $apexYF * H;
+    $by = $baseYF * H;
+    $bx0 = $x0F * W;
+    $bx1 = $x1F * W;
+    $y0 = (int) max(0, floor($ay));
+    $y1 = (int) min(H - 1, ceil($by));
+
+    for ($y = $y0; $y <= $y1; $y++) {
+        $t = clamp01(($y - $ay) / max(1.0, $by - $ay));
+        $l = lerp($ax, $bx0, $t);
+        $r = lerp($ax, $bx1, $t);
+        $cxl = ($l + $r) / 2;
+        $hw = max(1.0, ($r - $l) / 2);
+        $fall = 0.30 + 0.70 * pow(1.0 - $t, 0.9);
+        $pad = $hw * $soft;
+        $ix0 = (int) max(0, floor($cxl - $hw - $pad));
+        $ix1 = (int) min(W - 1, ceil($cxl + $hw + $pad));
+        for ($x = $ix0; $x <= $ix1; $x++) {
+            $u = abs($x - $cxl) / ($hw + $pad);
+            $f = 1.0 - smoothstep(1.0 - $soft, 1.0, $u);
             if ($f <= 0) {
                 continue;
             }
-            px($img, $x, $y, $core, $f);
+            px($img, $x, $y, $color, $alpha * $fall * pow($f, 1.4));
         }
     }
 }
 
-/** Đường chân trời thành phố: khối nhà cao thấp + ô cửa sổ sáng. */
-function skyline($img, float $baseY, float $minH, float $maxH, array $cTop, array $cBot, float $alpha, array $winColor, float $winAlpha, float $winChance, bool $windows = true, int $minW = 26, int $maxW = 62): void
+/** Tia sáng toả từ một điểm (dùng cho đỉnh tháp vàng kim). */
+function lightRays($img, float $cxF, float $cyF, int $count, float $lenF, array $color, float $alpha): void
 {
-    $x = -mt_rand(0, 40) * SS;
-    while ($x < W) {
-        $bw = mt_rand($minW, $maxW) * SS;
-        $bh = ($minH + ($maxH - $minH) * pow(mt_rand(0, 100) / 100, 1.5)) * SS;
-        $top = $baseY - $bh;
-        $x2 = min(W - 1, $x + $bw);
-
-        // thân nhà, gradient dọc
-        for ($cx = max(0, (int) $x); $cx <= $x2; $cx++) {
-            $edge = ($cx === max(0, (int) $x) || $cx === (int) $x2) ? 0.86 : 1.0;
-            for ($cy = (int) max(0, $top); $cy < min(H, (int) $baseY); $cy++) {
-                $t = ($cy - $top) / max(1.0, $baseY - $top);
-                px($img, $cx, $cy, lerpColor($cTop, $cBot, $t), $alpha * $edge);
-            }
-        }
-
-        // chóp: bể nước / cột ăng-ten
-        if ($bh > 120 * SS && mt_rand(0, 100) < 45) {
-            $aw = max(1, (int) (2 * SS));
-            $ax = (int) ($x + $bw * (mt_rand(25, 75) / 100));
-            $ah = mt_rand(16, 44) * SS;
-            for ($cy = (int) max(0, $top - $ah); $cy < (int) $top; $cy++) {
-                for ($cx = $ax; $cx < $ax + $aw; $cx++) {
-                    px($img, $cx, $cy, $cTop, $alpha * 0.9);
-                }
-            }
-        }
-
-        if ($windows) {
-            $wcell = 7 * SS;
-            $wgap = 5 * SS;
-            $ww = 3 * SS;
-            $wh = 4 * SS;
-            for ($wy = (int) ($top + 10 * SS); $wy < $baseY - 8 * SS; $wy += $wcell + $wgap) {
-                for ($wx = (int) ($x + 6 * SS); $wx < $x2 - 5 * SS; $wx += $ww + 4 * SS) {
-                    if (mt_rand(0, 1000) / 1000 > $winChance) {
-                        continue;
-                    }
-                    $glow = $winAlpha * (0.55 + 0.45 * (mt_rand(0, 100) / 100));
-                    for ($gy = $wy; $gy < $wy + $wh; $gy++) {
-                        for ($gx = $wx; $gx < $wx + $ww; $gx++) {
-                            px($img, $gx, $gy, $winColor, $glow);
-                        }
-                    }
-                    if (mt_rand(0, 100) < 22) {
-                        softDisc($img, $wx + $ww / 2, $wy + $wh / 2, 5.0 * SS, $winColor, $glow * 0.28, 1.0, 2.0);
-                    }
-                }
-            }
-        }
-
-        $x += $bw + mt_rand(2, 9) * SS;
+    $cx = $cxF * W;
+    $cy = $cyF * H;
+    for ($i = 0; $i < $count; $i++) {
+        $ang = ($i / $count) * M_PI * 2 + rndf(-0.06, 0.06);
+        $len = $lenF * W * rndf(0.45, 1.0);
+        softSegment($img, $cx, $cy, $cx + cos($ang) * $len, $cy + sin($ang) * $len,
+            1.4 * SS, 10.0 * SS, $color, $alpha * rndf(0.35, 1.0), true);
     }
 }
 
-/** Cây khẳng khiu — đệ quy, cành thon dần. */
-function branch($img, float $x, float $y, float $angle, float $len, float $thick, int $depth, array $color, float $alpha): void
+/** Khối mây bão: nhiều thùy tối chồng nhau, viền trên hắt sáng. */
+function cloudMass($img, float $cyF, float $ampF, int $count, array $dark, array $rim, float $alpha, float $rimAlpha): void
 {
-    if ($depth <= 0 || $len < 3 * SS) {
-        return;
-    }
-    $x2 = $x + cos($angle) * $len;
-    $y2 = $y + sin($angle) * $len;
-    softSegment($img, $x, $y, $x2, $y2, max(0.4, $thick), 1.1 * SS, $color, $alpha);
-
-    $n = mt_rand(2, 3);
-    for ($i = 0; $i < $n; $i++) {
-        $delta = (mt_rand(18, 62) / 100) * (mt_rand(0, 1) ? 1 : -1);
-        branch(
-            $img,
-            $x2, $y2,
-            $angle + $delta,
-            $len * (mt_rand(58, 78) / 100),
-            $thick * 0.6,
-            $depth - 1,
-            $color,
-            $alpha
-        );
+    $cy = $cyF * H;
+    $amp = $ampF * H;
+    for ($i = 0; $i < $count; $i++) {
+        $x = rndf(-0.12, 1.12) * W;
+        $y = $cy + rndf(-1.0, 1.0) * $amp;
+        $r = lerp(0.07, 0.26, pow(rnd(), 1.25)) * W;
+        softDisc($img, $x, $y, $r, $dark, $alpha * (0.45 + 0.55 * rnd()), 0.60, 1.5);
+        if (rnd() < 0.45) {
+            softDisc($img, $x + $r * 0.10, $y - $r * 0.46, $r * 0.52, $rim, $rimAlpha * rndf(0.5, 1.0), 0.9, 1.9);
+        }
     }
 }
 
-/** Vệt chém sắc như lưỡi kiếm: quầng rộng -> lõi trắng + tia lửa. */
-function swordSlash($img, float $x1, float $y1, float $x2, float $y2, array $glow, array $core, float $strength = 1.0): void
+/** Tia sét gãy khúc + nhánh phụ. */
+function lightningBolt($img, float $x0F, float $y0F, float $x1F, float $y1F, float $jitterF, array $glow, array $core, float $strength, int $forks = 2): void
 {
-    softSegment($img, $x1, $y1, $x2, $y2, 10 * SS, 46 * SS, $glow, 0.17 * $strength, true);
-    softSegment($img, $x1, $y1, $x2, $y2, 4 * SS, 16 * SS, $glow, 0.30 * $strength, true);
-    softSegment($img, $x1, $y1, $x2, $y2, 1.4 * SS, 4.5 * SS, $core, 0.85 * $strength, true);
+    $x0 = $x0F * W;
+    $y0 = $y0F * H;
+    $x1 = $x1F * W;
+    $y1 = $y1F * H;
+    $jit = $jitterF * W;
 
-    $len = sqrt(($x2 - $x1) ** 2 + ($y2 - $y1) ** 2);
-    $nx = -($y2 - $y1) / $len;
-    $ny = ($x2 - $x1) / $len;
-    for ($i = 0; $i < 46; $i++) {
-        $s = mt_rand(5, 95) / 100;
-        $off = (mt_rand(-70, 70) / 10) * SS;
-        $sx = lerp($x1, $x2, $s) + $nx * $off;
-        $sy = lerp($y1, $y2, $s) + $ny * $off;
-        $sr = (mt_rand(4, 16) / 10) * SS;
-        $sa = 0.75 * $strength * pow(sin(M_PI * $s), 0.6) * (mt_rand(30, 100) / 100);
-        softDisc($img, $sx, $sy, $sr, $core, $sa, 0.9, 1.3);
-        softDisc($img, $sx, $sy, $sr * 5, $glow, $sa * 0.20, 1.0, 2.2);
+    $steps = 13;
+    $pts = [[$x0, $y0]];
+    for ($i = 1; $i <= $steps; $i++) {
+        $t = $i / $steps;
+        $bx = lerp($x0, $x1, $t);
+        $by = lerp($y0, $y1, $t);
+        $off = $i === $steps ? 0.0 : rndf(-1.0, 1.0) * $jit * (0.30 + 0.85 * sin(M_PI * $t));
+        $pts[] = [$bx + $off, $by];
+    }
+
+    for ($i = 0; $i < count($pts) - 1; $i++) {
+        [$ax, $ay] = $pts[$i];
+        [$bx, $by] = $pts[$i + 1];
+        softSegment($img, $ax, $ay, $bx, $by, 4.0 * SS, 26.0 * SS, $glow, 0.085 * $strength);
+        softSegment($img, $ax, $ay, $bx, $by, 1.8 * SS, 8.0 * SS, $glow, 0.20 * $strength);
+        softSegment($img, $ax, $ay, $bx, $by, 0.9 * SS, 2.0 * SS, $core, 0.90 * $strength);
+    }
+
+    // quầng sáng dọc thân sét
+    foreach ([0.25, 0.55, 0.85] as $s) {
+        $idx = (int) ($s * (count($pts) - 1));
+        softDisc($img, $pts[$idx][0], $pts[$idx][1], 0.16 * W, $glow, 0.10 * $strength, 1.0, 2.4);
+    }
+
+    if ($forks > 0) {
+        for ($f = 0; $f < $forks; $f++) {
+            $idx = (int) rndf(3, count($pts) - 3);
+            [$fx, $fy] = $pts[$idx];
+            $dir = rnd() < 0.5 ? -1 : 1;
+            lightningBolt($img,
+                $fx / W, $fy / H,
+                ($fx + $dir * rndf(0.06, 0.16) * W) / W,
+                ($fy + rndf(0.10, 0.22) * H) / H,
+                $jitterF * 0.55, $glow, $core, $strength * 0.45, 0
+            );
+        }
+    }
+}
+
+/** Mưa xiên. */
+function rainStreaks($img, int $count, float $slant, array $color, float $alphaMax, float $lenMin, float $lenMax): void
+{
+    for ($i = 0; $i < $count; $i++) {
+        $x = rndf(-0.05, 1.05) * W;
+        $y = rndf(-0.02, 1.0) * H;
+        $len = rndf($lenMin, $lenMax) * H;
+        softSegment($img, $x, $y, $x + $slant * $len, $y + $len, 0.45 * SS, 1.0 * SS, $color, $alphaMax * rndf(0.25, 1.0), true);
     }
 }
 
@@ -540,9 +788,9 @@ function bokehField($img, int $count, array $palette, float $alphaMax, float $rM
     for ($i = 0; $i < $count; $i++) {
         $cx = mt_rand(-40, W + 40);
         $cy = mt_rand(-40, H + 40);
-        $r = lerp($rMin, $rMax, pow(mt_rand(0, 100) / 100, 1.7)) * SS;
+        $r = lerp($rMin, $rMax, pow(rnd(), 1.7)) * SS;
         $c = $palette[mt_rand(0, count($palette) - 1)];
-        $a = $alphaMax * (0.30 + 0.70 * (mt_rand(0, 100) / 100));
+        $a = $alphaMax * (0.30 + 0.70 * rnd());
 
         if (mt_rand(0, 100) < 42) {
             softRing($img, (float) $cx, (float) $cy, $r, $r * 0.30, $c, $a * 0.95);
@@ -553,211 +801,458 @@ function bokehField($img, int $count, array $palette, float $alphaMax, float $rM
     }
 }
 
+/* ────────────────────────────── Bóng người ────────────────────────────── */
+
+/** Hợp các "viên nang" thon (x1,y1,r1 -> x2,y2,r2) thành một khối bóng liền mạch. */
+function softBody($img, array $parts, array $color, float $alpha, float $feather = 1.15): void
+{
+    $f = $feather * SS;
+    $minx = 1e9;
+    $miny = 1e9;
+    $maxx = -1e9;
+    $maxy = -1e9;
+    foreach ($parts as [$x1, $y1, $r1, $x2, $y2, $r2]) {
+        $r = max($r1, $r2) + $f + 1;
+        $minx = min($minx, $x1 - $r, $x2 - $r);
+        $maxx = max($maxx, $x1 + $r, $x2 + $r);
+        $miny = min($miny, $y1 - $r, $y2 - $r);
+        $maxy = max($maxy, $y1 + $r, $y2 + $r);
+    }
+    $x0 = (int) max(0, floor($minx));
+    $x1b = (int) min(W - 1, ceil($maxx));
+    $y0 = (int) max(0, floor($miny));
+    $y1b = (int) min(H - 1, ceil($maxy));
+
+    for ($y = $y0; $y <= $y1b; $y++) {
+        for ($x = $x0; $x <= $x1b; $x++) {
+            $cov = 0.0;
+            foreach ($parts as [$ax, $ay, $ar, $bx, $by, $br]) {
+                $vx = $bx - $ax;
+                $vy = $by - $ay;
+                $len2 = $vx * $vx + $vy * $vy;
+                $t = $len2 > 0.0001 ? clamp01((($x - $ax) * $vx + ($y - $ay) * $vy) / $len2) : 0.0;
+                $r = $ar + ($br - $ar) * $t;
+                $dx = $x - ($ax + $vx * $t);
+                $dy = $y - ($ay + $vy * $t);
+                $d = sqrt($dx * $dx + $dy * $dy);
+                if ($d > $r + $f) {
+                    continue;
+                }
+                $c = 1.0 - smoothstep($r - $f, $r + $f * 0.35, $d);
+                if ($c > $cov) {
+                    $cov = $c;
+                }
+                if ($cov >= 0.999) {
+                    break;
+                }
+            }
+            if ($cov > 0) {
+                px($img, $x, $y, $color, $alpha * $cov);
+            }
+        }
+    }
+}
+
+/**
+ * Bộ "viên nang" tạo dáng người đứng.
+ * $style: suit | coat | dress | worker  — $lean: nghiêng đầu/vai (-1..1) để hai người hướng vào nhau.
+ */
+function personParts(float $cx, float $feetY, float $h, string $style = 'suit', float $lean = 0.0): array
+{
+    $lx = $lean * 0.05 * $h;
+    $parts = [
+        // đầu
+        [$cx + $lx, $feetY - 0.905 * $h, 0.047 * $h, $cx + $lx * 0.8, $feetY - 0.872 * $h, 0.050 * $h],
+        // cổ
+        [$cx + $lx * 0.6, $feetY - 0.848 * $h, 0.026 * $h, $cx, $feetY - 0.812 * $h, 0.031 * $h],
+        // vai
+        [$cx - 0.082 * $h, $feetY - 0.795 * $h, 0.034 * $h, $cx + 0.082 * $h, $feetY - 0.795 * $h, 0.034 * $h],
+        // thân
+        [$cx, $feetY - 0.795 * $h, 0.079 * $h, $cx, $feetY - 0.535 * $h, 0.064 * $h],
+        // hông
+        [$cx, $feetY - 0.560 * $h, 0.071 * $h, $cx, $feetY - 0.470 * $h, 0.065 * $h],
+        // chân trái / phải
+        [$cx - 0.032 * $h, $feetY - 0.480 * $h, 0.042 * $h, $cx - 0.040 * $h, $feetY - 0.004 * $h, 0.026 * $h],
+        [$cx + 0.034 * $h, $feetY - 0.480 * $h, 0.042 * $h, $cx + 0.052 * $h, $feetY - 0.004 * $h, 0.026 * $h],
+        // tay trái / phải
+        [$cx - 0.084 * $h, $feetY - 0.775 * $h, 0.030 * $h, $cx - 0.100 * $h, $feetY - 0.500 * $h, 0.021 * $h],
+        [$cx + 0.084 * $h, $feetY - 0.775 * $h, 0.030 * $h, $cx + 0.100 * $h, $feetY - 0.500 * $h, 0.021 * $h],
+    ];
+
+    if ($style === 'coat') {
+        $parts[] = [$cx, $feetY - 0.640 * $h, 0.090 * $h, $cx, $feetY - 0.300 * $h, 0.082 * $h];
+    } elseif ($style === 'dress') {
+        $parts[] = [$cx, $feetY - 0.560 * $h, 0.072 * $h, $cx, $feetY - 0.150 * $h, 0.118 * $h];
+        // tóc dài
+        $parts[] = [$cx + $lx * 0.5, $feetY - 0.895 * $h, 0.054 * $h, $cx - 0.010 * $h, $feetY - 0.760 * $h, 0.040 * $h];
+    } elseif ($style === 'worker') {
+        // mũ lưỡi trai
+        $parts[] = [$cx + $lx - 0.012 * $h, $feetY - 0.940 * $h, 0.040 * $h, $cx + $lx + 0.020 * $h, $feetY - 0.936 * $h, 0.036 * $h];
+        $parts[] = [$cx + $lx + 0.030 * $h, $feetY - 0.930 * $h, 0.016 * $h, $cx + $lx + 0.075 * $h, $feetY - 0.924 * $h, 0.010 * $h];
+        // áo khoác thợ, hơi rộng
+        $parts[] = [$cx, $feetY - 0.700 * $h, 0.086 * $h, $cx, $feetY - 0.480 * $h, 0.078 * $h];
+    }
+
+    return $parts;
+}
+
+/** Vẽ bóng người kèm viền sáng (rim light) hắt từ nguồn sáng. */
+function drawPerson($img, array $parts, array $color, float $alpha, ?array $rim = null, float $rimAlpha = 0.0, float $rimDx = 0.0, float $rimDy = 0.0, float $rimGrow = 2.2): void
+{
+    if ($rim !== null && $rimAlpha > 0) {
+        $p2 = [];
+        foreach ($parts as [$x1, $y1, $r1, $x2, $y2, $r2]) {
+            $p2[] = [$x1 + $rimDx, $y1 + $rimDy, $r1 + $rimGrow * SS, $x2 + $rimDx, $y2 + $rimDy, $r2 + $rimGrow * SS];
+        }
+        softBody($img, $p2, $rim, $rimAlpha);
+    }
+    softBody($img, $parts, $color, $alpha);
+}
+
+/* ────────────────────────────── Dinh thự & cây ────────────────────────────── */
+
+/** Cây thông/bách thẳng đứng — hàng cây hai bên lối vào. */
+function cypress($img, float $xF, float $baseYF, float $hF, array $color, float $alpha): void
+{
+    $x = $xF * W;
+    $by = $baseYF * H;
+    $h = $hF * H;
+    softEllipse($img, $x, $by - $h * 0.52, $h * 0.115, $h * 0.52, 0.0, $color, $alpha, 0.16, 1.0);
+    softEllipse($img, $x, $by - $h * 0.80, $h * 0.075, $h * 0.24, 0.0, $color, $alpha * 0.9, 0.25, 1.0);
+    softSegment($img, $x, $by, $x, $by - $h * 0.20, 2.0 * SS, 2.0 * SS, $color, $alpha);
+}
+
+/** Cây tán tròn được cắt tỉa. */
+function roundTree($img, float $xF, float $baseYF, float $hF, array $color, float $alpha): void
+{
+    $x = $xF * W;
+    $by = $baseYF * H;
+    $h = $hF * H;
+    softSegment($img, $x, $by, $x, $by - $h * 0.42, 2.6 * SS, 2.2 * SS, $color, $alpha);
+    softDisc($img, $x, $by - $h * 0.66, $h * 0.30, $color, $alpha, 0.10, 1.0);
+    softDisc($img, $x - $h * 0.20, $by - $h * 0.55, $h * 0.21, $color, $alpha, 0.14, 1.0);
+    softDisc($img, $x + $h * 0.19, $by - $h * 0.57, $h * 0.20, $color, $alpha, 0.14, 1.0);
+    softDisc($img, $x + $h * 0.03, $by - $h * 0.86, $h * 0.19, $color, $alpha, 0.16, 1.0);
+}
+
+/** Dinh thự: thân chính + hai cánh + mái dốc + hàng cột + cửa sổ sáng ấm. */
+function drawMansion($img, array $c): void
+{
+    $cx = $c['x'] * W;
+    $ground = $c['ground'] * H;
+    $w = $c['w'] * W;
+    $bodyH = $c['bodyH'] * H;
+    $roofH = $c['roofH'] * H;
+    $wallTop = $c['wallTop'];
+    $wallBot = $c['wallBot'];
+    $roofC = $c['roof'];
+    $win = $c['win'];
+    $winA = $c['winAlpha'];
+
+    $l = $cx - $w / 2;
+    $r = $cx + $w / 2;
+    $bodyTop = $ground - $bodyH;
+
+    // hai cánh nhà thấp hơn
+    $wingW = $w * 0.30;
+    $wingH = $bodyH * 0.66;
+    foreach ([[$l - $wingW * 0.86, $l + $wingW * 0.14], [$r - $wingW * 0.14, $r + $wingW * 0.86]] as [$wl, $wr]) {
+        $wt = $ground - $wingH;
+        softPoly($img, [[$wl, $wt], [$wr, $wt], [$wr, $ground], [$wl, $ground]], $wallTop, $wallBot, 1.0, $wt, $ground);
+        softPoly($img, [[$wl - $w * 0.012, $wt + 1], [$wr + $w * 0.012, $wt + 1], [$wr - $wingW * 0.20, $wt - $roofH * 0.62], [$wl + $wingW * 0.20, $wt - $roofH * 0.62]],
+            $roofC, $roofC, 1.0, $wt - $roofH, $wt);
+        windowGrid($img, $wl + $wingW * 0.16, $wt + $wingH * 0.20, $wr - $wingW * 0.16, $ground - $wingH * 0.14,
+            5 * SS, 8 * SS, 9 * SS, 12 * SS, $win, $winA, 0.72, 0.55);
+    }
+
+    // thân chính
+    softPoly($img, [[$l, $bodyTop], [$r, $bodyTop], [$r, $ground], [$l, $ground]], $wallTop, $wallBot, 1.0, $bodyTop, $ground);
+
+    // mái dốc + diềm
+    softPoly($img, [
+        [$l - $w * 0.035, $bodyTop + 1], [$r + $w * 0.035, $bodyTop + 1],
+        [$r - $w * 0.20, $bodyTop - $roofH], [$l + $w * 0.20, $bodyTop - $roofH],
+    ], $roofC, $roofC, 1.0, $bodyTop - $roofH, $bodyTop);
+
+    // ống khói
+    foreach ([0.26, 0.74] as $f) {
+        $chx = $l + $w * $f;
+        $chw = $w * 0.035;
+        softPoly($img, [
+            [$chx - $chw, $bodyTop - $roofH * 1.42], [$chx + $chw, $bodyTop - $roofH * 1.42],
+            [$chx + $chw, $bodyTop - $roofH * 0.45], [$chx - $chw, $bodyTop - $roofH * 0.45],
+        ], $roofC, $roofC, 1.0);
+    }
+
+    // cửa sổ sáng ấm hai tầng
+    windowGrid($img, $l + $w * 0.06, $bodyTop + $bodyH * 0.16, $r - $w * 0.06, $bodyTop + $bodyH * 0.40,
+        6 * SS, 10 * SS, 11 * SS, 10 * SS, $win, $winA, 0.80, 0.60);
+    windowGrid($img, $l + $w * 0.06, $bodyTop + $bodyH * 0.52, $l + $w * 0.30, $ground - $bodyH * 0.10,
+        6 * SS, 11 * SS, 11 * SS, 10 * SS, $win, $winA, 0.75, 0.60);
+    windowGrid($img, $r - $w * 0.30, $bodyTop + $bodyH * 0.52, $r - $w * 0.06, $ground - $bodyH * 0.10,
+        6 * SS, 11 * SS, 11 * SS, 10 * SS, $win, $winA, 0.75, 0.60);
+
+    // hiên cột giữa
+    $pl = $cx - $w * 0.19;
+    $pr = $cx + $w * 0.19;
+    $pTop = $bodyTop + $bodyH * 0.30;
+    softPoly($img, [[$pl - $w * 0.03, $pTop], [$pr + $w * 0.03, $pTop], [$pr, $pTop - $roofH * 0.40], [$pl, $pTop - $roofH * 0.40]],
+        $roofC, $roofC, 1.0);
+    $colW = $w * 0.022;
+    for ($i = 0; $i < 4; $i++) {
+        $x = $pl + ($pr - $pl) * ($i / 3);
+        softPoly($img, [[$x - $colW, $pTop], [$x + $colW, $pTop], [$x + $colW, $ground], [$x - $colW, $ground]],
+            $c['column'], $c['columnBot'] ?? $c['column'], 1.0, $pTop, $ground);
+    }
+    // cửa chính sáng
+    softPoly($img, [
+        [$cx - $w * 0.045, $ground - $bodyH * 0.34], [$cx + $w * 0.045, $ground - $bodyH * 0.34],
+        [$cx + $w * 0.045, $ground], [$cx - $w * 0.045, $ground],
+    ], $win, $win, $winA * 0.95);
+    softDisc($img, $cx, $ground - $bodyH * 0.16, $w * 0.20, $win, $winA * 0.30, 1.0, 2.0);
+}
+
 /* ────────────────────────────── Các motif theo thể loại ────────────────────────────── */
 
-/** Tiên Hiệp / Huyền Huyễn: núi chồng lớp mờ dần + trăng lớn + sao li ti. */
-function motifMountain($img, array $cfg): void
+/** billionaire / ceo — đường chân trời đêm, tháp kính, cửa sổ vàng kim, mặt nước phản chiếu. */
+function motifSkyline($img, array $c): void
 {
-    gradientFill($img, $cfg['sky']);
-    starField($img, $cfg['stars'], H * 0.68, $cfg['starColor']);
+    gradientFill($img, $c['sky']);
+    starField($img, $c['stars'] ?? 240, H * 0.44, $c['starColor'], 0.55);
 
-    // quầng sáng chân trời (đặt ngay trên đường chân núi để dải màu ấm lộ ra)
-    softDisc($img, W * $cfg['glowX'], H * $cfg['glowY'], W * $cfg['glowR'], $cfg['glow'], 0.42, 1.0, 2.1);
-
-    drawMoon($img, W * $cfg['moonX'], H * $cfg['moonY'], W * $cfg['moonR'], $cfg['moonCore'], $cfg['moonGlow'], 0.55);
-
-    // mây mỏng vắt ngang mặt trăng
-    foreach ($cfg['clouds'] as [$cy, $th, $wob, $al]) {
-        fogBand($img, H * $cy, $th * SS, $wob * SS, $cfg['cloud'], $al);
+    foreach ($c['glows'] as [$gx, $gy, $gr, $col, $ga]) {
+        softDisc($img, $gx * W, $gy * H, $gr * W, $col, $ga, 1.0, 2.1);
     }
 
-    $layers = $cfg['layers'];
-    $n = count($layers);
-    foreach ($layers as $i => [$baseY, $amp, $pts, $colTop, $colBot, $alpha]) {
-        $ridge = makeRidge(H * $baseY, H * $amp, $pts, false, true, 1.15);
-        fillTerrain($img, $ridge, hex($colTop), hex($colBot), $alpha);
+    foreach ($c['bands'] as $band) {
+        skylineBand($img, $band);
+        fogBand($img, $band['baseY'] * H - 5 * SS, 26 * SS, 9 * SS, $c['haze'], $c['hazeAlpha'] ?? 0.15);
+    }
 
-        // sương đọng dưới chân mỗi lớp -> tách lớp, tạo chiều sâu
-        if ($i < $n - 1) {
-            fogBand($img, H * $baseY - H * $amp * 0.10, 26 * SS, 12 * SS, $cfg['mist'], 0.16 * (1 - $i / $n) + 0.07);
+    foreach ($c['towers'] as $t) {
+        heroTower($img, $t);
+    }
+
+    // khói đèn dưới chân phố
+    fogBand($img, ($c['hazeY'] ?? 0.86) * H, 34 * SS, 10 * SS, $c['haze'], $c['hazeAlpha2'] ?? 0.18);
+
+    if (! empty($c['water'])) {
+        rectV($img, 0, $c['waterY'] * H, W, H, $c['waterTop'], $c['waterBot'], 1.0);
+        waterReflection($img, $c['waterY'], $c['reflect'] ?? 0.42, $c['ripple'] ?? 2.4, $c['waterTint']);
+        waterStreaks($img, $c['waterY'], $c['streaks'] ?? 26, $c['streakColor'], 0.30);
+        softSegment($img, 0, $c['waterY'] * H, W, $c['waterY'] * H, 1.0 * SS, 4.0 * SS, $c['streakColor'], 0.18);
+    }
+
+    // sân thượng tiền cảnh + hai bóng người (biến thể lãng mạn)
+    if (! empty($c['rooftop'])) {
+        $ry = $c['roofY'] * H;
+        rectV($img, 0, $ry, W, H, $c['roofTop'], $c['roofBot'], 1.0);
+        softSegment($img, 0, $ry, W, $ry, 0.9 * SS, 3.2 * SS, $c['railing'], 0.55);
+        for ($i = 0; $i <= 22; $i++) {
+            $x = $i / 22 * W;
+            softSegment($img, $x, $ry, $x, $ry + 0.030 * H, 0.8 * SS, 1.4 * SS, $c['railing'], 0.30);
+        }
+        softSegment($img, 0, $ry + 0.030 * H, W, $ry + 0.030 * H, 0.8 * SS, 2.2 * SS, $c['railing'], 0.28);
+
+        foreach ($c['people'] as [$pxF, $hF, $style, $lean]) {
+            $parts = personParts($pxF * W, $ry + 0.028 * H, $hF * H, $style, $lean);
+            drawPerson($img, $parts, $c['figure'], 0.97, $c['rim'], 0.40, -2.0 * SS, -1.0 * SS, 1.8);
         }
     }
 }
 
-/** Kiếm Hiệp: núi nhọn + vầng trăng + đường chéo sắc như lưỡi kiếm. */
-function motifSword($img, array $cfg): void
+/** secret-identity — bóng người đơn độc trước thành phố, một vệt đèn rọi từ trên xuống. */
+function motifSpotlight($img, array $c): void
 {
-    gradientFill($img, $cfg['sky']);
-    starField($img, $cfg['stars'], H * 0.6, $cfg['starColor'], 0.75);
-    softDisc($img, W * $cfg['glowX'], H * $cfg['glowY'], W * $cfg['glowR'], $cfg['glow'], 0.38, 1.0, 2.2);
+    gradientFill($img, $c['sky']);
+    starField($img, 150, H * 0.34, $c['starColor'], 0.42);
 
-    if ($cfg['crescent']) {
-        drawCrescent($img, W * $cfg['moonX'], H * $cfg['moonY'], W * $cfg['moonR'], $cfg['moonCore'], $cfg['moonGlow']);
-    } else {
-        drawMoon($img, W * $cfg['moonX'], H * $cfg['moonY'], W * $cfg['moonR'], $cfg['moonCore'], $cfg['moonGlow'], 0.5, false);
+    softDisc($img, $c['glowX'] * W, $c['glowY'] * H, 0.85 * W, $c['glow'], 0.34, 1.0, 2.2);
+
+    foreach ($c['bands'] as $band) {
+        skylineBand($img, $band);
+        fogBand($img, $band['baseY'] * H - 6 * SS, 30 * SS, 10 * SS, $c['haze'], 0.20);
     }
 
-    // núi nhọn, ít điểm điều khiển + nội suy tuyến tính -> đỉnh góc cạnh
-    foreach ($cfg['layers'] as $i => [$baseY, $amp, $pts, $colTop, $colBot, $alpha]) {
-        $ridge = makeRidge(H * $baseY, H * $amp, $pts, true, false);
-        fillTerrain($img, $ridge, hex($colTop), hex($colBot), $alpha);
-        if ($i === 0) {
-            fogBand($img, H * $baseY - H * $amp * 0.05, 30 * SS, 14 * SS, $cfg['mist'], 0.20);
-        }
-    }
+    // nền sàn / mặt đường
+    rectV($img, 0, $c['floorY'] * H, W, H, $c['floorTop'], $c['floorBot'], 1.0);
+    fogBand($img, $c['floorY'] * H, 22 * SS, 8 * SS, $c['haze'], 0.26);
 
-    foreach ($cfg['slashes'] as [$ax, $ay, $bx, $by, $strength]) {
-        swordSlash($img, W * $ax, H * $ay, W * $bx, H * $by, $cfg['slashGlow'], $cfg['slashCore'], $strength);
+    // nón đèn rọi
+    lightBeam($img, $c['beamX'], -0.06, $c['beamL'], $c['beamR'], $c['beamBase'], $c['beam'], $c['beamAlpha'], 0.55);
+    lightBeam($img, $c['beamX'], -0.06, lerp($c['beamX'], $c['beamL'], 0.45), lerp($c['beamX'], $c['beamR'], 0.45), $c['beamBase'], $c['beam'], $c['beamAlpha'] * 0.9, 0.7);
+
+    // vũng sáng dưới chân
+    softEllipse($img, $c['figX'] * W, $c['feetY'] * H + 0.006 * H, 0.20 * W, 0.045 * H, 0.0, $c['beam'], 0.34, 0.9, 1.6);
+
+    // bóng đổ dài
+    softEllipse($img, ($c['figX'] + 0.10) * W, ($c['feetY'] + 0.020) * H, 0.17 * W, 0.030 * H, 0.10, $c['shadow'], 0.55, 0.75, 1.3);
+
+    // nhân vật
+    $parts = personParts($c['figX'] * W, $c['feetY'] * H, $c['figH'] * H, $c['style'], $c['lean'] ?? 0.0);
+    drawPerson($img, $parts, $c['figure'], 0.99, $c['rim'], 0.52, -2.4 * SS, -2.0 * SS, 2.4);
+
+    // bụi sáng bay trong luồng đèn
+    for ($i = 0; $i < 90; $i++) {
+        $x = rndf($c['beamL'] - 0.05, $c['beamR'] + 0.05) * W;
+        $y = rndf(0.05, $c['beamBase']) * H;
+        softDisc($img, $x, $y, rndf(0.6, 1.7) * SS, $c['beam'], rndf(0.10, 0.42), 0.9, 1.3);
     }
 }
 
-/** Đô Thị / Trọng Sinh: đường chân trời thành phố, khối nhà cao thấp + ô cửa sổ sáng. */
-function motifCity($img, array $cfg): void
+/** romance — bokeh đèn thành phố ấm, hai bóng người trên tiền cảnh. */
+function motifRomance($img, array $c): void
 {
-    gradientFill($img, $cfg['sky']);
-    starField($img, $cfg['stars'], H * 0.42, $cfg['starColor'], 0.55);
+    gradientFill($img, $c['sky']);
 
-    // vầng sáng ô nhiễm ánh đèn phía chân trời
-    softDisc($img, W * $cfg['glowX'], H * $cfg['glowY'], W * $cfg['glowR'], $cfg['glow'], 0.50, 1.0, 2.0);
-    softDisc($img, W * (1 - $cfg['glowX']), H * ($cfg['glowY'] + 0.05), W * 0.62, $cfg['glow2'], 0.28, 1.0, 2.2);
+    softDisc($img, $c['sunX'] * W, $c['sunY'] * H, 0.95 * W, $c['sunGlow'], 0.50, 1.0, 2.0);
+    softDisc($img, $c['sunX'] * W, $c['sunY'] * H, 0.19 * W, $c['sunCore'], 0.55, 1.0, 1.8);
 
-    if ($cfg['moon']) {
-        drawMoon($img, W * $cfg['moonX'], H * $cfg['moonY'], W * $cfg['moonR'], $cfg['moonCore'], $cfg['moonGlow'], 0.45);
+    foreach ($c['bands'] as $band) {
+        skylineBand($img, $band);
+    }
+    fogBand($img, $c['hazeY'] * H, 46 * SS, 12 * SS, $c['haze'], 0.34);
+    fogBand($img, ($c['hazeY'] + 0.03) * H, 26 * SS, 6 * SS, $c['haze'], 0.28);
+
+    bokehField($img, $c['bokeh'], $c['bokehPalette'], 0.28, 12, $c['bokehR'] ?? 66);
+
+    // tiền cảnh: lan can / mặt đường
+    rectV($img, 0, $c['groundY'] * H, W, H, $c['groundTop'], $c['groundBot'], 1.0);
+    fogBand($img, $c['groundY'] * H - 5 * SS, 13 * SS, 6 * SS, $c['haze'], 0.11);
+
+    // đèn xe quét ngang mặt đường (biến thể "chiếc xe cũ")
+    foreach ($c['streaks'] ?? [] as [$y, $x0, $x1, $col, $a, $core]) {
+        softSegment($img, $x0 * W, $y * H, $x1 * W, $y * H, $core * SS, 9.0 * SS, $col, $a, true);
+    }
+    foreach ($c['lamps'] ?? [] as [$lx, $ly, $lr, $col, $a]) {
+        softDisc($img, $lx * W, $ly * H, $lr * W, $col, $a, 1.0, 2.0);
+        softDisc($img, $lx * W, $ly * H, $lr * W * 0.22, $col, min(1.0, $a * 2.2), 0.9, 1.4);
     }
 
-    foreach ($cfg['bands'] as [$baseY, $minH, $maxH, $cTop, $cBot, $alpha, $winA, $winChance, $wins, $minW, $maxW]) {
-        skyline(
-            $img,
-            H * $baseY, $minH, $maxH,
-            hex($cTop), hex($cBot), $alpha,
-            $cfg['window'], $winA, $winChance, $wins, $minW, $maxW
-        );
-        fogBand($img, H * $baseY - 6 * SS, 30 * SS, 8 * SS, $cfg['haze'], 0.16);
+    foreach ($c['people'] as [$pxF, $hF, $style, $lean]) {
+        $parts = personParts($pxF * W, ($c['groundY'] + 0.012) * H, $hF * H, $style, $lean);
+        drawPerson($img, $parts, $c['figure'], 0.98, $c['rim'], 0.46, $c['rimDx'] * SS, -2.0 * SS, 2.2);
     }
 
-    // sương đèn phủ đáy
-    fogBand($img, H * 0.965, 60 * SS, 6 * SS, $cfg['haze'], 0.14);
+    // bokeh tiền cảnh (nhòe hơn, nằm đè lên nhân vật)
+    bokehField($img, $c['bokehFront'], $c['bokehPalette'], 0.13, 40, 118);
+    starField($img, 110, H * 0.96, $c['dust'], 0.40);
 }
 
-/** Ngôn Tình: bokeh mềm tông hồng/cam + cánh hoa rơi. */
-function motifRomance($img, array $cfg): void
+/** revenge — trời bão vần vũ trên thành phố, tia sét lạnh, mưa xiên. */
+function motifStorm($img, array $c): void
 {
-    gradientFill($img, $cfg['sky']);
+    gradientFill($img, $c['sky']);
 
-    softDisc($img, W * $cfg['sunX'], H * $cfg['sunY'], W * 0.95, $cfg['sunGlow'], 0.55, 1.0, 2.0);
-    softDisc($img, W * $cfg['sunX'], H * $cfg['sunY'], W * 0.20, $cfg['sunCore'], 0.60, 1.0, 1.8);
-
-    // thành phố mờ phía xa "bên kia sông" (chỉ dùng cho bìa có thêm thể loại Đô Thị).
-    // Cố ý để rất nhạt + phủ sương dày cho hòa vào nền mơ màng, không cắt cứng.
-    if (! empty($cfg['skyline'])) {
-        skyline($img, H * 0.875, 26, 104, hex($cfg['skylineTop']), hex($cfg['skylineBot']), 0.34, $cfg['window'], 0.34, 0.26, true, 18, 46);
-        fogBand($img, H * 0.845, 58 * SS, 12 * SS, $cfg['haze'], 0.34);
-        fogBand($img, H * 0.878, 30 * SS, 6 * SS, $cfg['haze'], 0.40);
-        // vệt sáng mặt sông ngay dưới chân thành phố
-        fogBand($img, H * 0.905, 16 * SS, 4 * SS, hex('#FFF0D6'), 0.30);
+    // quầng bình minh / lửa hận phía chân trời
+    foreach ($c['glows'] as [$gx, $gy, $gr, $col, $ga]) {
+        softDisc($img, $gx * W, $gy * H, $gr * W, $col, $ga, 1.0, 2.2);
     }
 
-    bokehField($img, $cfg['bokeh'], $cfg['bokehPalette'], 0.30, 12, 78);
+    cloudMass($img, $c['cloudY'], $c['cloudAmp'], $c['clouds'], $c['cloudDark'], $c['cloudRim'], $c['cloudAlpha'], $c['cloudRimAlpha']);
+    fogBand($img, $c['cloudY'] * H + 0.10 * H, 60 * SS, 30 * SS, $c['cloudDark'], 0.22);
 
-    // cánh hoa rơi
-    for ($i = 0; $i < $cfg['petals']; $i++) {
-        $x = mt_rand(0, W);
-        $y = mt_rand(0, H);
-        $scale = 0.45 + 1.05 * pow(mt_rand(0, 100) / 100, 1.4);
-        $rx = 13 * $scale * SS;
-        $ry = 6.4 * $scale * SS;
-        $ang = mt_rand(0, 628) / 100;
-        $c = $cfg['petalPalette'][mt_rand(0, count($cfg['petalPalette']) - 1)];
-        $a = 0.30 + 0.55 * (mt_rand(0, 100) / 100);
-
-        softPetal($img, (float) $x, (float) $y, $rx, $ry, $ang, $c, $a * 0.85);
-        // chút sáng ở mép cánh
-        softPetal($img, $x - cos($ang) * $rx * 0.28, $y - sin($ang) * $rx * 0.28, $rx * 0.5, $ry * 0.55, $ang, [255, 255, 255], $a * 0.16);
+    foreach ($c['bolts'] as [$x0, $y0, $x1, $y1, $jit, $st, $forks]) {
+        lightningBolt($img, $x0, $y0, $x1, $y1, $jit, $c['boltGlow'], $c['boltCore'], $st, $forks);
     }
 
-    // bụi sáng li ti
-    starField($img, 130, H * 0.98, [255, 246, 240], 0.45);
+    foreach ($c['bands'] as $band) {
+        skylineBand($img, $band);
+        fogBand($img, $band['baseY'] * H - 6 * SS, 30 * SS, 10 * SS, $c['haze'], 0.16);
+    }
+
+    rainStreaks($img, $c['rain'], $c['rainSlant'], $c['rainColor'], $c['rainAlpha'], 0.030, 0.085);
+
+    // ánh chớp hắt xuống mặt phố
+    softDisc($img, $c['flashX'] * W, $c['flashY'] * H, 0.70 * W, $c['boltGlow'], 0.10, 1.0, 2.4);
+    fogBand($img, H * 0.975, 46 * SS, 8 * SS, $c['haze'], 0.16);
 }
 
-/** Linh Dị: sương mù nhiều lớp, trăng lạnh, bóng cây khẳng khiu. */
-function motifHorror($img, array $cfg): void
+/** family-drama — dinh thự với ô cửa sáng ấm, hàng cây, tông nâu ấm + kem. */
+function motifMansion($img, array $c): void
 {
-    gradientFill($img, $cfg['sky']);
-    starField($img, 90, H * 0.5, $cfg['starColor'], 0.4);
+    gradientFill($img, $c['sky']);
+    starField($img, 120, H * 0.30, $c['starColor'], 0.35);
 
-    drawMoon($img, W * $cfg['moonX'], H * $cfg['moonY'], W * $cfg['moonR'], $cfg['moonCore'], $cfg['moonGlow'], 0.40);
+    softDisc($img, $c['glowX'] * W, $c['glowY'] * H, 0.90 * W, $c['glow'], 0.42, 1.0, 2.1);
 
-    // rặng cây xa mờ
-    $far = makeRidge(H * 0.70, H * 0.10, 14, false, true, 1.4);
-    fillTerrain($img, $far, hex($cfg['farTop']), hex($cfg['farBot']), 0.55);
-    fogBand($img, H * 0.66, 60 * SS, 26 * SS, $cfg['fog'], 0.26);
+    // rặng cây xa
+    $far = makeRidge(H * $c['treeLineY'], H * 0.075, 13, true, 1.35);
+    fillTerrain($img, $far, $c['farTop'], $c['farBot'], 0.85);
+    fogBand($img, $c['treeLineY'] * H, 34 * SS, 14 * SS, $c['haze'], 0.28);
 
-    // cây khẳng khiu
-    foreach ($cfg['trees'] as [$tx, $ty, $ang, $len, $thick, $depth, $alpha]) {
-        branch($img, W * $tx, H * $ty, $ang, H * $len, $thick * SS, $depth, $cfg['tree'], $alpha);
+    // bãi cỏ
+    rectV($img, 0, $c['ground'] * H, W, H, $c['lawnTop'], $c['lawnBot'], 1.0);
+
+    drawMansion($img, $c['mansion']);
+
+    // lối vào loe dần về phía người xem
+    softPoly($img, [
+        [($c['mansion']['x'] - 0.045) * W, $c['ground'] * H],
+        [($c['mansion']['x'] + 0.045) * W, $c['ground'] * H],
+        [($c['mansion']['x'] + 0.26) * W, H],
+        [($c['mansion']['x'] - 0.26) * W, H],
+    ], $c['driveTop'], $c['driveBot'], 0.95, $c['ground'] * H, H);
+
+    // hàng cây hai bên
+    foreach ($c['cypress'] as [$x, $y, $h]) {
+        cypress($img, $x, $y, $h, $c['tree'], 0.95);
+    }
+    foreach ($c['trees'] as [$x, $y, $h]) {
+        roundTree($img, $x, $y, $h, $c['tree'], 0.95);
     }
 
-    // mặt đất
-    $ground = makeRidge(H * 0.955, H * 0.03, 10, false, true, 1.0);
-    fillTerrain($img, $ground, hex($cfg['groundTop']), hex($cfg['groundBot']), 0.92);
-
-    // nhiều lớp sương chồng nhau
-    foreach ($cfg['fogBands'] as [$y, $th, $wob, $a]) {
-        fogBand($img, H * $y, $th * SS, $wob * SS, $cfg['fog'], $a);
+    // đèn lối đi
+    foreach ($c['lamps'] as [$lx, $ly, $lr]) {
+        softDisc($img, $lx * W, $ly * H, $lr * W, $c['lampGlow'], 0.55, 1.0, 1.9);
+        softDisc($img, $lx * W, $ly * H, $lr * W * 0.20, $c['lampGlow'], 0.95, 0.9, 1.3);
     }
 
-    // đốm ma trơi
-    for ($i = 0; $i < 16; $i++) {
-        $x = mt_rand(0, W);
-        $y = mt_rand((int) (H * 0.55), (int) (H * 0.95));
-        $r = (mt_rand(8, 20) / 10) * SS;
-        softDisc($img, (float) $x, (float) $y, $r, $cfg['wisp'], 0.55, 0.9, 1.3);
-        softDisc($img, (float) $x, (float) $y, $r * 9, $cfg['wisp'], 0.10, 1.0, 2.3);
-    }
+    fogBand($img, $c['ground'] * H + 0.02 * H, 40 * SS, 12 * SS, $c['haze'], 0.22);
+    fogBand($img, H * 0.99, 50 * SS, 8 * SS, $c['haze'], 0.16);
 }
 
-/** Đam Mỹ: gradient tím-hồng dịu + vòng tròn đồng tâm. */
-function motifConcentric($img, array $cfg): void
+/** rags-to-riches — xám xỉn dưới đáy, tháp vươn lên đỉnh vàng kim (tuỳ chọn hừng đông). */
+function motifAscend($img, array $c): void
 {
-    gradientFill($img, $cfg['sky']);
-    starField($img, 300, H * 0.86, hex('#FFF2FF'), 0.55);
+    gradientFill($img, $c['sky']);
 
-    $cx = W * $cfg['cx'];
-    $cy = H * $cfg['cy'];
-
-    softDisc($img, $cx, $cy, W * 1.0, $cfg['halo'], 0.34, 1.0, 2.3);
-
-    // Vòng đồng tâm kiểu gợn sóng: khoảng cách giãn dần, đa số rất mảnh,
-    // thỉnh thoảng một vòng đậm làm điểm nhấn -> tránh cảm giác "bia bắn".
-    $rings = $cfg['rings'];
-    for ($i = 0; $i < $rings; $i++) {
-        $t = $i / max(1, $rings - 1);
-        $radius = W * (0.075 + 0.80 * pow($t, 1.5));
-        $accent = ($i % 4 === 1);
-        $thick = SS * lerp(2.4, 0.85, $t) * ($accent ? 2.4 : 1.0);
-        $c = lerpColor($cfg['ringA'], $cfg['ringB'], pow($t, 0.75));
-        $a = lerp(0.40, 0.08, $t) * ($accent ? 1.0 : 0.42);
-        softRing($img, $cx, $cy, $radius, $thick, $c, $a);
+    if (! empty($c['sun'])) {
+        [$sx, $sy, $sr, $col, $core] = $c['sun'];
+        softDisc($img, $sx * W, $sy * H, $sr * W, $col, 0.45, 1.0, 2.0);
+        softDisc($img, $sx * W, $sy * H, $sr * W * 0.26, $core, 0.70, 0.9, 1.6);
     }
 
-    // lõi sáng
-    softDisc($img, $cx, $cy, W * 0.16, $cfg['core'], 0.34, 1.0, 2.0);
-    softDisc($img, $cx, $cy, W * 0.052, $cfg['core'], 0.62, 1.0, 1.5);
-    softDisc($img, $cx, $cy, W * 0.016, $cfg['core'], 0.90, 0.9, 1.2);
+    starField($img, $c['stars'] ?? 90, H * 0.20, $c['starColor'], 0.35);
 
-    // dải sáng mềm cắt ngang cho đỡ đơn điệu
-    fogBand($img, H * 0.26, 70 * SS, 28 * SS, $cfg['veil'], 0.14);
-    fogBand($img, H * 0.66, 96 * SS, 34 * SS, $cfg['veil'], 0.16);
+    // quầng vàng sau đỉnh tháp + tia sáng
+    softDisc($img, $c['crownX'] * W, $c['crownY'] * H, 0.62 * W, $c['gold'], 0.34, 1.0, 2.2);
+    lightRays($img, $c['crownX'], $c['crownY'], $c['rays'], 0.52, $c['gold'], 0.13);
 
-    bokehField($img, 22, $cfg['bokehPalette'], 0.16, 10, 48);
+    // phố xa (đồng thau) rồi phố gần (xám xỉn)
+    foreach ($c['bands'] as $band) {
+        skylineBand($img, $band);
+        fogBand($img, $band['baseY'] * H - 5 * SS, 26 * SS, 12 * SS, $c['haze'], $band['haze'] ?? 0.12);
+    }
 
-    // rặng núi mờ ở đáy: neo bố cục lại, giữ chất Tiên Hiệp
-    $far = makeRidge(H * 0.90, H * 0.11, 9, false, true, 1.2);
-    fillTerrain($img, $far, hex($cfg['ridgeFarTop']), hex($cfg['ridgeFarBot']), 0.62);
-    fogBand($img, H * 0.88, 34 * SS, 14 * SS, $cfg['veil'], 0.20);
+    heroTower($img, $c['tower']);
 
-    $near = makeRidge(H * 1.02, H * 0.12, 7, false, true, 1.1);
-    fillTerrain($img, $near, hex($cfg['ridgeNearTop']), hex($cfg['ridgeNearBot']), 0.95);
+    // đỉnh tháp rực sáng
+    softDisc($img, $c['crownX'] * W, $c['crownY'] * H, 0.16 * W, $c['gold'], 0.38, 1.0, 1.9);
+    softDisc($img, $c['crownX'] * W, $c['crownY'] * H, 0.05 * W, $c['goldCore'], 0.62, 1.0, 1.5);
+
+    // sương xám bám dưới đáy -> nhấn tương phản nghèo / giàu
+    fogBand($img, H * 0.905, 44 * SS, 16 * SS, $c['grime'], 0.14);
+    fogBand($img, H * 0.972, 52 * SS, 10 * SS, $c['grime'], 0.18);
+
+    // bụi vàng lấp lánh quanh đỉnh
+    for ($i = 0; $i < 120; $i++) {
+        $ang = rndf(0, 6.283);
+        $dist = pow(rnd(), 0.7) * 0.30 * W;
+        $x = $c['crownX'] * W + cos($ang) * $dist;
+        $y = $c['crownY'] * H + sin($ang) * $dist * 0.9;
+        softDisc($img, $x, $y, rndf(0.5, 1.8) * SS, $c['goldCore'], rndf(0.12, 0.55), 0.9, 1.3);
+    }
 }
 
 /* ────────────────────────────── Hậu kỳ ────────────────────────────── */
@@ -806,274 +1301,404 @@ function grain($img, int $w, int $h, int $amount): void
 /* ────────────────────────────── Cấu hình từng truyện ────────────────────────────── */
 
 /**
- * 10 slug khớp với StorySeeder (Str::slug của tiêu đề).
- * Mỗi truyện chọn motif theo thể loại; truyện cùng thể loại đổi màu + bố cục.
+ * 10 slug khớp với StorySeeder. Motif chọn theo thể loại chính;
+ * truyện cùng thể loại đổi hẳn bố cục + bảng màu + hướng ánh sáng.
  */
 $covers = [
 
-    // Tiên Hiệp + Huyền Huyễn — núi chồng lớp, trăng lớn bên phải, tông tím đế vương
-    'cuu-chuyen-kiem-de' => ['mountain', [
-        // dải ấm dồn lên quanh y≈0.5 để lọt vào khoảng trời phía trên rặng núi
+    /* 1. The Janitor Owns the Company — secret-identity + ceo
+       Bóng lao công đơn độc dưới vệt đèn rọi, thành phố tối phía sau. Xám lam + hổ phách. */
+    'the-janitor-owns-the-company' => ['spotlight', [
         'sky' => [
-            [0.00, hex('#07050F')],
-            [0.18, hex('#150D30')],
-            [0.32, hex('#2A1550')],
-            [0.44, hex('#5A2668')],
-            [0.52, hex('#9E4478')],
-            [0.60, hex('#D9787E')],
-            [0.72, hex('#EDA487')],
-            [1.00, hex('#F6C9A2')],
+            [0.00, hex('#05080F')],
+            [0.22, hex('#0A1119')],
+            [0.42, hex('#121D2A')],
+            [0.60, hex('#1B2C3D')],
+            [0.76, hex('#2A4055')],
+            [1.00, hex('#3C5670')],
         ],
-        'stars' => 620, 'starColor' => hex('#EFE7FF'),
-        'glow' => hex('#F0A184'), 'glowX' => 0.62, 'glowY' => 0.55, 'glowR' => 0.85,
-        'moonX' => 0.70, 'moonY' => 0.24, 'moonR' => 0.175,
-        'moonCore' => hex('#FFF3DC'), 'moonGlow' => hex('#FFD9A8'),
-        'cloud' => hex('#C88FB8'),
-        'clouds' => [[0.27, 9, 20, 0.22], [0.34, 6, 26, 0.16], [0.20, 5, 18, 0.12]],
-        'mist' => hex('#C9A0D8'),
-        'layers' => [
-            [0.66, 0.16, 9,  '#4B2A63', '#3A2153', 0.62],
-            [0.75, 0.19, 7,  '#341C4C', '#28153B', 0.78],
-            [0.85, 0.22, 6,  '#22112F', '#180B22', 0.90],
-            [0.98, 0.20, 5,  '#120818', '#0A040E', 1.00],
-        ],
-    ]],
-
-    // Tiên Hiệp — núi chồng lớp, trăng lớn bên trái, tông ngọc bích / thanh u
-    'pham-nhan-tu-tien-lo' => ['mountain', [
-        'sky' => [
-            [0.00, hex('#04101A')],
-            [0.18, hex('#07202C')],
-            [0.32, hex('#0B3540')],
-            [0.42, hex('#135A54')],
-            [0.50, hex('#2C8A6E')],
-            [0.58, hex('#63B58C')],
-            [0.70, hex('#9AD2A6')],
-            [1.00, hex('#C8E8C6')],
-        ],
-        'stars' => 540, 'starColor' => hex('#E4FBF3'),
-        'glow' => hex('#7FD3AE'), 'glowX' => 0.38, 'glowY' => 0.50, 'glowR' => 0.80,
-        'moonX' => 0.27, 'moonY' => 0.20, 'moonR' => 0.145,
-        'moonCore' => hex('#F2FFF8'), 'moonGlow' => hex('#A9F0D6'),
-        'cloud' => hex('#7FC7BC'),
-        'clouds' => [[0.23, 7, 24, 0.20], [0.31, 5, 30, 0.14], [0.42, 8, 20, 0.12]],
-        'mist' => hex('#A8E4D4'),
-        'layers' => [
-            [0.60, 0.13, 11, '#2C5A5C', '#204547', 0.55],
-            [0.70, 0.17, 8,  '#1B4245', '#143134', 0.72],
-            [0.81, 0.21, 6,  '#102A2E', '#0A1D21', 0.88],
-            [0.97, 0.19, 5,  '#07171A', '#030C0E', 1.00],
-        ],
-    ]],
-
-    // Huyền Huyễn + Kiếm Hiệp — núi nhọn, trăng huyết, vệt chém từ trên trái xuống dưới phải
-    'de-ba-thuong-khung' => ['sword', [
-        'sky' => [
-            [0.00, hex('#0E0308')],
-            [0.16, hex('#26070F')],
-            [0.30, hex('#48101A')],
-            [0.40, hex('#7B2320')],
-            [0.48, hex('#B8461F')],
-            [0.56, hex('#E07A33')],
-            [0.68, hex('#F0A855')],
-            [1.00, hex('#F7C87A')],
-        ],
-        'stars' => 380, 'starColor' => hex('#FFE7D2'),
-        'glow' => hex('#FF8A3C'), 'glowX' => 0.50, 'glowY' => 0.47, 'glowR' => 0.80,
-        'moonX' => 0.72, 'moonY' => 0.19, 'moonR' => 0.155,
-        'moonCore' => hex('#FFD9A0'), 'moonGlow' => hex('#FF7A4E'),
-        'crescent' => false,
-        'mist' => hex('#E08A5A'),
-        'layers' => [
-            [0.72, 0.30, 6, '#54202A', '#3C141D', 0.72],
-            [0.86, 0.34, 5, '#2C0E16', '#1A060C', 0.90],
-            [1.00, 0.26, 4, '#150409', '#0A0104', 1.00],
-        ],
-        'slashGlow' => hex('#FFB067'), 'slashCore' => hex('#FFF6E4'),
-        'slashes' => [
-            [-0.05, 0.10, 1.05, 0.72, 1.0],
-            [0.10, -0.04, 1.02, 0.42, 0.45],
-        ],
-    ]],
-
-    // Kiếm Hiệp + Tiên Hiệp — núi nhọn, trăng khuyết, vệt chém ngược từ dưới trái lên, tông thép lạnh
-    'kiem-lai' => ['sword', [
-        'sky' => [
-            [0.00, hex('#04060E')],
-            [0.18, hex('#0A1322')],
-            [0.32, hex('#142438')],
-            [0.42, hex('#234058')],
-            [0.52, hex('#3E6B8E')],
-            [0.62, hex('#6E9CBC')],
-            [0.74, hex('#A8C8DC')],
-            [1.00, hex('#CDDFEC')],
-        ],
-        'stars' => 460, 'starColor' => hex('#E8F1FF'),
-        'glow' => hex('#88B4E0'), 'glowX' => 0.30, 'glowY' => 0.48, 'glowR' => 0.80,
-        'moonX' => 0.30, 'moonY' => 0.22, 'moonR' => 0.135,
-        'moonCore' => hex('#F4F9FF'), 'moonGlow' => hex('#9FC8F5'),
-        'crescent' => true,
-        'mist' => hex('#A9C4DD'),
-        'layers' => [
-            [0.70, 0.28, 7, '#2C3E56', '#1E2B3D', 0.66],
-            [0.84, 0.33, 5, '#182436', '#0E1725', 0.88],
-            [1.00, 0.25, 4, '#0A101C', '#04070E', 1.00],
-        ],
-        'slashGlow' => hex('#9FD4FF'), 'slashCore' => hex('#FFFFFF'),
-        'slashes' => [
-            [-0.04, 0.86, 1.04, 0.16, 1.0],
-            [-0.02, 0.98, 0.90, 0.44, 0.4],
-        ],
-    ]],
-
-    // Đô Thị + Trọng Sinh — skyline hoàng hôn xanh ngọc, cửa sổ hổ phách
-    'cuc-pham-than-y' => ['city', [
-        'sky' => [
-            [0.00, hex('#040D18')],
-            [0.18, hex('#071B28')],
-            [0.32, hex('#0B2E3A')],
-            [0.44, hex('#10505A')],
-            [0.54, hex('#1E7C7C')],
-            [0.64, hex('#3FA79B')],
-            [0.76, hex('#74C9B4')],
-            [1.00, hex('#A5E0C8')],
-        ],
-        'stars' => 260, 'starColor' => hex('#DFF6FF'),
-        'glow' => hex('#4FD1C5'), 'glowX' => 0.68, 'glowY' => 0.58, 'glowR' => 0.95,
-        'glow2' => hex('#2E7FA8'),
-        'moon' => true, 'moonX' => 0.24, 'moonY' => 0.16, 'moonR' => 0.085,
-        'moonCore' => hex('#EFFBFF'), 'moonGlow' => hex('#8FE3E0'),
-        'window' => hex('#FFD68A'),
-        'haze' => hex('#7FD8CE'),
+        'starColor' => hex('#D8E6F5'),
+        'glow' => hex('#F0B45E'), 'glowX' => 0.44, 'glowY' => 0.72,
+        'haze' => hex('#7E96B0'),
         'bands' => [
-            // baseY, minH, maxH, cTop, cBot, alpha, winAlpha, winChance, windows, minW, maxW
-            [0.78, 40, 170, '#123845', '#0C2733', 0.55, 0.26, 0.30, true, 22, 52],
-            [0.88, 60, 250, '#0B2029', '#06161D', 0.82, 0.55, 0.42, true, 26, 62],
-            [1.00, 70, 220, '#050E13', '#020607', 1.00, 0.70, 0.34, true, 34, 78],
+            ['baseY' => 0.775, 'minH' => 0.04, 'maxH' => 0.20, 'minW' => 0.030, 'maxW' => 0.070,
+                'cTop' => hex('#1B2837'), 'cBot' => hex('#111C29'), 'alpha' => 0.62,
+                'win' => hex('#E8A85A'), 'winAlpha' => 0.26, 'winChance' => 0.18, 'gap' => 0.006],
+            ['baseY' => 0.815, 'minH' => 0.05, 'maxH' => 0.26, 'minW' => 0.045, 'maxW' => 0.095,
+                'cTop' => hex('#0E1824'), 'cBot' => hex('#070E17'), 'alpha' => 0.92,
+                'win' => hex('#F2B463'), 'winAlpha' => 0.42, 'winChance' => 0.22, 'gap' => 0.008],
         ],
+        'floorY' => 0.815, 'floorTop' => hex('#101A26'), 'floorBot' => hex('#04070B'),
+        'beam' => hex('#FFD79B'), 'beamAlpha' => 0.115,
+        'beamX' => 0.435, 'beamL' => 0.215, 'beamR' => 0.665, 'beamBase' => 0.885,
+        'figX' => 0.435, 'feetY' => 0.878, 'figH' => 0.315, 'style' => 'worker', 'lean' => -0.4,
+        'figure' => hex('#04070C'), 'rim' => hex('#FFC978'),
+        'shadow' => hex('#020407'),
     ]],
 
-    // Đô Thị + Trọng Sinh — skyline đêm chàm/đỏ tía, nhà cao chọc trời, đèn lạnh
-    'trong-sinh-chi-do-thi-cuong-long' => ['city', [
+    /* 2. My Broke Husband Is a Billionaire — romance + billionaire
+       Bokeh đèn thành phố ấm, hai bóng người quay vào nhau. Hồng đào + cam ấm. */
+    'my-broke-husband-is-a-billionaire' => ['romance', [
         'sky' => [
-            [0.00, hex('#06061A')],
-            [0.16, hex('#0C0E30')],
-            [0.28, hex('#171448')],
-            [0.38, hex('#2E1A5C')],
-            [0.46, hex('#55276E')],
-            [0.54, hex('#8A3576')],
-            [0.64, hex('#C1587E')],
-            [0.78, hex('#E08A8A')],
-            [1.00, hex('#F0B79C')],
+            [0.00, hex('#2E1233')],
+            [0.20, hex('#5C1F45')],
+            [0.42, hex('#A03E5A')],
+            [0.62, hex('#DC7160')],
+            [0.80, hex('#F2A377')],
+            [1.00, hex('#FFD6A6')],
         ],
-        'stars' => 300, 'starColor' => hex('#EDE9FF'),
-        'glow' => hex('#E0568C'), 'glowX' => 0.34, 'glowY' => 0.47, 'glowR' => 0.90,
-        'glow2' => hex('#5B4BD6'),
-        'moon' => false, 'moonX' => 0.8, 'moonY' => 0.15, 'moonR' => 0.08,
-        'moonCore' => hex('#FFFFFF'), 'moonGlow' => hex('#FFFFFF'),
-        'window' => hex('#FFE1A6'),
-        'haze' => hex('#B77FD8'),
+        'sunX' => 0.70, 'sunY' => 0.34,
+        'sunGlow' => hex('#FFC49B'), 'sunCore' => hex('#FFF1D9'),
         'bands' => [
-            [0.74, 60, 250, '#2A1E4E', '#1B1338', 0.50, 0.24, 0.26, true, 18, 44],
-            [0.86, 90, 380, '#180F33', '#0E0821', 0.80, 0.52, 0.40, true, 24, 54],
-            [1.00, 110, 330, '#0A0518', '#04020A', 1.00, 0.68, 0.32, true, 30, 70],
+            ['baseY' => 0.845, 'minH' => 0.05, 'maxH' => 0.22, 'minW' => 0.030, 'maxW' => 0.075,
+                'cTop' => hex('#5B2B47'), 'cBot' => hex('#3A1A32'), 'alpha' => 0.50,
+                'win' => hex('#FFD08A'), 'winAlpha' => 0.42, 'winChance' => 0.28, 'gap' => 0.007],
+            ['baseY' => 0.885, 'minH' => 0.06, 'maxH' => 0.30, 'minW' => 0.045, 'maxW' => 0.100,
+                'cTop' => hex('#3C1B31'), 'cBot' => hex('#210E1F'), 'alpha' => 0.80,
+                'win' => hex('#FFDFA0'), 'winAlpha' => 0.58, 'winChance' => 0.34, 'gap' => 0.009],
         ],
+        'hazeY' => 0.855, 'haze' => hex('#FFD1B0'),
+        'bokeh' => 84, 'bokehFront' => 14, 'bokehR' => 68,
+        'bokehPalette' => [hex('#FFD9E6'), hex('#FFB4A0'), hex('#FFE7C4'), hex('#FFFFFF'), hex('#F79FB8')],
+        'groundY' => 0.918, 'groundTop' => hex('#25101F'), 'groundBot' => hex('#0C0410'),
+        'people' => [[0.435, 0.215, 'suit', 0.55], [0.560, 0.200, 'dress', -0.55]],
+        'figure' => hex('#160710'), 'rim' => hex('#FFC69A'), 'rimDx' => 2.4,
+        'dust' => hex('#FFF3E4'),
     ]],
 
-    // Ngôn Tình — bokeh hồng phấn, cánh hoa rơi, nắng chiều bên phải
-    'thinh-the-ngon-tinh' => ['romance', [
+    /* 3. The Beggar at the Board Meeting — ceo + secret-identity
+       Thành phố tài chính ban đêm, tháp kính vươn cao, mặt nước phản chiếu. Xanh đêm + vàng kim. */
+    'the-beggar-at-the-board-meeting' => ['skyline', [
         'sky' => [
-            [0.00, hex('#3A1140')],
-            [0.22, hex('#6E1E55')],
-            [0.46, hex('#B24170')],
-            [0.68, hex('#E4738A')],
-            [0.86, hex('#F7A98F')],
-            [1.00, hex('#FFD9B0')],
+            [0.00, hex('#02060F')],
+            [0.24, hex('#051129')],
+            [0.44, hex('#091E45')],
+            [0.62, hex('#0F2F5E')],
+            [0.78, hex('#17457B')],
+            [1.00, hex('#265E96')],
         ],
-        'sunX' => 0.72, 'sunY' => 0.30,
-        'sunGlow' => hex('#FFC9A8'), 'sunCore' => hex('#FFF2DC'),
-        'bokeh' => 78,
-        'bokehPalette' => [hex('#FFD9E6'), hex('#FFB4C8'), hex('#FFE7C4'), hex('#FFFFFF'), hex('#F6A8D0')],
-        'petals' => 62,
-        'petalPalette' => [hex('#FFC2D6'), hex('#FF9FBE'), hex('#FFE0E9'), hex('#F58BAE')],
-        'haze' => hex('#FFD9C8'),
-        'window' => hex('#FFE4B5'),
-        'skyline' => false,
+        'stars' => 300, 'starColor' => hex('#DCEBFF'),
+        'glows' => [
+            [0.28, 0.66, 0.80, hex('#2E77B8'), 0.42],
+            [0.74, 0.72, 0.62, hex('#FFC46B'), 0.30],
+        ],
+        'haze' => hex('#5E8FC4'), 'hazeAlpha' => 0.14, 'hazeAlpha2' => 0.20, 'hazeY' => 0.845,
+        'bands' => [
+            ['baseY' => 0.755, 'minH' => 0.05, 'maxH' => 0.22, 'minW' => 0.028, 'maxW' => 0.062,
+                'cTop' => hex('#123055'), 'cBot' => hex('#0A2140'), 'alpha' => 0.52,
+                'win' => hex('#FFCE7E'), 'winAlpha' => 0.26, 'winChance' => 0.26, 'gap' => 0.006, 'winScale' => 0.85],
+            ['baseY' => 0.812, 'minH' => 0.07, 'maxH' => 0.34, 'minW' => 0.040, 'maxW' => 0.082,
+                'cTop' => hex('#0B2244'), 'cBot' => hex('#05142C'), 'alpha' => 0.80,
+                'win' => hex('#FFD68A'), 'winAlpha' => 0.52, 'winChance' => 0.36, 'gap' => 0.008],
+            ['baseY' => 0.868, 'minH' => 0.08, 'maxH' => 0.30, 'minW' => 0.055, 'maxW' => 0.110,
+                'cTop' => hex('#061428'), 'cBot' => hex('#020814'), 'alpha' => 1.00,
+                'win' => hex('#FFC96B'), 'winAlpha' => 0.68, 'winChance' => 0.30, 'gap' => 0.010, 'winScale' => 1.15],
+        ],
+        'towers' => [
+            ['x' => 0.175, 'baseY' => 0.868, 'w' => 0.105, 'h' => 0.560, 'taper' => 0.68,
+                'cTop' => hex('#123863'), 'cBot' => hex('#040C1C'), 'glass' => hex('#8FC4F0'), 'glassAlpha' => 0.13,
+                'win' => hex('#FFCE79'), 'winAlpha' => 0.72, 'winChanceTop' => 0.52, 'winChanceBot' => 0.34,
+                'edge' => hex('#BFE0FF'), 'edgeAlpha' => 0.30, 'litSide' => 1,
+                'crown' => hex('#FFD98F'), 'crownAlpha' => 0.34, 'spire' => true, 'spireH' => 0.055, 'mullions' => 3],
+            ['x' => 0.615, 'baseY' => 0.868, 'w' => 0.140, 'h' => 0.430, 'taper' => 0.86,
+                'cTop' => hex('#0E2C52'), 'cBot' => hex('#030A18'), 'glass' => hex('#7FB4E4'), 'glassAlpha' => 0.11,
+                'win' => hex('#FFD68A'), 'winAlpha' => 0.66, 'winChanceTop' => 0.46, 'winChanceBot' => 0.30,
+                'edge' => hex('#A9D2F5'), 'edgeAlpha' => 0.26, 'litSide' => -1,
+                'crown' => hex('#FFCE7E'), 'crownAlpha' => 0.28, 'spire' => false, 'mullions' => 4],
+            ['x' => 0.845, 'baseY' => 0.868, 'w' => 0.095, 'h' => 0.330, 'taper' => 0.74,
+                'cTop' => hex('#0C2748'), 'cBot' => hex('#020813'), 'glass' => hex('#7FB4E4'), 'glassAlpha' => 0.10,
+                'win' => hex('#FFC96B'), 'winAlpha' => 0.60, 'winChanceTop' => 0.42, 'winChanceBot' => 0.26,
+                'edge' => hex('#9CC8F0'), 'edgeAlpha' => 0.24, 'litSide' => 1,
+                'crown' => hex('#FFD08A'), 'crownAlpha' => 0.26, 'spire' => true, 'spireH' => 0.035, 'mullions' => 3],
+        ],
+        'water' => true, 'waterY' => 0.872,
+        'waterTop' => hex('#061428'), 'waterBot' => hex('#020610'),
+        'waterTint' => hex('#071834'), 'reflect' => 0.40, 'ripple' => 2.6,
+        'streaks' => 30, 'streakColor' => hex('#FFD08A'),
     ]],
 
-    // Ngôn Tình + Đô Thị — bokeh cam san hô, có bóng thành phố mờ bên kia sông
-    'hoa-no-ben-kia-song' => ['romance', [
+    /* 4. Return of the Hidden Heir — revenge + billionaire
+       Bão vần vũ trên thành phố, sét lạnh bên phải. Xanh đen + đỏ thẫm. */
+    'return-of-the-hidden-heir' => ['storm', [
         'sky' => [
-            [0.00, hex('#1C2140')],
-            [0.20, hex('#42315C')],
-            [0.44, hex('#8A4F6A')],
-            [0.64, hex('#D07A6C')],
-            [0.82, hex('#F2A377')],
-            [1.00, hex('#FBD9A6')],
+            [0.00, hex('#04060D')],
+            [0.26, hex('#080D19')],
+            [0.48, hex('#101828')],
+            [0.66, hex('#1A2135')],
+            [0.82, hex('#2C1E2C')],
+            [1.00, hex('#4A1F24')],
         ],
-        'sunX' => 0.30, 'sunY' => 0.42,
-        'sunGlow' => hex('#FFB98A'), 'sunCore' => hex('#FFF0D2'),
-        'bokeh' => 62,
-        'bokehPalette' => [hex('#FFD2A8'), hex('#FFB98F'), hex('#FFE9CE'), hex('#FFFFFF'), hex('#E9909B')],
-        'petals' => 48,
-        'petalPalette' => [hex('#FFCDB2'), hex('#FFB49A'), hex('#FFE6D2'), hex('#EF9A8E')],
-        'haze' => hex('#FFCEA8'),
-        'window' => hex('#FFDFA8'),
-        'skyline' => true,
-        'skylineTop' => '#6E4A62', 'skylineBot' => '#4E3048',
+        'glows' => [
+            [0.55, 0.815, 0.66, hex('#8E1F24'), 0.40],
+            [0.20, 0.86, 0.40, hex('#5A1A22'), 0.24],
+        ],
+        'cloudY' => 0.26, 'cloudAmp' => 0.13, 'clouds' => 34,
+        'cloudDark' => hex('#080C16'), 'cloudRim' => hex('#4C5A78'),
+        'cloudAlpha' => 0.34, 'cloudRimAlpha' => 0.16,
+        'boltGlow' => hex('#A8CBFF'), 'boltCore' => hex('#FFFFFF'),
+        'bolts' => [
+            [0.655, -0.02, 0.545, 0.585, 0.055, 1.00, 3],
+            [0.845, 0.02, 0.795, 0.330, 0.030, 0.34, 1],
+        ],
+        'flashX' => 0.60, 'flashY' => 0.62,
+        'haze' => hex('#6B7794'),
+        'bands' => [
+            ['baseY' => 0.815, 'minH' => 0.05, 'maxH' => 0.22, 'minW' => 0.030, 'maxW' => 0.070,
+                'cTop' => hex('#151C2C'), 'cBot' => hex('#0B1220'), 'alpha' => 0.66,
+                'win' => hex('#E2764C'), 'winAlpha' => 0.24, 'winChance' => 0.16, 'gap' => 0.006],
+            ['baseY' => 0.880, 'minH' => 0.07, 'maxH' => 0.30, 'minW' => 0.042, 'maxW' => 0.090,
+                'cTop' => hex('#0C1120'), 'cBot' => hex('#050810'), 'alpha' => 0.90,
+                'win' => hex('#F08A55'), 'winAlpha' => 0.40, 'winChance' => 0.20, 'gap' => 0.008],
+            ['baseY' => 1.000, 'minH' => 0.09, 'maxH' => 0.26, 'minW' => 0.060, 'maxW' => 0.120,
+                'cTop' => hex('#06090F'), 'cBot' => hex('#020305'), 'alpha' => 1.00,
+                'win' => hex('#FF9E63'), 'winAlpha' => 0.52, 'winChance' => 0.14, 'gap' => 0.011, 'winScale' => 1.2],
+        ],
+        'rain' => 300, 'rainSlant' => -0.26, 'rainColor' => hex('#BBD2F0'), 'rainAlpha' => 0.20,
     ]],
 
-    // Linh Dị — sương mù nhiều lớp, trăng lạnh, cây khẳng khiu
-    'u-minh-quy-su' => ['horror', [
+    /* 5. She Laughed at His Old Car — romance + revenge
+       Hoàng hôn mận đỏ, hai bóng người đứng cách xa, vệt đèn xe quét ngang. Hồng đào + đỏ mận. */
+    'she-laughed-at-his-old-car' => ['romance', [
         'sky' => [
-            [0.00, hex('#04040A')],
-            [0.26, hex('#0A0A18')],
-            [0.52, hex('#141428')],
-            [0.72, hex('#1E2038')],
-            [0.88, hex('#2A2D46')],
-            [1.00, hex('#3A3E58')],
+            [0.00, hex('#180B22')],
+            [0.22, hex('#3A1230')],
+            [0.44, hex('#6E1E3C')],
+            [0.64, hex('#A93242')],
+            [0.82, hex('#D9644B')],
+            [1.00, hex('#F2A06C')],
         ],
-        'starColor' => hex('#C6CBE6'),
-        'moonX' => 0.63, 'moonY' => 0.21, 'moonR' => 0.125,
-        'moonCore' => hex('#DDE4F0'), 'moonGlow' => hex('#8E9CC4'),
-        'farTop' => '#141628', 'farBot' => '#0B0C18',
-        'groundTop' => '#0A0A14', 'groundBot' => '#040408',
-        'fog' => hex('#9AA4C4'),
-        'tree' => hex('#05050C'),
-        'wisp' => hex('#9FE8D8'),
+        'sunX' => 0.26, 'sunY' => 0.60,
+        'sunGlow' => hex('#FF9A70'), 'sunCore' => hex('#FFE0BC'),
+        'bands' => [
+            ['baseY' => 0.790, 'minH' => 0.04, 'maxH' => 0.19, 'minW' => 0.035, 'maxW' => 0.080,
+                'cTop' => hex('#48203A'), 'cBot' => hex('#2A1128'), 'alpha' => 0.55,
+                'win' => hex('#FFC178'), 'winAlpha' => 0.34, 'winChance' => 0.24, 'gap' => 0.008],
+            ['baseY' => 0.842, 'minH' => 0.05, 'maxH' => 0.24, 'minW' => 0.050, 'maxW' => 0.105,
+                'cTop' => hex('#2C1024'), 'cBot' => hex('#160616'), 'alpha' => 0.85,
+                'win' => hex('#FFB765'), 'winAlpha' => 0.50, 'winChance' => 0.26, 'gap' => 0.010],
+        ],
+        'hazeY' => 0.812, 'haze' => hex('#FFB79A'),
+        'bokeh' => 54, 'bokehFront' => 10, 'bokehR' => 52,
+        'bokehPalette' => [hex('#FFC9C0'), hex('#F58B7E'), hex('#FFE0B8'), hex('#FFFFFF'), hex('#C2506A')],
+        'streaks' => [
+            [0.905, 0.02, 0.62, hex('#FFF0D0'), 0.55, 1.6],
+            [0.928, 0.35, 0.99, hex('#FFC48A'), 0.45, 1.3],
+            [0.952, 0.05, 0.80, hex('#FF8A6A'), 0.35, 1.1],
+        ],
+        'lamps' => [
+            [0.615, 0.9045, 0.045, hex('#FFF3DA'), 0.55],
+            [0.665, 0.9055, 0.038, hex('#FFF3DA'), 0.45],
+            [0.345, 0.9285, 0.030, hex('#FFC48A'), 0.40],
+        ],
+        'groundY' => 0.884, 'groundTop' => hex('#1E0A1C'), 'groundBot' => hex('#080209'),
+        'people' => [[0.300, 0.196, 'dress', 0.35], [0.700, 0.222, 'coat', -0.30]],
+        'figure' => hex('#120510'), 'rim' => hex('#FF9E74'), 'rimDx' => -2.4,
+        'dust' => hex('#FFE8DC'),
+    ]],
+
+    /* 6. Son-in-Law of the Silver Empire — family-drama + billionaire
+       Dinh thự với ô cửa sáng ấm, hàng cây bách dọc lối vào. Nâu ấm + kem. */
+    'son-in-law-of-the-silver-empire' => ['mansion', [
+        'sky' => [
+            [0.00, hex('#160F09')],
+            [0.22, hex('#2C1D0F')],
+            [0.44, hex('#4E3418')],
+            [0.62, hex('#7A5024')],
+            [0.78, hex('#A97438')],
+            [0.92, hex('#D0A268')],
+            [1.00, hex('#EBCB9C')],
+        ],
+        'starColor' => hex('#F4E4C8'),
+        'glow' => hex('#E8B26A'), 'glowX' => 0.50, 'glowY' => 0.62,
+        'haze' => hex('#E5C79A'),
+        'treeLineY' => 0.660,
+        'farTop' => hex('#2A1D12'), 'farBot' => hex('#1A1009'),
+        'ground' => 0.760,
+        'lawnTop' => hex('#241A10'), 'lawnBot' => hex('#0D0805'),
+        'driveTop' => hex('#4A3A26'), 'driveBot' => hex('#8C7048'),
+        'tree' => hex('#150E07'),
+        'lampGlow' => hex('#FFD79A'),
+        'mansion' => [
+            'x' => 0.50, 'ground' => 0.760, 'w' => 0.400, 'bodyH' => 0.150, 'roofH' => 0.062,
+            'wallTop' => hex('#3E2C1A'), 'wallBot' => hex('#241809'),
+            'roof' => hex('#150D06'),
+            'column' => hex('#6E5535'), 'columnBot' => hex('#4A3822'),
+            'win' => hex('#FFD08A'), 'winAlpha' => 0.88,
+        ],
+        'cypress' => [
+            [0.155, 0.800, 0.180], [0.255, 0.782, 0.150], [0.330, 0.770, 0.128],
+            [0.845, 0.800, 0.185], [0.748, 0.783, 0.152], [0.672, 0.770, 0.126],
+        ],
         'trees' => [
-            [0.14, 0.99, -1.48, 0.30, 5.0, 6, 0.95],
-            [0.86, 0.99, -1.66, 0.26, 4.2, 6, 0.92],
-            [0.42, 1.00, -1.52, 0.17, 3.0, 5, 0.80],
+            [0.075, 0.845, 0.185], [0.925, 0.848, 0.190],
         ],
-        'fogBands' => [
-            [0.55, 40, 30, 0.14],
-            [0.64, 46, 26, 0.20],
-            [0.73, 54, 22, 0.26],
-            [0.83, 64, 18, 0.32],
-            [0.93, 74, 14, 0.36],
+        'lamps' => [
+            [0.395, 0.795, 0.030], [0.605, 0.795, 0.030],
+            [0.320, 0.865, 0.036], [0.680, 0.865, 0.036],
         ],
     ]],
 
-    // Tiên Hiệp + Đam Mỹ — gradient tím-hồng dịu + vòng tròn đồng tâm
-    'truong-sinh-bat-tu-kinh' => ['concentric', [
+    /* 7. The Delivery Boy Who Bought the Mall — rags-to-riches + secret-identity
+       Đáy xám xỉn, tháp giữa khung vươn lên đỉnh vàng kim rực rỡ. */
+    'the-delivery-boy-who-bought-the-mall' => ['ascend', [
         'sky' => [
-            [0.00, hex('#0B0722')],
-            [0.24, hex('#1B0F3C')],
-            [0.48, hex('#3A1A5E')],
-            [0.70, hex('#6B2E7C')],
-            [0.86, hex('#A5458C')],
-            [1.00, hex('#D97BA0')],
+            [0.00, hex('#FFEFC0')],
+            [0.14, hex('#F7CE72')],
+            [0.30, hex('#C89A4C')],
+            [0.48, hex('#8A7350')],
+            [0.66, hex('#5A5648')],
+            [0.82, hex('#3A3C42')],
+            [1.00, hex('#1F2126')],
         ],
-        'cx' => 0.50, 'cy' => 0.38,
-        'halo' => hex('#C77BE8'),
-        'ringA' => hex('#FFE3F4'), 'ringB' => hex('#7C6BF0'),
-        'core' => hex('#FFF0FA'),
-        'veil' => hex('#D9A8F0'),
-        'bokehPalette' => [hex('#E9C6FF'), hex('#FFC9E6'), hex('#B49CFF'), hex('#FFFFFF')],
-        'rings' => 15,
-        'ridgeFarTop' => '#5A2A6E', 'ridgeFarBot' => '#3E1A52',
-        'ridgeNearTop' => '#26103A', 'ridgeNearBot' => '#140820',
+        'starColor' => hex('#FFF3D2'),
+        'crownX' => 0.500, 'crownY' => 0.205, 'rays' => 16,
+        'gold' => hex('#FFD98A'), 'goldCore' => hex('#FFF6DC'),
+        'grime' => hex('#63656C'),
+        'haze' => hex('#8A8474'),
+        'bands' => [
+            ['baseY' => 0.760, 'minH' => 0.05, 'maxH' => 0.17, 'minW' => 0.035, 'maxW' => 0.080,
+                'cTop' => hex('#5E5140'), 'cBot' => hex('#3E3A2C'), 'alpha' => 0.62,
+                'win' => hex('#E8C98A'), 'winAlpha' => 0.34, 'winChance' => 0.22, 'gap' => 0.008, 'haze' => 0.15],
+            ['baseY' => 0.860, 'minH' => 0.05, 'maxH' => 0.16, 'minW' => 0.048, 'maxW' => 0.100,
+                'cTop' => hex('#3A3C42'), 'cBot' => hex('#24262B'), 'alpha' => 0.90,
+                'win' => hex('#B8B3A4'), 'winAlpha' => 0.26, 'winChance' => 0.16, 'gap' => 0.010, 'haze' => 0.16],
+            ['baseY' => 1.000, 'minH' => 0.06, 'maxH' => 0.14, 'minW' => 0.065, 'maxW' => 0.135,
+                'cTop' => hex('#212328'), 'cBot' => hex('#0E0F12'), 'alpha' => 1.00,
+                'win' => hex('#9AA0A8'), 'winAlpha' => 0.24, 'winChance' => 0.12, 'gap' => 0.012, 'haze' => 0.12],
+        ],
+        'tower' => [
+            'x' => 0.500, 'baseY' => 1.000, 'w' => 0.185, 'h' => 0.775, 'taper' => 0.66,
+            'cTop' => hex('#8A6222'), 'cBot' => hex('#191B20'), 'glass' => hex('#FFE0A0'), 'glassAlpha' => 0.16,
+            'win' => hex('#FFDF9C'), 'winAlpha' => 0.85, 'winChanceTop' => 0.78, 'winChanceBot' => 0.08,
+            'edge' => hex('#FFEFC4'), 'edgeAlpha' => 0.46, 'litSide' => -1,
+            'crown' => hex('#FFF0C0'), 'crownAlpha' => 0.40, 'spire' => true, 'spireH' => 0.045, 'mullions' => 4,
+        ],
+    ]],
+
+    /* 8. Ten Years Poor, One Day King — rags-to-riches + second-chance
+       Cũng là "xám dưới, vàng trên" nhưng là bình minh: tháp lệch phải, mặt trời mọc bên trái. */
+    'ten-years-poor-one-day-king' => ['ascend', [
+        'sky' => [
+            [0.00, hex('#B7D6EE')],
+            [0.16, hex('#E6C2A2')],
+            [0.32, hex('#F7C88C')],
+            [0.48, hex('#DCA672')],
+            [0.64, hex('#9A8064')],
+            [0.80, hex('#5E5A52')],
+            [1.00, hex('#2B2D31')],
+        ],
+        'stars' => 40, 'starColor' => hex('#EAF3FF'),
+        'sun' => [0.295, 0.375, 0.300, hex('#FFC08A'), hex('#FFF4DC')],
+        'crownX' => 0.680, 'crownY' => 0.270, 'rays' => 12,
+        'gold' => hex('#FFCE8A'), 'goldCore' => hex('#FFF3D6'),
+        'grime' => hex('#6E727A'),
+        'haze' => hex('#C6B49C'),
+        'bands' => [
+            ['baseY' => 0.735, 'minH' => 0.04, 'maxH' => 0.15, 'minW' => 0.030, 'maxW' => 0.070,
+                'cTop' => hex('#7A6A56'), 'cBot' => hex('#544B3E'), 'alpha' => 0.52,
+                'win' => hex('#FFE0AC'), 'winAlpha' => 0.26, 'winChance' => 0.18, 'gap' => 0.007, 'haze' => 0.18],
+            ['baseY' => 0.845, 'minH' => 0.05, 'maxH' => 0.18, 'minW' => 0.045, 'maxW' => 0.095,
+                'cTop' => hex('#413F3E'), 'cBot' => hex('#2A2926'), 'alpha' => 0.88,
+                'win' => hex('#D8CBB0'), 'winAlpha' => 0.28, 'winChance' => 0.15, 'gap' => 0.009, 'haze' => 0.17],
+            ['baseY' => 1.000, 'minH' => 0.05, 'maxH' => 0.13, 'minW' => 0.070, 'maxW' => 0.145,
+                'cTop' => hex('#242629'), 'cBot' => hex('#101113'), 'alpha' => 1.00,
+                'win' => hex('#A8A296'), 'winAlpha' => 0.22, 'winChance' => 0.11, 'gap' => 0.013, 'haze' => 0.13],
+        ],
+        'tower' => [
+            'x' => 0.680, 'baseY' => 1.000, 'w' => 0.158, 'h' => 0.705, 'taper' => 0.70,
+            'cTop' => hex('#7C5628'), 'cBot' => hex('#1E2024'), 'glass' => hex('#FFE9C0'), 'glassAlpha' => 0.15,
+            'win' => hex('#FFD498'), 'winAlpha' => 0.80, 'winChanceTop' => 0.70, 'winChanceBot' => 0.10,
+            'edge' => hex('#FFF2D2'), 'edgeAlpha' => 0.42, 'litSide' => -1,
+            'crown' => hex('#FFEDC4'), 'crownAlpha' => 0.34, 'spire' => true, 'spireH' => 0.040, 'mullions' => 3,
+        ],
+    ]],
+
+    /* 9. My Landlord Is a Secret CEO — romance + ceo
+       Vẫn là skyline nhưng ấm màu mận–hổ phách, nhìn từ sân thượng có hai bóng người. */
+    'my-landlord-is-a-secret-ceo' => ['skyline', [
+        'sky' => [
+            [0.00, hex('#0E0A20')],
+            [0.24, hex('#221236')],
+            [0.44, hex('#3E1B44')],
+            [0.62, hex('#6B2F4E')],
+            [0.78, hex('#A35059')],
+            [0.90, hex('#CE7C63')],
+            [1.00, hex('#EDA97E')],
+        ],
+        'stars' => 200, 'starColor' => hex('#FFE9F2'),
+        'glows' => [
+            [0.68, 0.640, 0.78, hex('#FFB870'), 0.44],
+            [0.24, 0.700, 0.56, hex('#B0567E'), 0.26],
+        ],
+        'haze' => hex('#D89A86'), 'hazeAlpha' => 0.16, 'hazeAlpha2' => 0.22, 'hazeY' => 0.800,
+        'bands' => [
+            ['baseY' => 0.680, 'minH' => 0.05, 'maxH' => 0.24, 'minW' => 0.026, 'maxW' => 0.058,
+                'cTop' => hex('#3E2340'), 'cBot' => hex('#2A1530'), 'alpha' => 0.50,
+                'win' => hex('#FFC886'), 'winAlpha' => 0.30, 'winChance' => 0.30, 'gap' => 0.005, 'winScale' => 0.85],
+            ['baseY' => 0.745, 'minH' => 0.07, 'maxH' => 0.36, 'minW' => 0.036, 'maxW' => 0.075,
+                'cTop' => hex('#2C1730'), 'cBot' => hex('#180A1E'), 'alpha' => 0.80,
+                'win' => hex('#FFD08A'), 'winAlpha' => 0.56, 'winChance' => 0.40, 'gap' => 0.007],
+            ['baseY' => 0.815, 'minH' => 0.08, 'maxH' => 0.30, 'minW' => 0.050, 'maxW' => 0.100,
+                'cTop' => hex('#180B1C'), 'cBot' => hex('#0A030C'), 'alpha' => 1.00,
+                'win' => hex('#FFBE72'), 'winAlpha' => 0.70, 'winChance' => 0.34, 'gap' => 0.009, 'winScale' => 1.10],
+        ],
+        'towers' => [
+            ['x' => 0.300, 'baseY' => 0.815, 'w' => 0.125, 'h' => 0.520, 'taper' => 0.72,
+                'cTop' => hex('#4A2444'), 'cBot' => hex('#100610'), 'glass' => hex('#FFC9A0'), 'glassAlpha' => 0.13,
+                'win' => hex('#FFD08A'), 'winAlpha' => 0.74, 'winChanceTop' => 0.56, 'winChanceBot' => 0.40,
+                'edge' => hex('#FFE0B8'), 'edgeAlpha' => 0.32, 'litSide' => 1,
+                'crown' => hex('#FFD9A0'), 'crownAlpha' => 0.36, 'spire' => true, 'spireH' => 0.050, 'mullions' => 3],
+            ['x' => 0.760, 'baseY' => 0.815, 'w' => 0.115, 'h' => 0.380, 'taper' => 0.88,
+                'cTop' => hex('#3A1C38'), 'cBot' => hex('#0C040C'), 'glass' => hex('#FFB894'), 'glassAlpha' => 0.11,
+                'win' => hex('#FFC680'), 'winAlpha' => 0.64, 'winChanceTop' => 0.48, 'winChanceBot' => 0.32,
+                'edge' => hex('#FFD2A8'), 'edgeAlpha' => 0.26, 'litSide' => -1,
+                'crown' => hex('#FFCE8E'), 'crownAlpha' => 0.28, 'spire' => false, 'mullions' => 4],
+        ],
+        'rooftop' => true, 'roofY' => 0.870,
+        'roofTop' => hex('#1A0C18'), 'roofBot' => hex('#070209'),
+        'railing' => hex('#F0A878'),
+        'people' => [[0.470, 0.150, 'suit', 0.5], [0.575, 0.140, 'dress', -0.5]],
+        'figure' => hex('#0A0309'), 'rim' => hex('#FFB27A'),
+    ]],
+
+    /* 10. The Pauper's Revenge Empire — revenge + second-chance
+        Bão đỏ thẫm, sét bên trái, phố dày đặc, vệt bình minh cam rạch ngang chân trời. */
+    'the-paupers-revenge-empire' => ['storm', [
+        'sky' => [
+            [0.00, hex('#08040E')],
+            [0.24, hex('#150612')],
+            [0.46, hex('#2A0A17')],
+            [0.64, hex('#48111C')],
+            [0.80, hex('#742020')],
+            [0.92, hex('#A8452C')],
+            [1.00, hex('#E68A54')],
+        ],
+        'glows' => [
+            [0.42, 0.885, 0.85, hex('#FF8A4E'), 0.27],
+            [0.80, 0.900, 0.45, hex('#C24A26'), 0.24],
+        ],
+        'cloudY' => 0.215, 'cloudAmp' => 0.155, 'clouds' => 40,
+        'cloudDark' => hex('#11060C'), 'cloudRim' => hex('#7A3030'),
+        'cloudAlpha' => 0.32, 'cloudRimAlpha' => 0.20,
+        'boltGlow' => hex('#FFC6A0'), 'boltCore' => hex('#FFF6EC'),
+        'bolts' => [
+            [0.285, -0.02, 0.375, 0.545, 0.060, 0.95, 3],
+            [0.115, 0.00, 0.155, 0.285, 0.028, 0.30, 1],
+        ],
+        'flashX' => 0.34, 'flashY' => 0.60,
+        'haze' => hex('#8A5A50'),
+        'bands' => [
+            ['baseY' => 0.770, 'minH' => 0.06, 'maxH' => 0.26, 'minW' => 0.025, 'maxW' => 0.058,
+                'cTop' => hex('#22111A'), 'cBot' => hex('#150A11'), 'alpha' => 0.62,
+                'win' => hex('#FF9E5E'), 'winAlpha' => 0.26, 'winChance' => 0.20, 'gap' => 0.005, 'winScale' => 0.85],
+            ['baseY' => 0.845, 'minH' => 0.08, 'maxH' => 0.34, 'minW' => 0.036, 'maxW' => 0.078,
+                'cTop' => hex('#160A11'), 'cBot' => hex('#0A0409'), 'alpha' => 0.90,
+                'win' => hex('#FF8A46'), 'winAlpha' => 0.44, 'winChance' => 0.22, 'gap' => 0.007],
+            ['baseY' => 1.000, 'minH' => 0.10, 'maxH' => 0.30, 'minW' => 0.052, 'maxW' => 0.108,
+                'cTop' => hex('#0B0409'), 'cBot' => hex('#030103'), 'alpha' => 1.00,
+                'win' => hex('#FF7A3C'), 'winAlpha' => 0.56, 'winChance' => 0.16, 'gap' => 0.010, 'winScale' => 1.15],
+        ],
+        'rain' => 190, 'rainSlant' => 0.22, 'rainColor' => hex('#FFC7A8'), 'rainAlpha' => 0.16,
     ]],
 ];
 
@@ -1091,12 +1716,12 @@ foreach ($covers as $slug => [$motif, $cfg]) {
     imageantialias($img, true);
 
     match ($motif) {
-        'mountain' => motifMountain($img, $cfg),
-        'sword' => motifSword($img, $cfg),
-        'city' => motifCity($img, $cfg),
+        'skyline' => motifSkyline($img, $cfg),
+        'spotlight' => motifSpotlight($img, $cfg),
         'romance' => motifRomance($img, $cfg),
-        'horror' => motifHorror($img, $cfg),
-        'concentric' => motifConcentric($img, $cfg),
+        'storm' => motifStorm($img, $cfg),
+        'mansion' => motifMansion($img, $cfg),
+        'ascend' => motifAscend($img, $cfg),
     };
 
     // Thu nhỏ về 600x800 -> khử răng cưa toàn ảnh
@@ -1105,14 +1730,14 @@ foreach ($covers as $slug => [$motif, $cfg]) {
     imagecopyresampled($out, $img, 0, 0, 0, 0, OUT_W, OUT_H, W, H);
     imagedestroy($img);
 
-    vignette($out, OUT_W, OUT_H, $motif === 'romance' ? 0.22 : 0.34, 0.50);
-    grain($out, OUT_W, OUT_H, $motif === 'horror' ? 5 : 3);
+    vignette($out, OUT_W, OUT_H, $motif === 'romance' ? 0.24 : 0.34, 0.50);
+    grain($out, OUT_W, OUT_H, $motif === 'storm' ? 4 : 3);
 
     $path = $outDir.'/'.$slug.'.jpg';
     imagejpeg($out, $path, 90);
     imagedestroy($out);
 
-    printf("  ✓ %-34s %s  (%d KB)\n", $slug, $motif, (int) round(filesize($path) / 1024));
+    printf("  ✓ %-38s %-9s (%d KB)\n", $slug, $motif, (int) round(filesize($path) / 1024));
 }
 
 printf("Xong: %d artwork (600x800, JPEG q90) tại %s — %.1fs\n", count($covers), $outDir, microtime(true) - $t0);

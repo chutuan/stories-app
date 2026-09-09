@@ -39,9 +39,9 @@ export interface ReaderSettingsSheetProps {
   onClose: () => void;
 }
 
-/** Đổi 1.75 -> "1,75" (dấu phẩy thập phân kiểu Việt). */
+/** Đổi 1.75 -> "1.75", 1.40 -> "1.4" (dấu chấm thập phân kiểu Anh). */
 function formatRatio(value: number): string {
-  return value.toFixed(2).replace(/0$/, '').replace('.', ',');
+  return value.toFixed(2).replace(/0$/, '');
 }
 
 export function ReaderSettingsSheet({ visible, onClose }: ReaderSettingsSheetProps) {
@@ -74,19 +74,19 @@ export function ReaderSettingsSheet({ visible, onClose }: ReaderSettingsSheetPro
         style={styles.backdrop}
         onPress={onClose}
         accessibilityRole="button"
-        accessibilityLabel="Đóng bảng cài đặt"
+        accessibilityLabel="Close reading settings"
       />
 
       <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, Spacing.lg) }]}>
         <View style={styles.grabber} />
 
         <View style={styles.titleRow}>
-          <Text style={styles.title}>Tùy chỉnh đọc</Text>
+          <Text style={styles.title}>Reading settings</Text>
           <Pressable
             onPress={onClose}
             hitSlop={10}
             accessibilityRole="button"
-            accessibilityLabel="Đóng"
+            accessibilityLabel="Close"
             style={({ pressed }) => [styles.closeBtn, pressed && styles.pressed]}
           >
             <Ionicons name="close" size={18} color={Palette.muted} />
@@ -107,15 +107,15 @@ export function ReaderSettingsSheet({ visible, onClose }: ReaderSettingsSheetPro
             minimumTrackTintColor={Palette.accent}
             maximumTrackTintColor={Palette.surfaceAlt}
             thumbTintColor={Palette.accentDeep}
-            accessibilityLabel="Độ sáng màn hình"
+            accessibilityLabel="Brightness"
           />
           <Ionicons name="sunny" size={22} color={Palette.coinDeep} />
         </View>
 
         {/* ---------- Cỡ chữ ---------- */}
-        <Section label="Cỡ chữ" value={`${fontSize}pt`}>
+        <Section label="Font size" value={`${fontSize}pt`}>
           <StepButton
-            accessibilityLabel="Giảm cỡ chữ"
+            accessibilityLabel="Decrease font size"
             disabled={fontSize <= FONT_SIZE_MIN}
             onPress={() => stepFontSize(-1)}
           >
@@ -123,7 +123,7 @@ export function ReaderSettingsSheet({ visible, onClose }: ReaderSettingsSheetPro
             <Ionicons name="remove" size={16} color={Palette.muted} />
           </StepButton>
           <StepButton
-            accessibilityLabel="Tăng cỡ chữ"
+            accessibilityLabel="Increase font size"
             disabled={fontSize >= FONT_SIZE_MAX}
             onPress={() => stepFontSize(1)}
           >
@@ -133,9 +133,9 @@ export function ReaderSettingsSheet({ visible, onClose }: ReaderSettingsSheetPro
         </Section>
 
         {/* ---------- Giãn dòng ---------- */}
-        <Section label="Giãn dòng" value={formatRatio(lineHeight)}>
+        <Section label="Line spacing" value={formatRatio(lineHeight)}>
           <StepButton
-            accessibilityLabel="Thu hẹp giãn dòng"
+            accessibilityLabel="Decrease line spacing"
             disabled={lineHeight <= LINE_HEIGHT_MIN}
             onPress={() => stepLineHeight(-1)}
           >
@@ -143,7 +143,7 @@ export function ReaderSettingsSheet({ visible, onClose }: ReaderSettingsSheetPro
             <Ionicons name="remove" size={16} color={Palette.muted} />
           </StepButton>
           <StepButton
-            accessibilityLabel="Nới rộng giãn dòng"
+            accessibilityLabel="Increase line spacing"
             disabled={lineHeight >= LINE_HEIGHT_MAX}
             onPress={() => stepLineHeight(1)}
           >
@@ -154,7 +154,7 @@ export function ReaderSettingsSheet({ visible, onClose }: ReaderSettingsSheetPro
 
         {/* ---------- Nền đọc ---------- */}
         <View style={styles.block}>
-          <Text style={styles.blockLabel}>Nền đọc</Text>
+          <Text style={styles.blockLabel}>Background</Text>
           <View style={styles.themeRow}>
             {READER_THEME_ORDER.map((key) => (
               <ThemeSwatch
@@ -170,11 +170,11 @@ export function ReaderSettingsSheet({ visible, onClose }: ReaderSettingsSheetPro
         <Pressable
           onPress={reset}
           accessibilityRole="button"
-          accessibilityLabel="Đặt lại về mặc định"
+          accessibilityLabel="Reset to defaults"
           style={({ pressed }) => [styles.resetBtn, pressed && styles.pressed]}
         >
           <Ionicons name="refresh" size={14} color={Palette.muted} />
-          <Text style={styles.resetText}>Đặt lại mặc định</Text>
+          <Text style={styles.resetText}>Reset defaults</Text>
         </Pressable>
       </View>
     </Modal>
@@ -264,7 +264,7 @@ function ThemeSwatch({
       onPress={onPress}
       accessibilityRole="radio"
       accessibilityState={{ selected }}
-      accessibilityLabel={`Nền ${t.label}`}
+      accessibilityLabel={`${t.label} background`}
       style={({ pressed }) => [styles.swatchWrap, pressed && styles.pressed]}
     >
       <View

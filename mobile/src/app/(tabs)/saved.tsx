@@ -21,6 +21,7 @@ import {
   Typography,
 } from '@/constants/theme';
 import { getStory, type Story } from '@/lib/api';
+import { plural } from '@/lib/format';
 import { useWallet } from '@/store/wallet';
 
 /** Số thẻ giả hiển thị khi đang tải. */
@@ -75,11 +76,11 @@ export default function SavedScreen() {
   return (
     <View style={[styles.screen, { paddingTop: insets.top + Spacing.sm }]}>
       <View style={styles.header}>
-        <Text style={styles.heading}>Đã lưu</Text>
+        <Text style={styles.heading}>Library</Text>
         <Text style={styles.subheading}>
           {showSubtitle
-            ? `${stories.length} truyện trong tủ của bạn`
-            : 'Tủ truyện riêng của bạn, không cần đăng nhập'}
+            ? `${plural(stories.length, 'story', 'stories')} in your library`
+            : 'Your own shelf of stories, no account needed'}
         </Text>
       </View>
 
@@ -93,9 +94,9 @@ export default function SavedScreen() {
         <View style={styles.stateWrap}>
           <EmptyState
             icon="bookmark-outline"
-            title="Chưa lưu truyện nào"
-            description={'Mở một truyện rồi nhấn "Lưu truyện" để cất vào tủ, đọc lại bất cứ lúc nào.'}
-            actionLabel="Khám phá truyện"
+            title="Your library is empty"
+            description={'Open a story and tap "Save" to keep it here and read it anytime.'}
+            actionLabel="Discover stories"
             onAction={() => router.navigate('/')}
           />
         </View>

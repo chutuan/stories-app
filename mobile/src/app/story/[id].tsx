@@ -26,6 +26,7 @@ import {
   Spacing,
 } from '@/constants/theme';
 import { getStory, type ChapterMeta, type Story } from '@/lib/api';
+import { formatCoins, formatViews, plural, storyStatusLabel } from '@/lib/format';
 import { COIN_PER_CHAPTER, useWallet } from '@/store/wallet';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
@@ -46,15 +47,6 @@ const COVER_WIDTH = 150;
 const DESC_LINES = 4;
 /** Mô tả dài hơn ngần này ký tự thì mới hiện nút "Xem thêm". */
 const DESC_TOGGLE_MIN = 165;
-
-/** 1,2 N · 3,4 Tr — rút gọn số lớn theo cách viết tiếng Việt. */
-function formatCount(value: number): string {
-  if (!Number.isFinite(value) || value <= 0) return '0';
-  const short = (n: number) => n.toFixed(1).replace(/\.0$/, '').replace('.', ',');
-  if (value >= 1_000_000) return `${short(value / 1_000_000)} Tr`;
-  if (value >= 1_000) return `${short(value / 1_000)} N`;
-  return String(Math.round(value));
-}
 
 /**
  * ⚠️ DỮ LIỆU MÔ PHỎNG — API hiện CHƯA có trường đánh giá (rating).
@@ -88,7 +80,7 @@ function starIcons(score10: number): IoniconName[] {
  */
 function chapterLabel(chapter: ChapterItem): string {
   const raw = (chapter.title ?? '').trim();
-  if (!raw) return `Chương ${chapter.number}`;
+  if (!raw) return `Chapter ${chapter.number}`;
   const prefix = new RegExp(`^(chương|chuong|chapter)\\s*0*${chapter.number}\\b\\s*[:.\\-–—]*\\s*`, 'i');
   const stripped = raw.replace(prefix, '').trim();
   return stripped.length > 0 ? stripped : raw;
@@ -116,7 +108,7 @@ export default function StoryDetailScreen() {
         setError(null);
       })
       .catch(() => {
-        if (alive) setError('Không tải được truyện.');
+        if (alive) setError('Unable to load this story.');
       })
       .finally(() => {
         if (alive) setLoading(false);
@@ -167,7 +159,7 @@ export default function StoryDetailScreen() {
   const backButton = (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="Quay lại"
+      accessibilityLabel="Back"
       onPress={() => router.back()}
       hitSlop={10}
       style={({ pressed }) => [
@@ -196,9 +188,9 @@ export default function StoryDetailScreen() {
         <EmptyState
           danger
           icon="cloud-offline-outline"
-          title="Không tải được truyện"
-          description={error ?? 'Không có dữ liệu để hiển thị. Kiểm tra kết nối rồi thử lại nhé.'}
-          actionLabel="Thử lại"
+          title="Couldn't load this story"
+          description={error ?? 'No data to show. Check your connection and try again.'}
+          actionLabel="Retry"
           onAction={retry}
         />
         {backButton}
@@ -278,7 +270,11 @@ export default function StoryDetailScreen() {
             <View
               style={styles.ratingRow}
               accessibilityRole="text"
-              accessibilityLabel={`Đánh giá ${rating.score.toFixed(1)} trên 10, ${rating.count} lượt`}>
+              accessibilityLabel={`Rated ${rating.score.toFixed(1)} out of 10 from ${plural(
+                rating.count,
+                'rating',
+                'ratings',
+              )}`}>
               <Text style={styles.ratingScore}>{rating.score.toFixed(1)}</Text>
               <View style={styles.stars}>
                 {starIcons(rating.score).map((name, i) => (
@@ -286,7 +282,7 @@ export default function StoryDetailScreen() {
                 ))}
               </View>
               <Text style={styles.ratingCount} numberOfLines={1}>
-                {formatCount(rating.count)} đánh giá
+                {formatViews(rating.count)} {rating.count === 1 ? 'rating' : 'ratings'}
               </Text>
             </View>
 
@@ -294,22 +290,22 @@ export default function StoryDetailScreen() {
             <View style={styles.statCard}>
               <StatCell
                 icon={completed ? 'checkmark-done-outline' : 'time-outline'}
-                value={story.status_label}
-                label="Trạng thái"
+                value={storyStatusLabel(story.status)}
+                label="Status"
                 tone={completed ? Palette.freeDeep : Palette.accentDeep}
               />
               <View style={styles.statDivider} />
               <StatCell
                 icon="layers-outline"
                 value={String(story.chapters_count)}
-                label="Số chương"
+                label="Chapters"
                 tone={Palette.text}
               />
               <View style={styles.statDivider} />
               <StatCell
                 icon="eye-outline"
-                value={formatCount(story.views)}
-                label="Lượt xem"
+                value={formatViews(story.views)}
+                label="Views"
                 tone={Palette.text}
               />
             </View>
@@ -327,17 +323,17 @@ export default function StoryDetailScreen() {
             <View style={styles.actions}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Đọc ngay"
+                accessibilityLabel="Read now"
                 onPress={() => openChapter(firstChapter)}
                 style={({ pressed }) => [styles.readBtn, pressed && styles.pressed]}>
                 <Ionicons name="book" size={17} color={Palette.onAccent} />
-                <Text style={styles.readBtnText}>Đọc ngay</Text>
+                <Text style={styles.readBtnText}>Read now</Text>
               </Pressable>
 
               <Pressable
                 accessibilityRole="button"
                 accessibilityState={{ selected: saved }}
-                accessibilityLabel={saved ? 'Bỏ lưu truyện' : 'Lưu truyện'}
+                accessibilityLabel={saved ? 'Remove from library' : 'Save to library'}
                 onPress={() => toggleSaved(story.id)}
                 style={({ pressed }) => [
                   styles.saveBtn,
@@ -350,7 +346,7 @@ export default function StoryDetailScreen() {
                   color={saved ? Palette.accentDeep : Palette.muted}
                 />
                 <Text style={[styles.saveBtnText, saved && styles.saveBtnTextActive]}>
-                  {saved ? 'Đã lưu' : 'Lưu truyện'}
+                  {saved ? 'Saved' : 'Save'}
                 </Text>
               </Pressable>
             </View>
@@ -359,7 +355,7 @@ export default function StoryDetailScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={
-                audioChapter ? `Nghe chương ${audioChapter.number}` : 'Chưa có audio'
+                audioChapter ? `Listen to chapter ${audioChapter.number}` : 'No audio yet'
               }
               accessibilityState={{ disabled: !audioChapter }}
               disabled={!audioChapter}
@@ -383,10 +379,10 @@ export default function StoryDetailScreen() {
               <Text
                 style={[styles.listenText, !audioChapter && styles.listenTextDisabled]}
                 numberOfLines={1}>
-                Nghe truyện
+                Listen
               </Text>
               <Text style={styles.listenHint} numberOfLines={1}>
-                {audioChapter ? `Chương ${audioChapter.number}` : 'Chưa có audio'}
+                {audioChapter ? `Chapter ${audioChapter.number}` : 'No audio yet'}
               </Text>
               {audioChapter ? (
                 <Ionicons name="chevron-forward" size={15} color={Palette.accentDeep} />
@@ -398,7 +394,7 @@ export default function StoryDetailScreen() {
         {/* ---------- Giới thiệu ---------- */}
         {description ? (
           <View style={styles.section}>
-            <SectionHeader title="Giới thiệu" icon="information-circle-outline" />
+            <SectionHeader title="Synopsis" icon="information-circle-outline" />
             <View style={styles.sectionBody}>
               <View style={styles.card}>
                 <Text
@@ -409,12 +405,12 @@ export default function StoryDetailScreen() {
                 {canToggleDesc ? (
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel={descExpanded ? 'Thu gọn giới thiệu' : 'Xem thêm giới thiệu'}
+                    accessibilityLabel={descExpanded ? 'Show less' : 'Show more'}
                     hitSlop={8}
                     onPress={() => setDescExpanded((v) => !v)}
                     style={({ pressed }) => [styles.descToggle, pressed && styles.pressed]}>
                     <Text style={styles.descToggleText}>
-                      {descExpanded ? 'Thu gọn' : 'Xem thêm'}
+                      {descExpanded ? 'Show less' : 'Show more'}
                     </Text>
                     <Ionicons
                       name={descExpanded ? 'chevron-up' : 'chevron-down'}
@@ -431,9 +427,11 @@ export default function StoryDetailScreen() {
         {/* ---------- Danh sách chương ---------- */}
         <View style={styles.section}>
           <SectionHeader
-            title="Danh sách chương"
+            title="Chapters"
             icon="list-outline"
-            subtitle={chapters.length > 0 ? `${chapters.length} chương` : undefined}
+            subtitle={
+              chapters.length > 0 ? plural(chapters.length, 'chapter', 'chapters') : undefined
+            }
           />
           {chapters.length > 0 ? (
             <View style={styles.sectionBody}>
@@ -452,8 +450,8 @@ export default function StoryDetailScreen() {
           ) : (
             <EmptyState
               icon="book-outline"
-              title="Chưa có chương nào"
-              description="Truyện này chưa được đăng chương. Quay lại sau nhé!"
+              title="No chapters yet"
+              description="This story has no published chapters. Check back later!"
             />
           )}
         </View>
@@ -515,7 +513,7 @@ function ChapterRow({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Chương ${chapter.number}: ${label}${hasAudio ? ', có audio' : ''}`}
+      accessibilityLabel={`Chapter ${chapter.number}: ${label}${hasAudio ? ', audio available' : ''}`}
       onPress={onPress}
       style={({ pressed }) => [
         styles.chapterRow,
@@ -545,11 +543,11 @@ function ChapterRow({
       ) : null}
 
       {free ? (
-        <Chip label="Miễn phí" variant="free" size="sm" />
+        <Chip label="Free" variant="free" size="sm" />
       ) : unlocked ? (
-        <Chip label="Đã mở" variant="accent" size="sm" icon="checkmark-circle" />
+        <Chip label="Unlocked" variant="accent" size="sm" icon="checkmark-circle" />
       ) : (
-        <Chip label={`${COIN_PER_CHAPTER} xu`} variant="coin" size="sm" icon="lock-closed" />
+        <Chip label={formatCoins(COIN_PER_CHAPTER)} variant="coin" size="sm" icon="lock-closed" />
       )}
     </Pressable>
   );
