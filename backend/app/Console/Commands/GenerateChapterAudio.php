@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Jobs\GenerateChapterAudio as GenerateChapterAudioJob;
 use App\Models\Chapter;
 use App\Models\Story;
 use App\Services\ChapterAudioGenerator;
@@ -18,6 +19,10 @@ use Throwable;
  *   php artisan chapters:audio --story=3 --chapter=1
  *   php artisan chapters:audio --story=3 --force   # tạo lại dù đã có
  *   php artisan chapters:audio --limit=5           # giới hạn số chương (tiết kiệm chi phí)
+ *   php artisan chapters:audio --story=3 --queue   # đẩy vào hàng đợi, cần `php artisan queue:work`
+ *
+ * Mặc định chạy ĐỒNG BỘ (tiện ở máy local/CLI vì thấy kết quả ngay). Trên production nên
+ * dùng --queue để không giữ tiến trình quá lâu và để worker tự retry khi OpenAI lỗi tạm thời.
  */
 class GenerateChapterAudio extends Command
 {
@@ -25,7 +30,8 @@ class GenerateChapterAudio extends Command
         {--story= : ID truyện}
         {--chapter= : Số chương (dùng kèm --story)}
         {--force : Tạo lại kể cả khi đã có audio}
-        {--limit= : Số chương tối đa xử lý}';
+        {--limit= : Số chương tối đa xử lý}
+        {--queue : Đẩy vào hàng đợi thay vì chạy ngay (cần chạy queue:work)}';
 
     protected $description = 'Sinh giọng đọc AI (OpenAI TTS) cho chương truyện';
 
@@ -60,6 +66,21 @@ class GenerateChapterAudio extends Command
             return self::SUCCESS;
         }
 
+        $force = (bool) $this->option('force');
+
+        if ($this->option('queue')) {
+            foreach ($chapters as $chapter) {
+                $chapter->forceFill(['audio_status' => 'queued', 'audio_error' => null])->save();
+                GenerateChapterAudioJob::dispatch($chapter, $force);
+                $this->line("  → đã xếp hàng: truyện {$chapter->story_id} chương {$chapter->number}");
+            }
+
+            $this->newLine();
+            $this->info("Đã đưa {$chapters->count()} chương vào hàng đợi. Chạy `php artisan queue:work --timeout=900` để xử lý.");
+
+            return self::SUCCESS;
+        }
+
         $this->info("Sẽ tạo audio cho {$chapters->count()} chương.");
         $ok = 0;
         $failed = 0;
@@ -72,7 +93,7 @@ class GenerateChapterAudio extends Command
             $this->line("  → {$label} (giọng: {$profile['voice']})");
 
             try {
-                $path = $generator->generate($chapter, force: (bool) $this->option('force'));
+                $path = $generator->generate($chapter, force: $force);
                 $size = round(strlen((string) @file_get_contents(storage_path("app/public/{$path}"))) / 1024);
                 $this->info("    ✓ {$path} ({$size} KB)");
                 $ok++;

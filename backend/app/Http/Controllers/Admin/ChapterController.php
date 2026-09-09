@@ -3,9 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\GenerateChapterAudio;
 use App\Models\Chapter;
-use App\Services\ChapterAudioGenerator;
 use App\Models\Story;
+use App\Services\ChapterAudioGenerator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -79,7 +80,11 @@ class ChapterController extends Controller
         abort_if($chapter->story_id !== $story->id, 404);
 
         $this->deleteAudioFile($chapter);
-        $chapter->forceFill(['audio_path' => null])->save();
+        $chapter->forceFill([
+            'audio_path' => null,
+            'audio_status' => null,
+            'audio_error' => null,
+        ])->save();
 
         return redirect()->route('admin.stories.chapters.edit', [$story, $chapter])
             ->with('status', 'Đã xóa audio của chương.');
@@ -129,20 +134,34 @@ class ChapterController extends Controller
         }
     }
 
-    /** Sinh giọng đọc AI cho chương bằng OpenAI TTS. */
-    public function generateAudio(Story $story, Chapter $chapter, ChapterAudioGenerator $generator)
+    /**
+     * Đưa việc sinh giọng đọc AI vào HÀNG ĐỢI.
+     *
+     * Không gọi thẳng OpenAI trong request: mỗi chương mất hàng chục giây tới vài phút
+     * (nhiều đoạn + nối ffmpeg) -> nginx/php-fpm trên production sẽ timeout 502/504.
+     * Worker `php artisan queue:work` chạy job và cập nhật `chapters.audio_status`.
+     */
+    public function generateAudio(Story $story, Chapter $chapter, ChapterAudioGenerator $generator): RedirectResponse
     {
+        abort_if($chapter->story_id !== $story->id, 404);
+
         if ((string) config('services.openai.key') === '') {
             return back()->with('error', 'Chưa cấu hình OPENAI_API_KEY trong backend/.env');
         }
 
-        try {
-            $generator->generate($chapter, force: true);
-            $voice = $generator->profileFor($chapter)['voice'];
+        $chapter->forceFill([
+            'audio_status' => 'queued',
+            'audio_error' => null,
+        ])->save();
 
-            return back()->with('status', "Đã tạo giọng đọc cho chương {$chapter->number} (giọng {$voice}).");
-        } catch (\Throwable $e) {
-            return back()->with('error', 'Tạo audio thất bại: '.$e->getMessage());
-        }
+        GenerateChapterAudio::dispatch($chapter, true);
+
+        $voice = $generator->profileFor($chapter)['voice'];
+
+        return back()->with(
+            'status',
+            "Đã đưa vào hàng đợi: tạo giọng đọc cho chương {$chapter->number} (giọng {$voice}). ".
+            'Tải lại trang sau ít phút để xem kết quả.'
+        );
     }
 }

@@ -2,13 +2,14 @@ import Constants from 'expo-constants';
 
 /**
  * Base URL của REST API.
- * - Trên trình giả lập Android dùng `http://10.0.2.2:8000/api` (10.0.2.2 = localhost của máy host).
- * - Trên thiết bị thật dùng IP LAN của máy chạy backend, vd `http://192.168.1.10:8000/api`.
- * Cấu hình qua app.json > expo.extra.apiUrl.
+ * - Trên trình giả lập Android dùng `http://10.0.2.2:8001/api` (10.0.2.2 = localhost của máy host).
+ * - Trên thiết bị thật dùng IP LAN của máy chạy backend, vd `http://192.168.1.10:8001/api`.
+ * Cấu hình qua biến môi trường EXPO_PUBLIC_API_URL (app.config.js đọc biến này
+ * và đưa vào expo.extra.apiUrl). Xem .env.example và mục `env` trong eas.json.
  */
 export const API_URL: string =
   (Constants.expoConfig?.extra as { apiUrl?: string } | undefined)?.apiUrl ??
-  'http://localhost:8000/api';
+  'http://localhost:8001/api';
 
 // ---- Types (khớp SPEC §5) ----
 

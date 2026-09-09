@@ -31,7 +31,13 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
+.env.*
 .env*.local
+!.env.example
+
+# EAS / store credentials (KHONG BAO GIO commit; *.p8 / *.p12 da ignore o tren)
+google-play-service-account.json
 
 # typescript
 *.tsbuildinfo

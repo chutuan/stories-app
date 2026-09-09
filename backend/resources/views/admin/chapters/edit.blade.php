@@ -10,12 +10,13 @@
           action="{{ route('admin.stories.chapters.audio.destroy', [$story, $chapter]) }}" class="d-none">
         @csrf @method('DELETE')
     </form>
+@endif
 
+{{-- Form đưa việc tạo giọng đọc AI vào hàng đợi. Luôn có mặt, kể cả khi chương chưa có audio. --}}
 <form id="chapter-audio-generate" method="POST"
       action="{{ route('admin.stories.chapters.audio.generate', [$story, $chapter]) }}" class="d-none">
     @csrf
 </form>
-@endif
 
 <div class="card shadow-sm">
     <div class="card-body">

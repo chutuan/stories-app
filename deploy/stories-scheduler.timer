@@ -1,0 +1,39 @@
+# =============================================================================
+# Stories — timer gọi stories-scheduler.service mỗi phút
+# =============================================================================
+# Cài đặt:
+#   sudo cp deploy/stories-scheduler.service /etc/systemd/system/
+#   sudo cp deploy/stories-scheduler.timer   /etc/systemd/system/
+#   sudo sed -i 's#/var/www/stories/backend#DUONG-DAN-THAT#g' \
+#        /etc/systemd/system/stories-scheduler.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now stories-scheduler.timer
+#
+# Kiểm tra:  systemctl list-timers stories-scheduler.timer
+# Xem log:   journalctl -u stories-scheduler -f
+#
+# CHÚ Ý: enable cái .timer, KHÔNG enable cái .service (service là oneshot, nó chỉ
+# được timer gọi).
+#
+# --- Cách khác: dùng cron thay cho systemd timer -----------------------------
+# Nếu thích cron hơn thì bỏ qua 2 file scheduler này và chạy:
+#   sudo crontab -u www-data -e
+# rồi thêm đúng một dòng (nhớ thay đường dẫn):
+#   * * * * * cd /var/www/stories/backend && /usr/bin/php artisan schedule:run >> /dev/null 2>&1
+# Chỉ dùng MỘT trong hai cách, đừng bật cả cron lẫn timer.
+# =============================================================================
+
+[Unit]
+Description=Chay Stories Laravel scheduler moi phut
+Documentation=https://laravel.com/docs/12.x/scheduling
+
+[Timer]
+# minutely = *-*-* *:*:00 (đầu mỗi phút).
+OnCalendar=minutely
+AccuracySec=1s
+# Không chạy bù các lần bị bỏ lỡ lúc máy tắt: chạy bù schedule:run là vô nghĩa.
+Persistent=false
+Unit=stories-scheduler.service
+
+[Install]
+WantedBy=timers.target

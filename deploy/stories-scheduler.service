@@ -1,0 +1,39 @@
+# =============================================================================
+# Stories — Laravel scheduler (chạy 1 lần, được stories-scheduler.timer gọi)
+# =============================================================================
+# Cài đặt: xem stories-scheduler.timer
+#
+# PLACEHOLDER PHẢI THAY: /var/www/stories/backend
+#
+# `schedule:run` phải chạy MỖI PHÚT. Laravel tự quyết định trong phút đó có task
+# nào tới hạn hay không. Hiện routes/console.php chưa khai báo task định kỳ nào,
+# nên lệnh này chạy xong ngay lập tức — bật sẵn để sau này thêm task
+# (dọn audio mồ côi, thống kê lượt đọc...) là chạy được luôn.
+# =============================================================================
+
+[Unit]
+Description=Stories Laravel scheduler (php artisan schedule:run)
+Documentation=https://laravel.com/docs/12.x/scheduling
+After=network-online.target mysql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/stories/backend
+
+ExecStart=/usr/bin/php /var/www/stories/backend/artisan schedule:run --no-interaction
+
+# Một lần chạy không bao giờ được kéo dài quá 1 phút tới (tránh chồng lần chạy).
+TimeoutStartSec=55
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=stories-scheduler
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/var/www/stories/backend/storage /var/www/stories/backend/bootstrap/cache

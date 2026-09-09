@@ -8,6 +8,7 @@ use App\Models\Chapter;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
+use Throwable;
 
 /**
  * Sinh giọng đọc cho từng chương bằng OpenAI TTS (gpt-4o-mini-tts).
@@ -76,10 +77,45 @@ class ChapterAudioGenerator
     /**
      * Sinh MP3 cho 1 chương và lưu vào disk public.
      *
+     * Cập nhật `chapters.audio_status` xuyên suốt (processing -> done | failed) để admin
+     * theo dõi được khi chạy trong hàng đợi (App\Jobs\GenerateChapterAudio).
+     *
      * @param  bool  $force  ghi đè nếu chương đã có audio
      * @return string đường dẫn tương đối đã lưu (vd `audio/3/2.mp3`)
+     *
+     * @throws Throwable lỗi được ghi vào audio_status/audio_error rồi ném tiếp ra ngoài
      */
     public function generate(Chapter $chapter, bool $force = false): string
+    {
+        $this->markStatus($chapter, 'processing');
+
+        try {
+            $path = $this->run($chapter, $force);
+        } catch (Throwable $e) {
+            $this->markStatus($chapter, 'failed', $e->getMessage());
+
+            throw $e;
+        }
+
+        $this->markStatus($chapter, 'done');
+
+        return $path;
+    }
+
+    /**
+     * Ghi trạng thái sinh audio vào chương.
+     * Dùng forceFill vì audio_status/audio_error không nằm trong $fillable (chỉ hệ thống ghi).
+     */
+    private function markStatus(Chapter $chapter, string $status, ?string $error = null): void
+    {
+        $chapter->forceFill([
+            'audio_status' => $status,
+            'audio_error' => $error === null ? null : mb_substr($error, 0, 1000),
+        ])->save();
+    }
+
+    /** Phần việc thật sự: gọi OpenAI TTS rồi lưu file. */
+    private function run(Chapter $chapter, bool $force): string
     {
         $apiKey = (string) config('services.openai.key');
         if ($apiKey === '') {

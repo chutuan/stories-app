@@ -39,6 +39,9 @@ Mọi tên endpoint, tên field JSON phải khớp CHÍNH XÁC giữa 2 bên.
 - content (longtext)
 - audio_path (string, nullable) — đường dẫn file MP3 trong storage disk `public` (vd `audio/abc.mp3`).
   App KHÔNG đọc TTS trên máy: nghe chương = phát file MP3 do server cung cấp qua `audio_url`.
+- audio_status (string(20), nullable) — tiến trình sinh giọng đọc AI:
+  `null` (chưa từng chạy) | `queued` | `processing` | `done` | `failed`. Chỉ dùng cho admin, KHÔNG lộ ra API.
+- audio_error (text, nullable) — thông báo lỗi của lần chạy gần nhất (chỉ có nghĩa khi `audio_status = failed`).
 - timestamps
 
 ### category_story (pivot, many-to-many)
@@ -174,7 +177,11 @@ Nội dung 1 chương.
   - Upload file mới sẽ **thay** file cũ (xóa file cũ trên disk). Xóa chương / xóa truyện cũng dọn file audio.
   - Validate: `mimes:mp3,mpga,m4a,aac,wav,ogg`, tối đa 100MB — nhưng vẫn bị chặn bởi
     `upload_max_filesize`/`post_max_size` của PHP (mặc định 2M/8M), form có hiển thị giá trị hiện tại.
-  - Danh sách chương có cột **Audio** (🔊 Có / —).
+  - Danh sách chương có cột **Audio** (🔊 Có / —) kèm badge tiến trình sinh giọng đọc AI
+    (Đang chờ / Đang tạo / Lỗi — xem mục 9).
+  - Nút **🎙️ Tạo giọng đọc AI** chỉ **đưa vào hàng đợi** rồi trả về ngay
+    (`POST /admin/stories/{story}/chapters/{chapter}/audio/generate`, route name
+    `admin.stories.chapters.audio.generate`); form sửa chương hiện trạng thái + lỗi nếu có.
 - UI: Bootstrap 5 qua CDN (không cần build asset/npm).
 - Upload ảnh lưu vào `storage/app/public/stories`, chạy `php artisan storage:link`.
 
@@ -275,13 +282,45 @@ OPENAI_TTS_MODEL=gpt-4o-mini-tts
 
 ### Sinh audio
 ```bash
-php artisan chapters:audio                    # mọi chương chưa có audio
+php artisan chapters:audio                    # mọi chương chưa có audio (chạy ngay, đồng bộ)
 php artisan chapters:audio --story=3          # riêng 1 truyện
 php artisan chapters:audio --story=3 --chapter=1
 php artisan chapters:audio --limit=5          # giới hạn để kiểm soát chi phí
 php artisan chapters:audio --story=3 --force  # tạo lại đè lên bản cũ
+php artisan chapters:audio --story=3 --queue  # ĐẨY VÀO HÀNG ĐỢI thay vì chạy ngay
 ```
+Mặc định lệnh CLI chạy **đồng bộ** (tiện ở máy local vì thấy kết quả ngay); thêm `--queue` để
+xếp hàng như admin.
+
 Hoặc trong admin: sửa chương -> nút **🎙️ Tạo giọng đọc AI**.
+
+### Hàng đợi (bắt buộc trên production)
+Mỗi chương mất **hàng chục giây tới vài phút** (chương dài bị cắt nhiều đoạn, mỗi đoạn 1 request
+tới OpenAI + nối bằng ffmpeg). Chạy thẳng trong request HTTP thì nginx/php-fpm sẽ **timeout 502/504**,
+nên nút trong admin chỉ **dispatch job** rồi trả về ngay.
+
+- Job: `App\Jobs\GenerateChapterAudio` (`ShouldQueue`, `SerializesModels`) —
+  `$timeout = 900`, `$tries = 2`, `backoff() = 60` giây, `failed()` ghi log + đánh dấu chương `failed`.
+- Connection: `QUEUE_CONNECTION=database` (bảng `jobs` / `failed_jobs` do migration mặc định của Laravel tạo).
+- Worker (production nên chạy thường trú bằng systemd/supervisor):
+  ```bash
+  php artisan queue:work --queue=default --timeout=900 --tries=2
+  ```
+  `--timeout` của worker phải **>=** `$timeout` của job, nếu không worker sẽ giết job giữa chừng.
+- Xem/chạy lại job hỏng: `php artisan queue:failed`, `php artisan queue:retry <id>`.
+
+### Trạng thái `chapters.audio_status`
+| Giá trị | Ý nghĩa | Ai ghi |
+|---|---|---|
+| `null` | chưa từng đưa vào hàng đợi | — |
+| `queued` | đã dispatch, đang chờ worker | admin controller / lệnh `--queue` |
+| `processing` | worker đang gọi OpenAI TTS | `ChapterAudioGenerator::generate()` |
+| `done` | đã có file MP3 | `ChapterAudioGenerator::generate()` |
+| `failed` | lỗi; nội dung lỗi nằm ở `audio_error` | service (lúc ném lỗi) + `Job::failed()` (khi hết lượt thử) |
+
+Admin hiển thị trạng thái ở cột **Audio** của danh sách chương và ở form sửa chương
+(**Đang chờ / Đang tạo / Xong / Lỗi** + thông báo lỗi). Xóa audio của chương sẽ xóa luôn trạng thái.
+Chưa có `OPENAI_API_KEY` thì job kết thúc ở `failed` với `audio_error` báo thiếu key — đúng như thiết kế.
 
 ### Giọng theo thể loại
 `App\Services\ChapterAudioGenerator` chọn giọng + sắc thái theo thể loại truyện, dùng tham số
@@ -314,3 +353,5 @@ Ví dụ: *She Laughed at His Old Car* (romance + revenge) -> **revenge/ash**;
   ký tự/đoạn; các đoạn được nối lại bằng **ffmpeg** (có dự phòng nối nhị phân nếu máy không có ffmpeg).
 - File lưu `storage/app/public/audio/{story_id}/{number}.mp3`, ghi vào `chapters.audio_path`.
 - `audio_url` kèm `?v=<mtime>` chống cache giống ảnh bìa.
+- `ChapterAudioGenerator::generate()` bọc toàn bộ phần việc: đánh dấu `processing` khi bắt đầu,
+  `done` khi xong, `failed` + `audio_error` khi lỗi rồi ném tiếp lỗi ra ngoài (để worker retry).

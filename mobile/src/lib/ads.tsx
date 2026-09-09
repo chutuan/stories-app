@@ -8,12 +8,21 @@ import { FontSize, FontWeight, Palette, Radius, Spacing } from '@/constants/them
  * Trong Expo Go / web / khi chưa build native, native module không tồn tại.
  * Khi đó BannerAd hiển thị placeholder và showRewarded() trả thưởng ngay
  * để luồng xu vẫn test được. Khi có native build, dùng banner/rewarded thật
- * bằng Google TEST unit IDs (thay ID thật khi release).
+ * bằng unit ID lấy từ biến môi trường (fallback về Google TEST unit IDs).
  */
 
-// Google test unit IDs
+// Google test unit IDs — dùng khi chưa cấu hình biến môi trường.
 const BANNER_TEST_ID = 'ca-app-pub-3940256099942544/6300978111';
 const REWARDED_TEST_ID = 'ca-app-pub-3940256099942544/5224354917';
+
+/**
+ * Unit ID thật lấy từ biến môi trường EXPO_PUBLIC_* (Expo inline giá trị này
+ * vào bundle lúc build, nên phải viết nguyên `process.env.EXPO_PUBLIC_X`,
+ * không được destructure hay dựng chuỗi tên biến động).
+ * Chuỗi rỗng / không đặt biến -> fallback về ID TEST của Google.
+ */
+const BANNER_UNIT_ID = process.env.EXPO_PUBLIC_ADMOB_BANNER_ID || BANNER_TEST_ID;
+const REWARDED_UNIT_ID = process.env.EXPO_PUBLIC_ADMOB_REWARDED_ID || REWARDED_TEST_ID;
 
 type AdsModule = {
   default: () => { initialize: () => Promise<unknown> };
@@ -66,7 +75,7 @@ export function BannerAd() {
     const size = adsModule.BannerAdSize.ANCHORED_ADAPTIVE_BANNER ?? adsModule.BannerAdSize.BANNER;
     return (
       <View style={styles.bannerReal}>
-        <RealBanner unitId={BANNER_TEST_ID} size={size} />
+        <RealBanner unitId={BANNER_UNIT_ID} size={size} />
       </View>
     );
   }
@@ -93,7 +102,7 @@ export function showRewarded(): Promise<RewardedResult> {
   return new Promise<RewardedResult>((resolve) => {
     try {
       const mod = adsModule as AdsModule;
-      const rewarded = mod.RewardedAd.createForAdRequest(REWARDED_TEST_ID);
+      const rewarded = mod.RewardedAd.createForAdRequest(REWARDED_UNIT_ID);
       let earned = false;
       let settled = false;
 

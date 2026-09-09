@@ -14,6 +14,13 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo(fn () => route('admin.login'));
+
+        // Giới hạn tần suất cho toàn bộ API công khai /api.
+        // Ngưỡng được định nghĩa ở App\Providers\AppServiceProvider::configureRateLimiting()
+        // (RateLimiter tên 'api') và cấu hình trong config/api.php.
+        $middleware->api(append: [
+            'throttle:api',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

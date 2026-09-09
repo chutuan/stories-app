@@ -1,0 +1,73 @@
+# =============================================================================
+# Stories — Laravel queue worker
+# =============================================================================
+# Cài đặt:
+#   sudo cp deploy/stories-queue.service /etc/systemd/system/stories-queue.service
+#   sudo sed -i 's#/var/www/stories/backend#DUONG-DAN-THAT#g' /etc/systemd/system/stories-queue.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now stories-queue.service
+#
+# Xem log:   journalctl -u stories-queue -f
+# Trạng thái: systemctl status stories-queue
+#
+# PLACEHOLDER PHẢI THAY: /var/www/stories/backend -> thư mục chứa file `artisan`.
+#
+# Ghi chú: .env đang đặt QUEUE_CONNECTION=database, nên worker đọc bảng `jobs`
+# (đã có sẵn qua migration 0001_01_01_000002_create_jobs_table.php).
+#
+# SERVICE NÀY LÀ BẮT BUỘC, KHÔNG PHẢI TUỲ CHỌN.
+# Nút "Tạo giọng đọc AI" trong admin chỉ đẩy App\Jobs\GenerateChapterAudio vào hàng
+# đợi (`chapters.audio_status = 'queued'`) rồi trả về ngay. Chính worker này mới gọi
+# OpenAI TTS và ghép MP3 bằng ffmpeg. Worker không chạy = mọi chương kẹt vĩnh viễn ở
+# trạng thái "Đang chờ", không có thông báo lỗi nào.
+#
+# --timeout=900 khớp đúng với `public int $timeout = 900` khai báo trong job.
+# Worker phải có timeout >= timeout của job, nếu không job bị giết trước khi kịp xong.
+# --tries=2 cũng khớp `public int $tries = 2` (thử lại 1 lần khi OpenAI lỗi tạm thời).
+# =============================================================================
+
+[Unit]
+Description=Stories Laravel queue worker (queue=default)
+Documentation=https://laravel.com/docs/12.x/queues
+After=network-online.target mysql.service
+Wants=network-online.target
+# Không dùng Requires=mysql.service: nếu MySQL khởi động chậm, worker cứ restart
+# lại cho tới khi kết nối được, như vậy chịu lỗi tốt hơn.
+
+# Restart=always không bao giờ bị systemd bỏ cuộc vì "start request repeated
+# too quickly".
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/stories/backend
+
+ExecStart=/usr/bin/php /var/www/stories/backend/artisan queue:work --queue=default --sleep=3 --tries=2 --timeout=900
+
+# `php artisan queue:restart` gửi tín hiệu cho worker thoát êm sau khi xong job
+# hiện tại; systemd bật lại ngay. Đây là cách nạp code mới mà không giết job.
+Restart=always
+RestartSec=5
+
+KillSignal=SIGTERM
+# Cho worker đủ thời gian kết thúc job đang chạy (>= --timeout=900) trước khi
+# systemd dùng SIGKILL.
+TimeoutStopSec=960
+
+# Log ra journald.
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=stories-queue
+
+# --- Siết quyền (tuỳ chọn, an toàn với Laravel) ------------------------------
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+# Worker cần ghi vào storage/ (log, cache file, file MP3 sinh ra).
+ReadWritePaths=/var/www/stories/backend/storage /var/www/stories/backend/bootstrap/cache
+
+[Install]
+WantedBy=multi-user.target

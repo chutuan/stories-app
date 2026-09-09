@@ -37,8 +37,15 @@
                         <td class="text-center">
                             @if ($chapter->has_audio)
                                 <span class="badge bg-dark">🔊 Có</span>
-                            @else
+                            @elseif (! $chapter->audio_status_label)
                                 <span class="text-muted small">—</span>
+                            @endif
+                            {{-- Tiến trình sinh giọng đọc AI (job chạy trong hàng đợi). --}}
+                            @if ($chapter->audio_status_label && $chapter->audio_status !== 'done')
+                                <span class="badge {{ $chapter->audio_status_badge }}"
+                                      @if ($chapter->audio_status === 'failed') title="{{ $chapter->audio_error }}" @endif>
+                                    {{ $chapter->audio_status_label }}
+                                </span>
                             @endif
                         </td>
                         <td class="text-end">

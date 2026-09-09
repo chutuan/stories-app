@@ -1,0 +1,76 @@
+{
+  // eas.json chấp nhận comment (EAS CLI parse JSON5 khi JSON thường lỗi).
+  "cli": {
+    "version": ">= 16.0.0",
+    // "remote": EAS giữ ios.buildNumber / android.versionCode trên server và
+    // tự tăng. Nhờ vậy app.config.js không cần khai hai giá trị đó.
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      // Build dev client để chạy `npx expo start --dev-client` với native module
+      // (AdMob không chạy được trong Expo Go).
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        // Máy thật/simulator gọi backend chạy trên máy dev.
+        // Android emulator: đổi thành http://10.0.2.2:8001/api
+        // Thiết bị thật: đổi thành http://<IP-LAN-máy-dev>:8001/api
+        "EXPO_PUBLIC_API_URL": "http://localhost:8001/api"
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "simulator": true
+      }
+    },
+    "preview": {
+      // Bản test nội bộ: cài tay bằng file APK, không cần Play Store.
+      "distribution": "internal",
+      "env": {
+        // THAY bằng domain staging thật (bắt buộc https:// nếu test trên iOS).
+        "EXPO_PUBLIC_API_URL": "https://staging.example.com/api"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production": {
+      // Bản phát hành: TestFlight (iOS) + Play Internal Testing (Android).
+      // autoIncrement: EAS tự tăng ios.buildNumber và android.versionCode
+      // sau mỗi lần build, tránh bị store từ chối vì trùng số build.
+      "autoIncrement": true,
+      "android": {
+        // .aab là định dạng bắt buộc để upload lên Google Play.
+        "buildType": "app-bundle"
+      },
+      "env": {
+        // TODO: THAY https://api.example.com/api bằng domain API production thật.
+        // BẮT BUỘC https:// — iOS App Transport Security chặn HTTP thường.
+        "EXPO_PUBLIC_API_URL": "https://api.example.com/api",
+        // TODO: THAY bằng App ID + unit ID thật lấy trong bảng điều khiển AdMob.
+        // Để trống thì code tự fallback về ID TEST của Google (không ra doanh thu).
+        "EXPO_PUBLIC_ADMOB_ANDROID_APP_ID": "",
+        "EXPO_PUBLIC_ADMOB_IOS_APP_ID": "",
+        "EXPO_PUBLIC_ADMOB_BANNER_ID": "",
+        "EXPO_PUBLIC_ADMOB_REWARDED_ID": ""
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        // TODO: điền Apple ID, App Store Connect App ID (ascAppId) và
+        // Apple Team ID trước khi chạy `eas submit -p ios --profile production`.
+        // Có thể bỏ mục này và để EAS CLI hỏi trực tiếp lúc submit.
+      },
+      "android": {
+        // TODO: đặt đường dẫn service account key của Google Play, ví dụ:
+        // "serviceAccountKeyPath": "./google-play-service-account.json"
+        // (file này KHÔNG được commit — đã nằm trong .gitignore)
+        "track": "internal"
+      }
+    }
+  }
+}

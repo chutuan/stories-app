@@ -32,8 +32,24 @@
             </button>
             <span class="text-muted small">
                 Giọng chọn tự động theo thể loại truyện. Cần <code>OPENAI_API_KEY</code> trong <code>.env</code>.
+                Việc tạo chạy trong <strong>hàng đợi</strong>, tải lại trang để xem tiến trình.
             </span>
         </div>
+
+        {{-- Tiến trình của job sinh giọng đọc (chapters.audio_status). --}}
+        @if ($chapter->audio_status_label)
+            <div class="mb-2">
+                <span class="badge {{ $chapter->audio_status_badge }}">{{ $chapter->audio_status_label }}</span>
+                @if ($chapter->audio_status === 'queued')
+                    <span class="text-muted small">Đang chờ worker xử lý (<code>php artisan queue:work</code>).</span>
+                @elseif ($chapter->audio_status === 'processing')
+                    <span class="text-muted small">Đang gọi OpenAI TTS, có thể mất vài phút.</span>
+                @endif
+                @if ($chapter->audio_status === 'failed' && $chapter->audio_error)
+                    <div class="alert alert-danger py-2 px-3 mt-2 mb-0 small">{{ $chapter->audio_error }}</div>
+                @endif
+            </div>
+        @endif
     @endif
 
     <input type="file" name="audio" accept="audio/mpeg,audio/mp3,.mp3" class="form-control">
