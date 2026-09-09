@@ -64,9 +64,9 @@
   "submit": {
     "production": {
       "ios": {
-        // TODO: điền Apple ID, App Store Connect App ID (ascAppId) và
-        // Apple Team ID trước khi chạy `eas submit -p ios --profile production`.
-        // Có thể bỏ mục này và để EAS CLI hỏi trực tiếp lúc submit.
+        // Apple ID của APP RECORD trong App Store Connect (mục App Information),
+        // KHÔNG phải Apple ID tài khoản developer.
+        "ascAppId": "6810302346"
       },
       "android": {
         // TODO: đặt đường dẫn service account key của Google Play, ví dụ:
