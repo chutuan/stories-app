@@ -54,14 +54,14 @@ class StoryCoverGenerator
      * @var array<string, string>
      */
     private const PROFILES = [
-        'billionaire' => 'Cool, expensive cinematic lighting. Glass towers, marble, black car paint. Restrained palette of charcoal, steel blue and warm tungsten highlights. The frame should feel quietly powerful, never flashy.',
-        'ceo' => 'Corporate interior light: tall windows, cold daylight falling across a boardroom table, faint reflections in polished surfaces. Palette of slate grey, white and muted navy. Composed, formal, a little intimidating.',
-        'secret-identity' => 'Low-key lighting with strong shadow. Part of the subject held back in darkness or turned away, one clean rim light. Palette of deep blue-black and amber. The frame should withhold something.',
-        'romance' => 'Soft warm light, golden hour or lamplight, gentle bokeh. Palette of amber, blush and cream. Close, tender framing with shallow focus and a sense of intimacy.',
-        'revenge' => 'Hard directional light, deep contrast, cold colour grade. Palette of steel grey, black and a single cold highlight. Still, controlled tension in the posture — anger held in, not shown.',
-        'family-drama' => 'Natural domestic light from a window or a kitchen bulb. Lived-in, slightly cluttered interior. Palette of warm neutrals and faded colour. Honest, unglamorous, documentary feel.',
-        'rags-to-riches' => 'Early morning or late afternoon light on a working-class street. Dust, worn concrete, honest textures. Palette of ochre, faded denim blue and warm grey. Hopeful, forward-leaning framing.',
-        'second-chance' => 'Overcast diffuse light or the blue hour. Quiet, spacious composition with air around the subject. Palette of soft grey-blue and muted warm skin tones. Reflective and calm.',
+        'billionaire' => 'Night-time wealth with real colour: deep navy and near-black offset by warm gold spilling from chandeliers, headlights or a lit skyline behind him. Hard rim light along the jaw and shoulders so he cuts away from the dark. Cold blue shadow against warm gold highlight — never a flat grey night.',
+        'ceo' => 'Hard daylight raking through floor-to-ceiling glass, cutting sharp geometric shadows across the room and across his face. Steel grey and white, broken by ONE saturated accent — a deep red tie, amber whisky, a green sign light. Crisp, controlled, faintly intimidating.',
+        'secret-identity' => 'Split lighting: the face clearly and brightly lit from one side while the other falls into deep shadow. Teal shadow against warm amber key. Keep the face readable — the mystery comes from what is BEHIND him being expensive while he is not, never from hiding him in murk.',
+        'romance' => 'Golden-hour or lamplight with visible glow and gentle lens bloom around the highlights. Saturated amber, blush and cream, warm and rich rather than pale. Close framing, faces near each other, shallow focus melting the background.',
+        'revenge' => 'High contrast hard side light, saturated cold blue ground with ONE hot accent — brake lights, a fire, a lit doorway behind him. Rain, wet glass or drifting smoke to catch the light. Absolute stillness in the posture that reads as threat.',
+        'family-drama' => 'Warm practical light from a kitchen bulb or a window, rich saturated domestic colour — patterned wallpaper, worn wood, a bright tablecloth. Honest and lived-in, but never drab or grey. Faces close, caught mid-feeling.',
+        'rags-to-riches' => 'Low golden sun down a working street, long shadows, dust and haze catching the light. Saturated ochre, faded denim blue and warm concrete, strong contrast. Camera slightly below him so the frame lifts.',
+        'second-chance' => 'Blue hour: deep teal sky and street, with a warm amber window or streetlight glow as the single accent burning against it. Calm, spacious, cinematic. Cool ground, warm highlight, no muddy middle.',
     ];
 
     private const FALLBACK_PROFILE = 'Natural cinematic lighting, believable everyday setting, restrained colour grade, calm editorial framing.';
@@ -90,10 +90,13 @@ class StoryCoverGenerator
      */
     private const CONSTRAINTS = <<<'TXT'
     Style and technical requirements:
-    - A photorealistic editorial photograph, as if shot on a full-frame camera with an 85mm lens at f/2, natural depth of field, true-to-life skin texture with visible pores and imperfections.
-    - Real, ordinary-looking human beings with believable faces and body language. Not fashion models, not airbrushed, not symmetrical beauty. It must look like a photograph of real people, never an illustration, painting, 3D render, CGI or AI-art look.
-    - Vertical portrait composition, subject placed slightly low in the frame with clean headroom at the top, because a title will be overlaid there.
-    - No text, no letters, no numbers, no logos, no brand names, no watermarks, no captions, no signage anywhere in the image.
+    - ABSOLUTELY NO TEXT ANYWHERE. No letters, words, numbers, logos, brand names, signage, posters, newspapers, name plates, screens with writing or watermarks — including on buildings, clothing and props. If a surface would normally carry a sign, leave it blank.
+    - THUMBNAIL FIRST: this image is seen about 150 pixels wide on a phone, next to other covers. The main person must fill a large part of the frame, face clearly lit, eyes roughly in the upper half. No wide full-body shots, no small distant figures, no large empty areas.
+    - Make the subject separate instantly from the background: light them brighter than what is behind, or use a hard rim light along the head and shoulders.
+    - Rich saturated colour and real contrast between deep shadow and bright highlight. Avoid flat grey, muddy shadow, and a washed-out low-contrast look.
+    - A photorealistic photograph, as if shot on a full-frame camera with an 85mm lens at f/2: natural depth of field, true-to-life skin texture with visible pores and imperfections, believable wear on clothing. Never an illustration, painting, 3D render, CGI or AI-art look.
+    - Real, ordinary-looking people with expressive faces. Not fashion models, not airbrushed, not symmetrical beauty.
+    - Vertical 3:4 portrait. Keep the top-left corner and the bottom-right corner free of important detail — small badges are drawn over those two corners.
     - Do not depict any real, famous or identifiable person.
     TXT;
 
@@ -222,22 +225,33 @@ class StoryCoverGenerator
         ]));
 
         $system = <<<'TXT'
-        You are a photo editor choosing the cover shot for a story. You will be given a story's
-        title, genres, synopsis and the opening of its first chapter.
+        You are a photo editor picking the cover shot for a story that has to win a tap on a
+        crowded phone screen. You will be given a story's title, genres, synopsis and the opening
+        of its first chapter.
 
-        Pick ONE concrete visual moment that actually occurs in, or is directly implied by, that
-        material — never a generic stock idea. Then describe it as a single photograph.
+        Pick the single most CHARGED moment in that material — the instant of humiliation,
+        recognition, defiance or reveal. Never a calm establishing shot, never a generic stock
+        idea. Then describe it as one photograph.
+
+        The frame must carry three things at once:
+        1. One person close to camera with a clearly readable emotion on their face.
+        2. The contradiction this story runs on, with BOTH halves visible in the same frame — the
+           worn work clothes against the marble lobby, the cheap car under the glass tower, the one
+           calm face among panicking ones.
+        3. One strong light source and one strong colour.
 
         Answer with 60-110 words of plain prose, no headings, no bullet points, no quotation marks.
         Cover, in this order: who is in the frame (approximate age, build, hair, ethnicity if the
-        text indicates it), exactly what they are wearing, what they are physically doing, the
-        precise location and the objects around them, the time of day and light source, and the
-        camera framing (for example a medium shot from slightly below).
+        text indicates it), exactly what they wear and how worn it is, their expression and posture,
+        the location and the objects that carry the contradiction, the light source and its colour,
+        and the camera framing (for example a tight medium shot from slightly below).
 
-        Rules: at most two people. Describe only what a camera could see — no thoughts, no plot,
-        no names of the characters, no words that would appear as text in the picture. Keep the
-        clothing and setting consistent with the character's situation at that moment in the story:
-        if the text says the hero is being taken for a poor man, he must look genuinely poor.
+        Rules: at most two people, and one of them clearly dominant in the frame. Describe only
+        what a camera could see — no thoughts, no plot, no character names. NEVER describe any
+        text, sign, logo, brand, poster, name plate or screen with writing; if the setting would
+        normally have one, describe that surface as blank. Keep clothing and setting true to the
+        character's situation at that moment: if the text says he is taken for a poor man, he must
+        look genuinely poor.
         TXT;
 
         $response = Http::withToken($apiKey)
