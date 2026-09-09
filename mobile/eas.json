@@ -36,6 +36,18 @@
         "buildType": "apk"
       }
     },
+    "simulator": {
+      // Bản native chạy trên MÁY ẢO iOS, dùng để chụp ảnh App Store sạch:
+      // là app thật nên KHÔNG có nút dev của Expo Go như khi chạy qua Expo Go.
+      // Không đặt developmentClient -> bundle production, không có overlay dev.
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.tunastory.com/api"
+      }
+    },
     "production": {
       // Bản phát hành: TestFlight (iOS) + Play Internal Testing (Android).
       // autoIncrement: EAS tự tăng ios.buildNumber và android.versionCode
