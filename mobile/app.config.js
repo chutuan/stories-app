@@ -57,6 +57,19 @@ module.exports = {
     plugins: [
       'expo-router',
       [
+        // Nâng Kotlin lên 2.3.0. Lý do: react-native-google-mobile-ads 16.4 kéo về
+        // play-services-ads 25.4.0, thư viện này biên dịch bằng Kotlin metadata 2.3.0
+        // trong khi Expo SDK 57 mặc định compile bằng 2.1.0 -> task
+        // :react-native-google-mobile-ads:compileReleaseKotlin fail với
+        // "Module was compiled with an incompatible version of Kotlin".
+        'expo-build-properties',
+        {
+          android: {
+            kotlinVersion: '2.3.0',
+          },
+        },
+      ],
+      [
         'expo-splash-screen',
         {
           backgroundColor: '#FDF8F4',
