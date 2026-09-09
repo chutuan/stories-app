@@ -12,6 +12,7 @@ use App\Services\StoryIngestor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 /**
  * API GHI cho máy: một AI khác viết truyện xong thì gọi lần lượt các bước ở đây
@@ -77,6 +78,61 @@ class IngestController extends Controller
             ],
             'next' => 'Dùng slug này trong trường `categories` khi POST /api/ingest/stories',
         ], $created ? 201 : 200);
+    }
+
+    /**
+     * Liệt kê truyện, lọc theo trạng thái.
+     * GET /api/ingest/stories?status=ongoing
+     *
+     * Dành cho AI viết tiếp: `status=ongoing` cho ra những truyện chưa đóng, kèm
+     * `next_chapter_number` để biết viết tiếp từ chương nào mà không phải tự đếm.
+     * Cần nội dung các chương cũ để giữ mạch thì đọc qua API công khai
+     * `GET /api/stories/{id}/chapters/{number}`.
+     */
+    public function stories(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'status' => ['nullable', Rule::in(['ongoing', 'completed'])],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $stories = Story::query()
+            ->with('categories')
+            ->withCount('chapters')
+            ->withMax('chapters', 'number')
+            ->when(
+                $data['status'] ?? null,
+                fn ($query, string $status) => $query->where('status', $status)
+            )
+            // Truyện lâu chưa đụng tới lên trước: AI nên viết tiếp cái nguội nhất.
+            ->orderBy('updated_at')
+            ->limit((int) ($data['limit'] ?? 50))
+            ->get();
+
+        return response()->json([
+            'count' => $stories->count(),
+            'data' => $stories->map(fn (Story $story) => [
+                'id' => $story->id,
+                'slug' => $story->slug,
+                'title' => $story->title,
+                'author' => $story->author,
+                'description' => $story->description,
+                'status' => $story->status,
+                'categories' => $story->categories->pluck('slug'),
+                'free_chapters' => (int) $story->free_chapters,
+                'chapters_count' => (int) $story->chapters_count,
+                'latest_chapter_number' => $story->chapters_max_number !== null
+                    ? (int) $story->chapters_max_number
+                    : null,
+                // Số chương cần viết tiếp — dùng thẳng cho POST .../chapters.
+                'next_chapter_number' => (int) ($story->chapters_max_number ?? 0) + 1,
+                'thumbnail_url' => $story->thumbnail_url,
+                'cover_status' => $story->cover_status,
+                'updated_at' => optional($story->updated_at)->toISOString(),
+            ]),
+            'next' => 'Viết tiếp: POST /api/ingest/stories/{id}/chapters với number = next_chapter_number. '
+                .'Xong hẳn thì POST /api/ingest/stories với cùng slug và status = "completed".',
+        ]);
     }
 
     /**
@@ -176,13 +232,9 @@ class IngestController extends Controller
     {
         $story->load(['categories', 'chapters']);
 
-        $now = now();
         $chapters = $story->chapters->map(fn (Chapter $c) => [
             'number' => $c->number,
             'title' => $c->title,
-            // null = đã đăng; thời điểm tương lai = đang chờ tới giờ.
-            'published_at' => optional($c->published_at)->toISOString(),
-            'is_published' => $c->published_at === null || $c->published_at <= $now,
             'audio_status' => $c->audio_status ?? ($c->audio_path ? 'done' : null),
             'audio_error' => $c->audio_error,
             'has_audio' => $c->audio_path !== null,
@@ -209,11 +261,6 @@ class IngestController extends Controller
             'author' => $story->author,
             'status' => $story->status,
             'free_chapters' => $story->free_chapters,
-            'publish_every_hours' => $story->publish_every_hours,
-            'publish_start_at' => optional($story->publish_start_at)->toISOString(),
-            'published_chapters_count' => $story->chapters
-                ->filter(fn (Chapter $c) => $c->published_at === null || $c->published_at <= now())
-                ->count(),
             'is_featured' => (bool) $story->is_featured,
             'categories' => $story->categories->pluck('slug'),
             'chapters_count' => $story->chapters->count(),

@@ -14,39 +14,24 @@ class HomeController extends Controller
     {
         $featured = Story::query()
             ->with('categories')
-            // CHỈ đếm chương đã tới giờ đăng: chương hẹn giờ chưa được lộ ra ngoài,
-            // kể cả qua con số. `pending_chapters_count` để suy ra truyện còn ra tiếp.
-            ->withCount([
-                'publishedChapters as chapters_count',
-                'pendingChapters as pending_chapters_count',
-            ])
-            ->withMax(['publishedChapters as chapters_max_number'], 'number')
+            ->withCount('chapters')
+            ->withMax('chapters', 'number')
             ->where('is_featured', true)
             ->latest('updated_at')
             ->first();
 
         $updated = Story::query()
             ->with('categories')
-            // CHỈ đếm chương đã tới giờ đăng: chương hẹn giờ chưa được lộ ra ngoài,
-            // kể cả qua con số. `pending_chapters_count` để suy ra truyện còn ra tiếp.
-            ->withCount([
-                'publishedChapters as chapters_count',
-                'pendingChapters as pending_chapters_count',
-            ])
-            ->withMax(['publishedChapters as chapters_max_number'], 'number')
+            ->withCount('chapters')
+            ->withMax('chapters', 'number')
             ->orderByDesc('updated_at')
             ->limit(10)
             ->get();
 
         $newest = Story::query()
             ->with('categories')
-            // CHỈ đếm chương đã tới giờ đăng: chương hẹn giờ chưa được lộ ra ngoài,
-            // kể cả qua con số. `pending_chapters_count` để suy ra truyện còn ra tiếp.
-            ->withCount([
-                'publishedChapters as chapters_count',
-                'pendingChapters as pending_chapters_count',
-            ])
-            ->withMax(['publishedChapters as chapters_max_number'], 'number')
+            ->withCount('chapters')
+            ->withMax('chapters', 'number')
             ->orderByDesc('created_at')
             ->limit(10)
             ->get();

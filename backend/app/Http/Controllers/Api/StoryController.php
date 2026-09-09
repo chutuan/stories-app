@@ -17,17 +17,19 @@ class StoryController extends Controller
 
         $query = Story::query()
             ->with('categories')
-            ->withCount([
-                'publishedChapters as chapters_count',
-                'pendingChapters as pending_chapters_count',
-            ])
-            ->withMax(['publishedChapters as chapters_max_number'], 'number');
+            ->withCount('chapters')
+            ->withMax('chapters', 'number');
 
         if ($search = trim((string) $request->query('search', ''))) {
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
                     ->orWhere('author', 'like', "%{$search}%");
             });
+        }
+
+        // status=ongoing | completed — cho phép app làm tab "Đang ra".
+        if (in_array($status = $request->query('status'), ['ongoing', 'completed'], true)) {
+            $query->where('status', $status);
         }
 
         if ($categorySlug = $request->query('category')) {
@@ -39,15 +41,8 @@ class StoryController extends Controller
         // free=1 -> chỉ truyện đọc miễn phí TOÀN BỘ: free_chapters >= tổng số chương.
         // Yêu cầu có ít nhất 1 chương (truyện rỗng không phải "đọc free toàn bộ").
         if ($request->boolean('free')) {
-            // So với số chương ĐÃ ĐĂNG: truyện hẹn giờ mà mới ra 1/10 chương thì
-            // với người đọc lúc này nó đang miễn phí toàn bộ phần đọc được.
-            $query->has('publishedChapters')
-                ->whereRaw(
-                    'stories.free_chapters >= (select count(*) from chapters'
-                    .' where chapters.story_id = stories.id'
-                    .' and (chapters.published_at is null or chapters.published_at <= ?))',
-                    [now()]
-                );
+            $query->has('chapters')
+                ->whereRaw('stories.free_chapters >= (select count(*) from chapters where chapters.story_id = stories.id)');
         }
 
         if ($sort === 'views') {
@@ -76,13 +71,10 @@ class StoryController extends Controller
             'categories',
             // Không nạp `content` của toàn bộ chương (payload rất nặng);
             // danh sách chương chỉ cần id/number/title + audio_path (-> has_audio).
-            'publishedChapters' => fn ($query) => $query->select('id', 'story_id', 'number', 'title', 'audio_path', 'published_at'),
+            'chapters' => fn ($query) => $query->select('id', 'story_id', 'number', 'title', 'audio_path'),
         ])
-            ->loadCount([
-                'publishedChapters as chapters_count',
-                'pendingChapters as pending_chapters_count',
-            ])
-            ->loadMax(['publishedChapters as chapters_max_number'], 'number');
+            ->loadCount('chapters')
+            ->loadMax('chapters', 'number');
 
         return new StoryResource($story);
     }

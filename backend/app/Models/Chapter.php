@@ -5,7 +5,6 @@ namespace App\Models;
 use App\Support\PublicFileUrl;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Chapter extends Model
@@ -16,31 +15,11 @@ class Chapter extends Model
         'title',
         'content',
         'audio_path',
-        'published_at',
     ];
 
     protected $casts = [
         'number' => 'integer',
-        'published_at' => 'datetime',
     ];
-
-    /**
-     * Chương ĐÃ tới giờ đăng.
-     * NULL = đăng ngay (dữ liệu có từ trước tính năng hẹn giờ), nên phải kèm
-     * whereNull chứ không chỉ so sánh thời gian.
-     */
-    public function scopePublished(Builder $query): Builder
-    {
-        return $query->where(fn (Builder $q) => $q
-            ->whereNull('published_at')
-            ->orWhere('published_at', '<=', now()));
-    }
-
-    /** Chương CHƯA tới giờ đăng. */
-    public function scopePending(Builder $query): Builder
-    {
-        return $query->whereNotNull('published_at')->where('published_at', '>', now());
-    }
 
     public function story(): BelongsTo
     {

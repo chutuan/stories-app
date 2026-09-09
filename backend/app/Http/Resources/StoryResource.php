@@ -15,12 +15,10 @@ class StoryResource extends JsonResource
             'slug' => $this->slug,
             'author' => $this->author,
             'thumbnail_url' => $this->thumbnail_url,
-            // Truyện luôn được nộp đủ chương (status = completed), nhưng chừng nào
-            // còn chương hẹn giờ thì với người đọc nó vẫn đang ra dần.
-            'status' => $this->publicStatus(),
-            'status_label' => $this->publicStatusLabel(),
+            'status' => $this->status,
+            'status_label' => $this->status_label,
             'categories' => CategoryResource::collection($this->whenLoaded('categories')),
-            'chapters_count' => (int) ($this->chapters_count ?? $this->publishedChapters()->count()),
+            'chapters_count' => (int) ($this->chapters_count ?? $this->chapters()->count()),
             'latest_chapter_number' => $this->resolveLatestChapterNumber(),
             'updated_at' => optional($this->updated_at)->toISOString(),
             'description' => $this->description,
@@ -28,8 +26,8 @@ class StoryResource extends JsonResource
             'views' => (int) $this->views,
             'is_featured' => (bool) $this->is_featured,
             'chapters' => $this->when(
-                $this->relationLoaded('publishedChapters'),
-                fn () => $this->publishedChapters->map(fn ($chapter) => [
+                $this->relationLoaded('chapters'),
+                fn () => $this->chapters->map(fn ($chapter) => [
                     'id' => $chapter->id,
                     'number' => (int) $chapter->number,
                     'title' => $chapter->title,
@@ -44,7 +42,7 @@ class StoryResource extends JsonResource
     {
         $value = $this->chapters_max_number
             ?? $this->latest_chapter_number
-            ?? $this->publishedChapters()->max('number');
+            ?? $this->chapters()->max('number');
 
         return $value !== null ? (int) $value : null;
     }

@@ -23,9 +23,9 @@ Stories, kèm đặt hàng ảnh bìa và giọng đọc. Đưa nguyên file nà
    Sửa xong nhớ đặt lại audio.
 4. **Truyện viết bằng tiếng Anh.** Giọng đọc và ảnh bìa đều dựng prompt tiếng Anh từ
    chính nội dung truyện.
-5. **Luôn nộp truyện ĐỦ CHƯƠNG.** Không có khái niệm truyện đang viết dở ở đây. Việc
-   nhả chương dần cho người đọc là do LỊCH ĐĂNG lo (xem bước 2), không phải do bạn
-   giữ lại chương.
+5. **Truyện có thể viết tiếp nhiều lần.** Đăng truyện với `status: "ongoing"` rồi
+   nạp thêm chương ở những lượt sau; xong hẳn thì gửi lại cùng `slug` kèm
+   `status: "completed"`. Muốn biết còn truyện nào dở thì gọi `GET /stories?status=ongoing`.
 6. **Một truyện một ảnh bìa, một chương một audio.** Hệ thống tự chặn trùng ở nhiều
    lớp, nên cứ gọi lại thoải mái; nhưng đừng chủ ý gửi `force` nếu không thực sự cần
    làm lại, vì mỗi lần làm lại là một lần tốn tiền.
@@ -85,31 +85,6 @@ POST /stories
 | `free_chapters` | — | số chương đầu miễn phí, mặc định `1` |
 | `is_featured` | — | `true` để lên hero trang chủ |
 | `categories` | — | mảng slug, tối đa 5 |
-| `publish_every_hours` | — | **nhịp nhả chương**, tính bằng giờ. `24` = mỗi ngày một chương. Bỏ trống = đăng hết ngay. |
-| `publish_start_at` | — | mốc của chương ĐẦU TIÊN (ISO 8601). Bỏ trống = ngay bây giờ. |
-
-### Lịch đăng hoạt động thế nào
-
-Bạn nộp cả 10 chương một lần, người đọc thấy dần:
-
-```
-publish_every_hours: 24, publish_start_at: bỏ trống
-
-  ch1  ngay bây giờ     -> đọc được
-  ch2  +24h             -> ẩn hoàn toàn
-  ch3  +48h             -> ẩn hoàn toàn
-```
-
-- Mỗi chương tính từ **chương liền trước** cộng `publish_every_hours`, nên thêm
-  chương lẻ về sau vẫn nối đúng vào đuôi lịch.
-- Chương chưa tới giờ bị giấu **triệt để** khỏi API công khai: không có trong mục
-  lục, không tính vào `chapters_count`, đọc thẳng URL thì trả `404`, và nút "chương
-  sau" của chương trước cũng không trỏ tới.
-- `status` mặc định là `completed` vì truyện đã đủ chương; nhưng **người đọc vẫn
-  thấy "Ongoing"** chừng nào còn chương đang chờ, và tự chuyển sang "Completed" khi
-  chương cuối tới giờ. Không cần bạn gọi lại để cập nhật.
-- Muốn một chương ra vào giờ riêng thì khai `published_at` cho chính chương đó ở
-  bước 3; giờ đã đặt sẽ **không bị dời** khi bạn nạp lại nội dung để sửa chữ.
 
 ```bash
 curl -X POST https://api.tunastory.com/api/ingest/stories \
@@ -127,6 +102,48 @@ curl -X POST https://api.tunastory.com/api/ingest/stories \
 
 `201` khi tạo mới, `200` khi cập nhật. Lấy `story.id` để dùng cho các bước sau.
 
+## Bước 2b — Xem còn truyện nào đang dở
+
+```
+GET /stories?status=ongoing&limit=20
+```
+
+Dùng khi bạn muốn **viết tiếp** thay vì mở truyện mới.
+
+```json
+{
+  "count": 2,
+  "data": [
+    {
+      "id": 3, "slug": "the-beggar-at-the-board-meeting",
+      "title": "The Beggar at the Board Meeting",
+      "description": "…", "status": "ongoing",
+      "categories": ["ceo", "secret-identity"],
+      "chapters_count": 4,
+      "latest_chapter_number": 4,
+      "next_chapter_number": 5
+    }
+  ]
+}
+```
+
+- `status` nhận `ongoing` hoặc `completed`; bỏ trống thì trả tất cả.
+- Sắp xếp theo lần sửa gần nhất **tăng dần** — truyện nguội lâu nhất lên đầu.
+- `next_chapter_number` dùng thẳng cho `number` ở bước 3, khỏi tự đếm.
+- Cần nội dung các chương cũ để giữ mạch thì đọc qua API công khai
+  `GET /api/stories/{id}/chapters/{number}` (không cần token).
+
+Viết xong chương cuối thì đóng truyện lại:
+
+```bash
+curl -X POST https://api.tunastory.com/api/ingest/stories \
+  -H "Authorization: Bearer $INGEST_TOKEN" \
+  -H 'Content-Type: application/json' -H 'Accept: application/json' \
+  -d '{"title": "The Beggar at the Board Meeting",
+       "slug": "the-beggar-at-the-board-meeting",
+       "status": "completed"}'
+```
+
 ## Bước 3 — Nạp từng chương
 
 ```
@@ -138,7 +155,6 @@ POST /stories/{story}/chapters
 | `number` | ✅ | 1, 2, 3… — cũng là khoá bất biến của chương |
 | `title` | ✅ | |
 | `content` | ✅ | văn xuôi tiếng Anh, ngăn đoạn bằng dòng trống, tối đa 200 000 ký tự |
-| `published_at` | — | ghi đè giờ đăng của riêng chương này (ISO 8601). Bỏ trống = tính từ chương trước. |
 
 Gọi lặp cho mỗi chương. Nạp lại cùng `number` là ghi đè.
 
@@ -164,18 +180,8 @@ GET /stories/{story}/status
 
 ```json
 {
-  "story": {
-    "id": 11, "cover_status": "done",
-    "thumbnail_url": "https://…/stories/….jpg?v=1788…",
-    "publish_every_hours": 24,
-    "published_chapters_count": 1
-  },
-  "chapters": [
-    { "number": 1, "audio_status": "done", "has_audio": true,
-      "published_at": null, "is_published": true },
-    { "number": 2, "audio_status": "done", "has_audio": true,
-      "published_at": "2026-09-11T13:00:00.000000Z", "is_published": false }
-  ],
+  "story": { "id": 11, "cover_status": "done", "thumbnail_url": "https://…/stories/….jpg?v=1788…" },
+  "chapters": [ { "number": 1, "audio_status": "done", "has_audio": true } ],
   "pending": false
 }
 ```
@@ -188,6 +194,8 @@ Hỏi lại mỗi 15–30 giây cho tới khi `pending` là `false`. Trạng th�
 
 ## Trình tự gọn cho một truyện mới
 
+Truyện mới:
+
 ```
 GET  /categories
 POST /categories              (chỉ khi thiếu thể loại phù hợp)
@@ -196,6 +204,15 @@ POST /stories/{id}/chapters   (lặp mỗi chương)
 POST /stories/{id}/cover
 POST /stories/{id}/audio
 GET  /stories/{id}/status     (lặp tới khi pending = false)
+```
+
+Viết tiếp truyện đang dở:
+
+```
+GET  /stories?status=ongoing                   -> chọn 1, lấy next_chapter_number
+POST /stories/{id}/chapters   (number = next_chapter_number)
+POST /stories/{id}/chapters/{number}/audio
+POST /stories  (cùng slug, status="completed") -> khi đã viết xong truyện
 ```
 
 ## Mã lỗi
@@ -257,7 +274,6 @@ Giống hệt thân request của API, chỉ gộp lại thành một gói:
 
 - Luật kiểm tra từng trường **y hệt** phần API ở trên (cùng một bộ mã).
 - `generate` bỏ trống thì mặc định đặt cả bìa lẫn audio.
-- `publish_every_hours` và `publish_start_at` đặt trong `story`, dùng y như phần API.
 - Cần thể loại chưa tồn tại thì khai ở `new_categories` **ngay tại gốc gói** — đây là
   bản đối ứng của `POST /categories`, và nó chạy trước khi truyện được kiểm tra:
 
