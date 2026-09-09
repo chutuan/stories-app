@@ -21,6 +21,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->api(append: [
             'throttle:api',
         ]);
+
+        // Chốt token cho nhóm route /api/ingest (AI viết truyện tự đăng bài).
+        $middleware->alias([
+            'ingest' => \App\Http\Middleware\VerifyIngestToken::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
