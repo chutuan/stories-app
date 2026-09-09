@@ -33,7 +33,6 @@ module.exports = {
     ios: {
       bundleIdentifier: 'com.chutuan.stories',
       supportsTablet: false,
-      icon: './assets/expo.icon',
       infoPlist: {
         // Bắt buộc khi dùng AdMob trên iOS 14+: App Tracking Transparency.
         // Thiếu chuỗi này App Store sẽ từ chối build có SDK quảng cáo.
@@ -44,7 +43,7 @@ module.exports = {
     android: {
       package: 'com.chutuan.stories',
       adaptiveIcon: {
-        backgroundColor: '#E6F4FE',
+        backgroundColor: '#F2703A',
         foregroundImage: './assets/images/android-icon-foreground.png',
         backgroundImage: './assets/images/android-icon-background.png',
         monochromeImage: './assets/images/android-icon-monochrome.png',
@@ -62,7 +61,7 @@ module.exports = {
         {
           backgroundColor: '#FDF8F4',
           image: './assets/images/splash-icon.png',
-          imageWidth: 76,
+          imageWidth: 180,
         },
       ],
       [
