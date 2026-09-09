@@ -68,6 +68,18 @@ return [
     'timezone' => 'UTC',
 
     /*
+    | Email hỗ trợ hiển thị trên trang công khai (privacy/terms). Store yêu cầu
+    | phải có kênh liên hệ thật.
+    */
+    'support_email' => env('SUPPORT_EMAIL', 'support@tunastory.com'),
+
+    /*
+    | Ngày cập nhật văn bản pháp lý, hiện trên trang Privacy và Terms.
+    */
+    'legal_updated' => env('LEGAL_UPDATED', '9 September 2026'),
+
+
+    /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------

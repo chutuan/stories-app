@@ -30,7 +30,7 @@
       "distribution": "internal",
       "env": {
         // THAY bằng domain staging thật (bắt buộc https:// nếu test trên iOS).
-        "EXPO_PUBLIC_API_URL": "https://staging.example.com/api"
+        "EXPO_PUBLIC_API_URL": "https://api.tunastory.com/api"
       },
       "android": {
         "buildType": "apk"
@@ -46,9 +46,9 @@
         "buildType": "app-bundle"
       },
       "env": {
-        // TODO: THAY https://api.example.com/api bằng domain API production thật.
+        // Domain API production. Đổi tại đây nếu sau này tách staging riêng.
         // BẮT BUỘC https:// — iOS App Transport Security chặn HTTP thường.
-        "EXPO_PUBLIC_API_URL": "https://api.example.com/api",
+        "EXPO_PUBLIC_API_URL": "https://api.tunastory.com/api",
         // TODO: THAY bằng App ID + unit ID thật lấy trong bảng điều khiển AdMob.
         // Để trống thì code tự fallback về ID TEST của Google (không ra doanh thu).
         "EXPO_PUBLIC_ADMOB_ANDROID_APP_ID": "",

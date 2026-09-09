@@ -16,7 +16,7 @@
 #
 # Hoặc tạo file /etc/stories-deploy.env (được nạp tự động nếu tồn tại):
 #   REPO_DIR=/var/www/stories
-#   HEALTH_URL=https://stories.example.com/up
+#   HEALTH_URL=https://api.tunastory.com/up
 #
 # Cờ tuỳ chọn:
 #   SKIP_MAINTENANCE=1   không bật chế độ bảo trì (API không bị 503 lúc deploy)
@@ -62,9 +62,9 @@ SCHEDULER_TIMER="${SCHEDULER_TIMER:-stories-scheduler.timer}"
 
 # Health check sau khi deploy. /up là health endpoint có sẵn của Laravel
 # (khai báo ở bootstrap/app.php: health: '/up').
-HEALTH_URL="${HEALTH_URL:-https://stories.example.com/up}"
+HEALTH_URL="${HEALTH_URL:-https://api.tunastory.com/up}"
 # Endpoint API thật mà app mobile gọi — kiểm tra luôn cả DB.
-API_HEALTH_URL="${API_HEALTH_URL:-https://stories.example.com/api/home}"
+API_HEALTH_URL="${API_HEALTH_URL:-https://api.tunastory.com/api/home}"
 
 SKIP_MAINTENANCE="${SKIP_MAINTENANCE:-0}"
 SKIP_MIGRATE="${SKIP_MIGRATE:-0}"

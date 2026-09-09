@@ -7,7 +7,11 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\StoryController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', fn () => redirect('/admin'));
+// Trang công khai — domain gốc phục vụ người dùng cuối và các trang bắt buộc
+// để nộp App Store / Google Play (privacy, terms). Admin nằm ở /admin.
+Route::view('/', 'public.home')->name('public.home');
+Route::view('/privacy', 'public.privacy')->name('public.privacy');
+Route::view('/terms', 'public.terms')->name('public.terms');
 
 Route::prefix('admin')->name('admin.')->group(function () {
     Route::get('login', [AuthController::class, 'showLogin'])->name('login');

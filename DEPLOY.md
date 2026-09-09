@@ -24,7 +24,7 @@ trước khi chạy:
 
 | Placeholder | Ý nghĩa | Ví dụ thật |
 |---|---|---|
-| `stories.example.com` | Domain của API + trang admin | `api.truyenhay.vn` |
+| `tunastory.com` | Domain của API + trang admin | `api.truyenhay.vn` |
 | `/var/www/stories` | Thư mục repo (chứa `.git`) | giữ nguyên cũng được |
 | `/var/www/stories/backend` | Thư mục Laravel (chứa `artisan`) | |
 | `git@github.com:chutuan/stories-app.git` | Repo git | |
@@ -231,7 +231,7 @@ sudo cp .env.production.example .env
 
 ```dotenv
 APP_KEY=                                   # để trống, bước 4.4 sinh tự động
-APP_URL=https://stories.example.com        # PHẢI là domain thật + https, không có / ở cuối
+APP_URL=https://tunastory.com        # PHẢI là domain thật + https, không có / ở cuối
 
 DB_DATABASE=stories
 DB_USERNAME=stories
@@ -240,7 +240,7 @@ DB_PASSWORD=<MAT_KHAU_DB>                  # mật khẩu tạo ở mục 3
 # Tài khoản quản trị khởi tạo (Database\Seeders\AdminUserSeeder đọc qua config/admin.php).
 # Trên APP_ENV=production, THIẾU ADMIN_PASSWORD thì seeder ném RuntimeException
 # thay vì tạo tài khoản mật khẩu yếu — đây là hành vi cố ý, đừng tìm cách lách.
-ADMIN_EMAIL=admin@stories.example.com
+ADMIN_EMAIL=admin@tunastory.com
 ADMIN_PASSWORD=<MAT_KHAU_ADMIN>
 
 # Giọng đọc AI. Để trống nếu chưa dùng — nút "Tạo giọng đọc AI" sẽ báo lỗi rõ ràng
@@ -254,7 +254,7 @@ API_RATE_LIMIT_READ=180
 
 # CORS (config/cors.php). API chỉ đọc và app mobile không bị CORS ràng buộc, nên '*'
 # chấp nhận được. Nếu sau này có web front-end thì liệt kê origin cụ thể, cách nhau
-# bằng dấu phẩy: https://app.example.com,https://admin.example.com
+# bằng dấu phẩy: https://tunastory.com,https://www.tunastory.com
 CORS_ALLOWED_ORIGINS=*
 ```
 
@@ -385,8 +385,8 @@ sudo nginx -t && sudo systemctl reload nginx
 Kiểm tra nhanh qua HTTP (lúc này chưa có TLS):
 
 ```bash
-curl -i http://stories.example.com/up          # kỳ vọng HTTP/1.1 200
-curl -s http://stories.example.com/api/home | head -c 300
+curl -i http://tunastory.com/up          # kỳ vọng HTTP/1.1 200
+curl -s http://tunastory.com/api/home | head -c 300
 ```
 
 Nếu `/up` trả 502: php-fpm chưa chạy hoặc sai đường dẫn socket.
@@ -401,8 +401,8 @@ Kiểm tra `ls -l /run/php/php8.2-fpm.sock` và `sudo tail -50 /var/log/nginx/st
 ```bash
 sudo apt install -y certbot python3-certbot-nginx
 
-sudo certbot --nginx -d stories.example.com \
-     --redirect --agree-tos -m ban@example.com --no-eff-email
+sudo certbot --nginx -d tunastory.com \
+     --redirect --agree-tos -m admin@tunastory.com --no-eff-email
 ```
 
 Certbot tự sửa file `/etc/nginx/sites-available/stories`: thêm block `443 ssl`, copy
@@ -414,8 +414,8 @@ cấu hình app sang, và thêm redirect `80 -> 443`. Không cần sửa tay.
 Kiểm tra:
 
 ```bash
-curl -I http://stories.example.com/up          # kỳ vọng 301 -> https://
-curl -I https://stories.example.com/up         # kỳ vọng 200
+curl -I http://tunastory.com/up          # kỳ vọng 301 -> https://
+curl -I https://tunastory.com/up         # kỳ vọng 200
 sudo systemctl status certbot.timer            # gia hạn tự động
 sudo certbot renew --dry-run
 ```
@@ -427,7 +427,7 @@ Trong `mobile/app.config.js`, API URL đọc từ biến môi trường
 Khi build EAS cho TestFlight/Play, đặt:
 
 ```
-EXPO_PUBLIC_API_URL=https://stories.example.com/api
+EXPO_PUBLIC_API_URL=https://tunastory.com/api
 ```
 
 Chi tiết các bước build và nộp store: **mục 14** cuối tài liệu này.
@@ -485,22 +485,22 @@ Nếu thích cron hơn systemd timer, xem hướng dẫn trong `deploy/stories-s
 
 ```bash
 # Health endpoint có sẵn của Laravel (khai báo ở bootstrap/app.php)
-curl -i https://stories.example.com/up
+curl -i https://tunastory.com/up
 
 # Các endpoint app mobile thật sự gọi
-curl -s https://stories.example.com/api/home       | head -c 400; echo
-curl -s https://stories.example.com/api/categories | head -c 300; echo
-curl -s https://stories.example.com/api/stories    | head -c 300; echo
+curl -s https://tunastory.com/api/home       | head -c 400; echo
+curl -s https://tunastory.com/api/categories | head -c 300; echo
+curl -s https://tunastory.com/api/stories    | head -c 300; echo
 
 # Rate limit đang hoạt động (phải thấy header X-RateLimit-*)
-curl -sI https://stories.example.com/api/home | grep -i ratelimit
+curl -sI https://tunastory.com/api/home | grep -i ratelimit
 
 # File tĩnh có cache header dài
-curl -sI "https://stories.example.com/storage/stories/the-janitor-owns-the-company.jpg" \
+curl -sI "https://tunastory.com/storage/stories/the-janitor-owns-the-company.jpg" \
   | grep -iE 'cache-control|content-type'
 ```
 
-Mở trình duyệt: `https://stories.example.com/admin/login` → đăng nhập bằng
+Mở trình duyệt: `https://tunastory.com/admin/login` → đăng nhập bằng
 `ADMIN_EMAIL` / `ADMIN_PASSWORD` đã đặt ở `.env`.
 
 Kiểm tra tính năng nặng nhất — sinh giọng đọc AI. Vào một chương, bấm
@@ -532,8 +532,8 @@ sudo tee /etc/stories-deploy.env >/dev/null <<'EOF'
 REPO_DIR=/var/www/stories
 GIT_BRANCH=main
 PHP_FPM_SERVICE=php8.2-fpm
-HEALTH_URL=https://stories.example.com/up
-API_HEALTH_URL=https://stories.example.com/api/home
+HEALTH_URL=https://tunastory.com/up
+API_HEALTH_URL=https://tunastory.com/api/home
 EOF
 sudo chmod 600 /etc/stories-deploy.env
 ```
@@ -584,7 +584,7 @@ Kiểm tra từng dòng, **không bỏ qua dòng nào**.
       ```bash
       cd /var/www/stories/backend
       sudo -u www-data php artisan tinker --execute="\
-        \App\Models\User::where('email','admin@stories.example.com')\
+        \App\Models\User::where('email','admin@tunastory.com')\
           ->update(['password' => 'MAT_KHAU_MOI_RAT_MANH']);"
       ```
       (Model `User` khai báo cast `'password' => 'hashed'` nên Laravel tự hash, **không**
@@ -598,11 +598,11 @@ Kiểm tra từng dòng, **không bỏ qua dòng nào**.
       ```
 - [ ] **`.env` không truy cập được qua web.**
       ```bash
-      curl -s -o /dev/null -w '%{http_code}\n' https://stories.example.com/.env   # kỳ vọng 403 hoặc 404
-      curl -s -o /dev/null -w '%{http_code}\n' https://stories.example.com/.git/config
+      curl -s -o /dev/null -w '%{http_code}\n' https://tunastory.com/.env   # kỳ vọng 403 hoặc 404
+      curl -s -o /dev/null -w '%{http_code}\n' https://tunastory.com/.git/config
       ```
 - [ ] **HTTPS đã bật và HTTP tự chuyển hướng sang HTTPS.**
-      `curl -I http://stories.example.com/up` phải trả `301`. Bắt buộc vì iOS ATS.
+      `curl -I http://tunastory.com/up` phải trả `301`. Bắt buộc vì iOS ATS.
 - [ ] **Gia hạn chứng chỉ tự động chạy.** `sudo certbot renew --dry-run` phải sạch.
 - [ ] **`SESSION_SECURE_COOKIE=true`** để cookie phiên admin không bao giờ đi qua HTTP.
 - [ ] **Rate limit API đang chạy.** `curl -sI https://.../api/home | grep -i ratelimit`
@@ -684,7 +684,7 @@ API `/api` **không có xác thực**. Endpoint
 nào cho bất kỳ ai gọi:
 
 ```bash
-curl -s https://stories.example.com/api/stories/1/chapters/3
+curl -s https://tunastory.com/api/stories/1/chapters/3
 ```
 
 Cơ chế "chương 1 miễn phí, chương 2+ khoá 10 xu" **hoàn toàn do client quản lý**: số xu
@@ -726,7 +726,7 @@ không còn nguy cơ 502/504. Đổi lại, hệ thống có một điểm phụ
   có `?v=<mtime>` nên an toàn), nhưng lưu lượng audio sẽ ăn hết băng thông VPS khi
   lượng người dùng tăng. Cân nhắc S3/R2 + CDN sau này.
 - **Chưa có giám sát / cảnh báo**. Tối thiểu nên dựng uptime check ngoài trỏ vào
-  `https://stories.example.com/up`.
+  `https://tunastory.com/up`.
 - **Chưa có tổng hợp log**. Log nằm rải ở `storage/logs/laravel.log`,
   `/var/log/nginx/stories.*.log` và `journalctl -u stories-queue`.
 - **Deploy có downtime ngắn** (chế độ bảo trì trong lúc `composer install` và
@@ -811,7 +811,7 @@ Kiểm tra lại: `npx expo config --type public | grep -A2 eas` phải thấy `
 Profile `production` hiện còn **giá trị mẫu**. Sửa mục `build.production.env`:
 
 ```json
-"EXPO_PUBLIC_API_URL": "https://stories.example.com/api",
+"EXPO_PUBLIC_API_URL": "https://tunastory.com/api",
 "EXPO_PUBLIC_ADMOB_ANDROID_APP_ID": "ca-app-pub-XXXX~YYYY",
 "EXPO_PUBLIC_ADMOB_IOS_APP_ID": "ca-app-pub-XXXX~ZZZZ",
 "EXPO_PUBLIC_ADMOB_BANNER_ID": "ca-app-pub-XXXX/AAAA",
@@ -843,7 +843,7 @@ hai giá trị đó trong `app.config.js`** — chỉ tăng `version` (`1.0.0`) 
 mới cho người dùng.
 
 Muốn bản APK cài tay để test nội bộ trước: `eas build -p android --profile preview`
-(nhớ sửa `EXPO_PUBLIC_API_URL` của profile `preview` khỏi `staging.example.com`).
+(nhớ sửa `EXPO_PUBLIC_API_URL` của profile `preview` khỏi `api.tunastory.com`).
 
 ### 14.5 Nộp store
 
