@@ -82,9 +82,11 @@ POST /stories
 | `author` | — | tên bút danh |
 | `description` | — | tóm tắt, tối đa 5000 ký tự |
 | `status` | — | `ongoing` (mặc định) hoặc `completed` |
-| `free_chapters` | — | số chương đầu miễn phí, mặc định `1` |
 | `is_featured` | — | `true` để lên hero trang chủ |
 | `categories` | — | mảng slug, tối đa 5 |
+
+> **`free_chapters` không nhận nữa.** Server cố định **chỉ chương 1 miễn phí** cho mọi
+> truyện đăng qua API này. Gửi trường đó lên cũng bị bỏ qua lặng lẽ, không báo lỗi.
 
 ```bash
 curl -X POST https://api.tunastory.com/api/ingest/stories \

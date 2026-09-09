@@ -30,6 +30,19 @@ use Illuminate\Validation\Rule;
 class StoryIngestor
 {
     /**
+     * CHÍNH SÁCH CỐ ĐỊNH: mọi truyện đăng qua đây chỉ mở miễn phí CHƯƠNG 1.
+     *
+     * Chặn ở server chứ không tin client: AI viết truyện từng tự gửi
+     * `free_chapters: 3`, khiến ba chương đầu miễn phí và mất doanh thu mà không ai
+     * để ý. Trường `free_chapters` đã bị gỡ khỏi luật kiểm tra nên client gửi lên
+     * cũng bị bỏ qua lặng lẽ, không báo lỗi.
+     *
+     * Chủ dự án vẫn đổi được từng truyện trong trang quản trị; nhưng lần AI cập nhật
+     * truyện đó tiếp theo sẽ đưa về lại 1.
+     */
+    public const FREE_CHAPTERS = 1;
+
+    /**
      * Luật kiểm tra dữ liệu truyện. Khai ở đây để controller và lệnh CLI dùng chung
      * một bộ — lệch luật giữa hai lối là cách chắc chắn nhất để sinh dữ liệu hỏng.
      *
@@ -46,7 +59,6 @@ class StoryIngestor
             'author' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
             'status' => ['nullable', Rule::in(['ongoing', 'completed'])],
-            'free_chapters' => ['nullable', 'integer', 'min:0', 'max:1000'],
             'is_featured' => ['nullable', 'boolean'],
             'categories' => ['nullable', 'array', 'max:5'],
             'categories.*' => [
@@ -134,7 +146,8 @@ class StoryIngestor
             // thì gửi 'completed'. Lấy danh sách truyện chưa xong ở
             // GET /api/ingest/stories?status=ongoing.
             'status' => $data['status'] ?? ($story->status ?: 'ongoing'),
-            'free_chapters' => $data['free_chapters'] ?? ($story->free_chapters ?: 1),
+            // Cố định, KHÔNG lấy từ $data — xem self::FREE_CHAPTERS.
+            'free_chapters' => self::FREE_CHAPTERS,
             'is_featured' => $data['is_featured'] ?? (bool) $story->is_featured,
         ])->save();
 
