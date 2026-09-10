@@ -1,15 +1,17 @@
 # Trả lời Apple — Guideline 2.1 Information Needed
 
-Bản nháp cho lần từ chối "Information Needed" của build **1.0.0 (2)**.
+Thư trả lời lần từ chối "Information Needed" của build **1.0.0 (2)**, gửi kèm build
+mới **1.0.0 (3)** — bản đã sửa cả hai vấn đề nằm trong binary (xem phần B2).
 
 - Phần **A** là văn bản tiếng Anh dán thẳng vào App Store Connect (cả ô *Reply* lẫn ô
   *App Review Information → Notes*, Apple yêu cầu cả hai).
 - Phần **B** là việc bạn phải tự làm, mình không làm thay được.
 
-Kiểm chứng trước khi viết: build đang bị xét dựng từ commit `8e00e4f`, tại đó
-`package.json` **chưa có** `expo-iap` — nên mọi câu trả lời dưới đây nói về một app
-**không có tài khoản và không có mua trong ứng dụng**. Gói đăng ký 9,99 $ làm sau đó
-chưa từng được build hay nộp; **đừng nhắc tới nó** trong thư này.
+Kiểm chứng trước khi viết: bản nộp lại **1.0.0 (3)** dựng từ commit `5169c84`, tại đó
+`package.json` **không có** `expo-iap` và `app.config.js` **không khai**
+`NSUserTrackingUsageDescription` — nên mọi câu trả lời dưới đây nói về một app **không
+có tài khoản, không có mua trong ứng dụng, và không theo dõi người dùng**. Gói đăng ký
+9,99 $ đã gỡ khỏi bản này; **đừng nhắc tới nó** trong thư.
 
 ---
 
@@ -33,13 +35,17 @@ chưa từng được build hay nộp; **đừng nhắc tới nó** trong thư n
 >   reporting and blocking mechanisms are not required.
 > - **Accessing paid content or features** — the recording shows this. Stories contains
 >   **no in-app purchases and no subscriptions**; nothing in the app can be bought with
->   money. The first chapter of every story is free to read, and some stories offer more
->   than one free chapter. Later chapters are unlocked with an in-app virtual item called
->   "coins", which users **earn for free only** by: (a) a daily check-in, (b) reaching
->   daily reading-time milestones, and (c) watching a Google AdMob rewarded video to
->   completion. Unlocking one chapter costs 10 coins; one completed rewarded video grants
->   30 coins. Coins cannot be purchased, cannot be transferred, and have no monetary
->   value.
+>   money. Chapter 1 of every story is free to read. Later chapters are unlocked with an
+>   in-app virtual item called "coins", which users **earn for free only** by: (a) a daily
+>   check-in, (b) reaching daily reading-time milestones, and (c) watching a Google AdMob
+>   rewarded video to completion. Unlocking one chapter costs 30 coins; one rewarded video
+>   watched to the end grants 90 coins, so a single ad unlocks three chapters. Coins cannot
+>   be purchased, cannot be transferred, and have no monetary value.
+> - **Tracking** — *not applicable*. The app does not request App Tracking Transparency
+>   permission, does not read the IDFA, and contains no `NSUserTrackingUsageDescription`
+>   string. Advertising is requested in non-personalised mode
+>   (`requestNonPersonalizedAdsOnly`). Our App Privacy answers declare *Used for tracking:
+>   No* for every data type, which matches the binary.
 >
 > ### 2. Purpose of the app and target audience
 >
@@ -85,9 +91,11 @@ chưa từng được build hay nộp; **đừng nhắc tới nó** trong thư n
 >    the reading screen header, or the "Listen" row on the story detail screen. Audio is
 >    streamed as an MP3 file from our own server.
 > 5. **Unlock a later chapter** — open a story whose chapter 2 is locked (for example
->    *The Janitor Owns the Company*) and tap chapter 2. A screen explains it costs 10
->    coins. If the balance is too low, tap "Watch ad · +30 coins", watch the rewarded video
->    to the end, and coins are credited. Then tap "Unlock" and the chapter opens.
+>    *The Janitor Owns the Company*) and tap chapter 2. A screen explains it costs 30
+>    coins. A new install starts with 0 coins, so tap "Watch ad · +90 coins", watch the
+>    rewarded video **to the end** — the reward is only credited on Google's
+>    `EARNED_REWARD` callback, closing the ad early grants nothing — and 90 coins are
+>    added. Then tap "Unlock" and the chapter opens.
 > 6. **Rewards tab** — shows the daily check-in, reading-time milestones and the daily ad
 >    tasks, which are the three ways coins are earned.
 > 7. **Library tab** — stories the user has saved with the bookmark button.
@@ -99,7 +107,7 @@ chưa từng được build hay nộp; **đừng nhắc tới nó** trong thư n
 > | Service | Purpose | Data sent |
 > |---|---|---|
 > | `api.tunastory.com` — our own server (a VPS we operate) | Read-only REST API that serves story text, cover images and narration MP3 files | None. The app only performs GET requests. No user data, account data or device identifier is sent. |
-> | Google AdMob | Banner advertising in the reading screen and rewarded video advertising used to grant coins | Whatever the AdMob SDK collects for ad serving and measurement, as described in Google's documentation |
+> | Google AdMob | Banner advertising in the reading screen and rewarded video advertising used to grant coins | Requested in **non-personalised** mode; the app never asks for tracking permission and never reads the IDFA |
 >
 > The app contains **no analytics, attribution, crash-reporting or social SDKs** — no
 > Firebase, no Facebook SDK, no Sentry, no AppsFlyer, no Adjust, no Segment. It does not
@@ -159,8 +167,9 @@ Trình tự cảnh phải có, theo đúng thứ tự (khoảng 2–3 phút):
    cáo ở đầu màn**.
 5. Chạm nút **Aa** → đổi cỡ chữ và nền đọc → đóng lại.
 6. Chạm nút **tai nghe** → màn nghe → bấm phát, để chạy vài giây cho thấy audio thật.
-7. Quay lại danh sách chương → chạm **chương 2** → màn khoá hiện "10 coins".
-8. Chạm **Watch ad · +30 coins** → xem hết quảng cáo rewarded → cho thấy xu được cộng.
+7. Quay lại danh sách chương → chạm **chương 2** → màn khoá hiện "30 coins".
+8. Chạm **Watch ad · +90 coins** → **xem hết** quảng cáo rewarded (đóng sớm là không được
+   cộng xu, nên đừng bấm X) → cho thấy số xu nhảy lên 90.
 9. Chạm **Unlock** → chương 2 mở ra, đọc được.
 10. Mở tab **Rewards** cho thấy ba cách kiếm xu, rồi tab **Library**.
 
@@ -170,42 +179,53 @@ Không cần quay đăng ký/đăng nhập/xoá tài khoản — app không có.
 Nộp video: tải lên Google Drive hoặc YouTube (để **unlisted**), rồi dán link vào ô Reply.
 Nhớ đặt quyền xem công khai bằng link, người review không đăng nhập tài khoản của bạn được.
 
-### B2. Trước khi nộp lại — hai vấn đề nằm trong chính bản binary
+### B2. Hai vấn đề trong binary — đã sửa ở bản 1.0.0 (3)
 
-Mình soát mã nguồn của đúng bản `1.0.0 (2)` và tìm ra hai chỗ mà người review nhiều khả
-năng sẽ vấp phải:
+Bản `1.0.0 (2)` bị hai lỗi nằm trong chính file binary, không sửa được bằng cách trả lời
+Apple. Cả hai đã xử lý xong, đây là để bạn đối chiếu nếu Apple hỏi lại:
 
-**a) Bản đang bị xét chạy ID quảng cáo TEST của Google.**
-Profile `production` trong `eas.json` tại commit đó không đặt biến `EXPO_PUBLIC_ADMOB_*`
-nào, nên `src/lib/ads.tsx` rơi về ID test (`ca-app-pub-3940256099942544/...`). Người
-review sẽ thấy banner dán nhãn **"Test Ad"** và video rewarded thử nghiệm. Ngoài chuyện
-trông như bản chưa xong, nộp ID test lên bản phát hành còn trái chính sách AdMob và app
-không thu được đồng nào.
+**a) Bản (2) chạy ID quảng cáo TEST của Google — đã sửa.**
+Profile `production` trong `eas.json` khi đó không đặt biến `EXPO_PUBLIC_ADMOB_*` nào,
+nên `src/lib/ads.tsx` rơi về ID test (`ca-app-pub-3940256099942544/...`): người review
+thấy banner dán nhãn **"Test Ad"**. Bản (3) đã nhúng ID thật của đơn vị quảng cáo iOS
+(app `…~9913447750`, banner `…/3899537894`, rewarded `…/3713659468`), xác nhận bằng
+`eas config --platform ios --profile production`.
 
-**b) App khai `NSUserTrackingUsageDescription` nhưng không bao giờ hiện hộp thoại ATT.**
-Chuỗi mô tả có trong Info.plist, nhưng không dòng mã nào gọi `requestTrackingAuthorization`
-— dự án cũng không cài `expo-tracking-transparency`. Nếu bảng App Privacy khai
-*Used for Tracking = Yes* thì đây là mâu thuẫn Apple hay đánh trượt. Apple đã cảnh báo
-đúng điểm này ở lần nộp trước.
+**b) Bản (2) khai `NSUserTrackingUsageDescription` mà không bao giờ hiện hộp ATT — đã gỡ.**
+Chuỗi mô tả có trong Info.plist nhưng không dòng mã nào gọi `requestTrackingAuthorization`
+(dự án không cài `expo-tracking-transparency`). Chính điểm này khiến Apple chặn nộp với
+thông báo *"update your App Privacy response … or upload a new build"*. Bản (3) đã bỏ hẳn
+chuỗi đó khỏi `app.config.js`, và quảng cáo chạy `requestNonPersonalizedAdsOnly`. Nhờ vậy
+bảng App Privacy giữ nguyên **Used for tracking: No** — đúng với binary.
 
-**c) Chỉ 3 trên 13 truyện có audio.**
+**c) Chỉ 3 trên 13 truyện có audio — chưa làm, không chặn nộp.**
 Hiện chỉ *The Janitor Owns the Company*, *The Sixty-Dollar Suit* và *Undrafted* có file
-MP3; 10 truyện còn lại nút "Listen" bị tắt. Mô tả trên App Store đã cẩn thận ghi
-*"where audio is available"* nên không phải khai sai, nhưng người review bấm trúng một
-truyện không có audio vẫn có thể coi là tính năng chưa hoàn thiện. Chạy
-`php artisan chapters:audio --queue` trên máy chủ để phủ kín trước khi nộp lại — cái này
-**không cần build lại**, vì nội dung lấy từ máy chủ.
+MP3; 10 truyện còn lại nút "Listen" bị tắt. Mô tả trên App Store đã ghi
+*"where audio is available"* nên không khai sai, nhưng người review bấm trúng truyện
+không có audio vẫn có thể coi là tính năng dở dang. Chạy
+`php artisan chapters:audio --queue` trên máy chủ để phủ kín — **không cần build lại**,
+vì nội dung lấy từ máy chủ.
 
-Hai vấn đề (a) và (b) đều **phải build lại** mới sửa được; (c) thì không.
+**Cạm bẫy đã tránh khi dựng bản (3):** thư mục `mobile/ios/` cũ còn sót lại trên máy vẫn
+mang Info.plist có `NSUserTrackingUsageDescription` và ID AdMob test. Vì `.easignore`
+**đè lên** `.gitignore`, thư mục đó sẽ được tải lên EAS, EAS bỏ qua bước prebuild, và bản
+(3) sẽ ra y hệt bản (2) mà **không báo lỗi gì**. Đã xoá thư mục và thêm `mobile/ios/`,
+`mobile/android/` vào `.easignore`. Nếu sau này bạn chạy `expo prebuild` để mở Xcode,
+nhớ xoá lại thư mục đó trước khi build EAS lần kế.
 
 ### B3. Cần kiểm trong App Store Connect
 
 Những thứ này nằm ngoài kho mã, mình không nhìn được:
 
+- **Chọn đúng build `1.0.0 (3)`** ở mục Build trước khi bấm Submit — bản (2) vẫn còn đó
+  và chọn nhầm là quay lại đúng chỗ bị từ chối.
 - **App Review Information → Notes**: dán toàn bộ phần A vào đây, Apple yêu cầu rõ.
 - **Sign-In Required**: phải **bỏ tick** — app không có tài khoản.
-- **App Privacy**: đối chiếu lại với thực tế ở mục B2b.
+- **App Privacy**: cả *Device ID* và *Advertising Data* đều để **Used for tracking: No**.
+  Bản (3) đã gỡ ATT nên khai như vậy là khớp binary; nếu để *Yes*, Apple lại chặn nộp
+  với đúng thông báo lần trước.
 - **Ảnh chụp màn hình**: Apple nhắc riêng điều 2.3.3 — phải là ảnh app đang dùng, không
-  phải màn splash hay ảnh tiêu đề.
+  phải màn splash hay ảnh tiêu đề. Chụp lại từ bản (3) để quảng cáo hiện là ad thật,
+  không phải "Test Ad".
 - **Mô tả / từ khoá / promotional text**: không được hứa tính năng bản này không có.
-  Đặc biệt **không nhắc gói đăng ký**, vì bản bị xét không có.
+  Đặc biệt **không nhắc gói đăng ký**, vì bản nộp không có.
