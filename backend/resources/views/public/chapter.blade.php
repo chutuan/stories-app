@@ -18,8 +18,21 @@
 
 @section('title', $heading.' — '.$story->title)
 @section('description', $excerpt)
-@section('og_image', $story->thumbnail_url ?: asset('icons/icon-512.png'))
+@section('og_image', route('public.og', $story))
+@section('og_image_w', '1200')
+@section('og_image_h', '630')
+@section('og_image_alt', $story->title.' — '.$heading)
 @section('og_type', 'article')
+
+@push('meta')
+<meta property="article:published_time" content="{{ $chapter->created_at?->toAtomString() }}">
+<meta property="article:modified_time" content="{{ $chapter->updated_at?->toAtomString() }}">
+<meta property="article:author" content="{{ $story->author ?: 'Stories' }}">
+@foreach ($story->categories as $category)
+<meta property="article:tag" content="{{ $category->name }}">
+@endforeach
+<meta name="author" content="{{ $story->author ?: 'Stories' }}">
+@endpush
 
 @push('head')
 <script type="application/ld+json">

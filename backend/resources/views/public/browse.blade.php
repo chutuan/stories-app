@@ -6,6 +6,30 @@
     : 'Every story in the Stories catalogue. Free short serials about hidden wealth, secret identities and overdue revenge.')
 @section('wide', '1')
 
+@push('head')
+{{-- ItemList giúp Google hiểu đây là trang DANH MỤC dẫn tới các trang truyện,
+     chứ không phải một trang nội dung mỏng lặp lại tiêu đề. --}}
+<script type="application/ld+json">
+{!! json_encode([
+    '@context' => 'https://schema.org',
+    '@type' => 'CollectionPage',
+    'name' => $category ? $category->name.' stories' : 'All stories',
+    'url' => $category ? route('public.category', $category) : route('public.browse'),
+    'isPartOf' => ['@type' => 'WebSite', 'name' => 'Stories', 'url' => route('public.home')],
+    'mainEntity' => [
+        '@type' => 'ItemList',
+        'numberOfItems' => $stories->total(),
+        'itemListElement' => collect($stories->items())->values()->map(fn ($s, $i) => [
+            '@type' => 'ListItem',
+            'position' => $stories->firstItem() + $i,
+            'url' => route('public.story', $s),
+            'name' => $s->title,
+        ])->all(),
+    ],
+], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
+</script>
+@endpush
+
 @section('content')
   <h1>{{ $category ? $category->name : 'All stories' }}</h1>
   <p class="updated">

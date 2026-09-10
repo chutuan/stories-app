@@ -36,6 +36,12 @@
         'Short serialised fiction you can finish in one sitting — hidden billionaires, secret identities and long-overdue revenge.'
     ));
     $seoImage = trim($__env->yieldContent('og_image', asset('icons/icon-512.png')));
+    // Kích thước ảnh chia sẻ. Facebook và LinkedIn cần biết TRƯỚC khi tải ảnh về
+    // để dựng ô xem trước; thiếu hai thẻ này thì lần chia sẻ đầu tiên hay ra ô
+    // không có ảnh, tới lần thứ hai mới hiện.
+    $seoImageW = trim($__env->yieldContent('og_image_w', '512'));
+    $seoImageH = trim($__env->yieldContent('og_image_h', '512'));
+    $seoImageAlt = trim($__env->yieldContent('og_image_alt', 'Stories — free short serialised fiction'));
     $seoType = trim($__env->yieldContent('og_type', 'website'));
     $seoRobots = trim($__env->yieldContent('robots', 'index, follow'));
     $isWide = trim($__env->yieldContent('wide', '')) !== '';
@@ -59,10 +65,18 @@
 <meta property="og:description" content="{!! $seo($seoDescription) !!}">
 <meta property="og:url" content="{{ url()->current() }}">
 <meta property="og:image" content="{!! $seo($seoImage) !!}">
-<meta name="twitter:card" content="summary_large_image">
+<meta property="og:image:width" content="{{ $seoImageW }}">
+<meta property="og:image:height" content="{{ $seoImageH }}">
+<meta property="og:image:alt" content="{!! $seo($seoImageAlt) !!}">
+<meta property="og:locale" content="en_US">
+{{-- summary_large_image chỉ hợp khi ảnh là khổ NGANG. Trang nào còn dùng icon
+     vuông thì khai 'summary' để Twitter dựng ô nhỏ đúng cách thay vì kéo giãn. --}}
+<meta name="twitter:card" content="{{ $seoImageW >= 600 ? 'summary_large_image' : 'summary' }}">
 <meta name="twitter:title" content="{!! $seo($seoTitle) !!}">
 <meta name="twitter:description" content="{!! $seo($seoDescription) !!}">
 <meta name="twitter:image" content="{!! $seo($seoImage) !!}">
+<meta name="twitter:image:alt" content="{!! $seo($seoImageAlt) !!}">
+@stack('meta')
 
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('icons/icon-32.png') }}">

@@ -19,6 +19,16 @@
     ],
 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
 </script>
+<script type="application/ld+json">
+{!! json_encode([
+    '@context' => 'https://schema.org',
+    '@type' => 'Organization',
+    'name' => 'Stories',
+    'url' => route('public.home'),
+    'logo' => asset('icons/icon-512.png'),
+    'email' => config('app.support_email'),
+], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
+</script>
 @endpush
 
 @section('content')

@@ -3,8 +3,23 @@
 @section('title', $story->title)
 @section('description', Str::limit($story->description
     ?: $story->title.' — a free short serial you can read in one sitting.', 155))
-@section('og_image', $story->thumbnail_url ?: asset('icons/icon-512.png'))
+{{-- Ảnh chia sẻ dựng riêng khổ ngang 1200×630, KHÔNG dùng ảnh bìa dọc: ô xem
+     trước của Facebook/Zalo là 1,91:1 nên ảnh dọc bị cắt lấy dải giữa, mất mặt
+     nhân vật. Xem App\Services\SocialCardGenerator. --}}
+@section('og_image', route('public.og', $story))
+@section('og_image_w', '1200')
+@section('og_image_h', '630')
+@section('og_image_alt', $story->title.' — free short serial on Stories')
 @section('og_type', 'book')
+
+@push('meta')
+<meta property="book:author" content="{{ $story->author ?: 'Stories' }}">
+<meta property="book:release_date" content="{{ $story->created_at?->toDateString() }}">
+@foreach ($story->categories as $category)
+<meta property="book:tag" content="{{ $category->name }}">
+@endforeach
+<meta name="author" content="{{ $story->author ?: 'Stories' }}">
+@endpush
 
 @push('head')
 <script type="application/ld+json">

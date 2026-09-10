@@ -25,6 +25,7 @@ Route::get('/story/{story:slug}', [ReadController::class, 'story'])->name('publi
 Route::get('/story/{story:slug}/chapter/{number}', [ReadController::class, 'chapter'])
     ->whereNumber('number')
     ->name('public.chapter');
+Route::get('/og/{story:slug}.jpg', [ReadController::class, 'socialCard'])->name('public.og');
 Route::get('/sitemap.xml', [ReadController::class, 'sitemap'])->name('public.sitemap');
 
 Route::view('/privacy', 'public.privacy')->name('public.privacy');

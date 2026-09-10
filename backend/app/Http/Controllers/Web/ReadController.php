@@ -8,10 +8,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Chapter;
 use App\Models\Story;
+use App\Services\SocialCardGenerator;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Bản web đọc truyện tại tunastory.com.
@@ -198,6 +200,25 @@ class ReadController extends Controller
         return response()
             ->view('public.sitemap', ['urls' => $urls])
             ->header('Content-Type', 'application/xml; charset=UTF-8');
+    }
+
+    /**
+     * Ảnh chia sẻ mạng xã hội 1200×630 của một truyện.
+     *
+     * Phục vụ qua route thay vì trỏ thẳng vào file trong storage, để lần đầu có ai
+     * chia sẻ thì ảnh được dựng ngay lúc đó — không cần chạy lệnh dựng trước cho
+     * cả kho mỗi lần thêm truyện.
+     */
+    public function socialCard(Story $story, SocialCardGenerator $cards): \Symfony\Component\HttpFoundation\Response
+    {
+        $path = $cards->forStory($story);
+
+        return response(Storage::disk('public')->get($path), 200, [
+            'Content-Type' => 'image/jpeg',
+            // Trình thu thập của mạng xã hội đệm rất lâu; một tuần là đủ để đổi bìa
+            // rồi chia sẻ lại mà không phải chờ hàng tháng.
+            'Cache-Control' => 'public, max-age=604800',
+        ]);
     }
 
     /** Truy vấn dùng chung cho mọi lưới truyện — giữ một chỗ để khỏi lệch nhau. */
