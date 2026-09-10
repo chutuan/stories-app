@@ -46,12 +46,21 @@ export const READING_MILESTONES: readonly ReadingMilestone[] = [
   { minutes: 90, coins: 60 },
 ] as const;
 
-/** Xu cho lượt xem quảng cáo thứ 1, 2, 3, 4 trong ngày. */
+/**
+ * Xu cho lượt xem quảng cáo thứ 1, 2, 3, 4 trong ngày.
+ *
+ * Cố ý để PHẲNG: nút bấm luôn hứa đúng một con số ("Watch ad · +90 coins"), xem
+ * xong lượt nào cũng nhận đúng bằng đó. Bậc thang cũ (30/30/40/50) làm nút hứa một
+ * đằng trả một nẻo tuỳ lượt trong ngày.
+ *
+ * 90 xu = đúng 3 chương (COIN_PER_CHAPTER = 30), giữ nguyên tỉ lệ "xem hết một
+ * quảng cáo mở được 3 chương" đã chốt từ đầu dự án.
+ */
 export const AD_TASKS: readonly number[] = [
   COIN_PER_REWARD,
   COIN_PER_REWARD,
-  40,
-  50,
+  COIN_PER_REWARD,
+  COIN_PER_REWARD,
 ] as const;
 
 /** Số lượt quảng cáo tối đa mỗi ngày. */

@@ -278,6 +278,22 @@ class StoryCoverGenerator
         return $brief;
     }
 
+    /**
+     * Vẽ và TRẢ THẲNG dữ liệu JPEG, không đụng disk cũng không đụng cơ sở dữ liệu.
+     *
+     * Dùng cho `stories:cover --out=<file>`: thử prompt mới trên truyện thật mà không
+     * ghi đè tấm bìa đang phục vụ người dùng, nên so sánh A/B xong vẫn lui lại được.
+     */
+    public function renderBytes(Story $story): string
+    {
+        $apiKey = (string) config('services.openai.key');
+        if ($apiKey === '') {
+            throw new RuntimeException('Chưa cấu hình OPENAI_API_KEY.');
+        }
+
+        return $this->renderCover($apiKey, $this->promptFor($story, $apiKey));
+    }
+
     /* ------------------------------------------------------------------ */
     /* ẢNH                                                                 */
     /* ------------------------------------------------------------------ */

@@ -110,6 +110,12 @@ export function BannerAd() {
 
 export interface RewardedResult {
   rewarded: boolean;
+  /**
+   * true = không có quảng cáo để chiếu (bản build thiếu native module).
+   * Khác hẳn `rewarded: false` do người dùng đóng sớm, nên nơi gọi phải báo khác
+   * nhau — đổ lỗi "bạn chưa xem hết" khi thực ra app không chiếu được là sai.
+   */
+  unavailable?: boolean;
 }
 
 /** Chờ AdMob trả quảng cáo về. Không có hàng thì 'error' thường tới sớm hơn mốc này. */
@@ -127,7 +133,13 @@ const AD_WATCH_TIMEOUT_MS = 300_000;
  */
 export function showRewarded(): Promise<RewardedResult> {
   if (!adsModule || !nativeAvailable) {
-    return Promise.resolve({ rewarded: true });
+    // KHÔNG có native module (Expo Go, web, hoặc build thiếu). Chỉ bản dev mới được
+    // cấp thưởng giả để thử luồng xu; bản phát hành phải TỪ CHỐI.
+    //
+    // Đây là đường DUY NHẤT có thể nhận xu mà không xem quảng cáo: nhánh thật bên
+    // dưới chỉ đặt earned = true khi AdMob bắn EARNED_REWARD, tức người dùng đã xem
+    // đủ lâu để được tính thưởng. Đóng sớm thì 'closed' trả về earned = false.
+    return Promise.resolve(__DEV__ ? { rewarded: true } : { rewarded: false, unavailable: true });
   }
 
   return new Promise<RewardedResult>((resolve) => {

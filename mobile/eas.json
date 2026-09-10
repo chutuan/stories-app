@@ -74,11 +74,11 @@
         // LƯU Ý: iOS và Android là HAI APP RIÊNG trong AdMob -> App ID lẫn unit ID
         // đều khác nhau, unit ID của bên này KHÔNG chạy cho bên kia.
         "EXPO_PUBLIC_ADMOB_IOS_APP_ID": "ca-app-pub-9892355907152840~9913447750",
-        "EXPO_PUBLIC_ADMOB_BANNER_ID_IOS": "ca-app-pub-9892355907152840/3899537894"
+        "EXPO_PUBLIC_ADMOB_BANNER_ID_IOS": "ca-app-pub-9892355907152840/3899537894",
+        "EXPO_PUBLIC_ADMOB_REWARDED_ID_IOS": "ca-app-pub-9892355907152840/3713659468"
 
-        // CÒN THIẾU — thêm vào trước khi build bản nộp store:
-        //   "EXPO_PUBLIC_ADMOB_REWARDED_ID_IOS":     "ca-app-pub-XXXX/XXXX"   <- BẮT BUỘC
-        //   "EXPO_PUBLIC_ADMOB_ANDROID_APP_ID":      "ca-app-pub-XXXX~XXXX"   <- nếu phát hành Android
+        // CÒN THIẾU — chỉ cần khi phát hành Android (iOS đã đủ):
+        //   "EXPO_PUBLIC_ADMOB_ANDROID_APP_ID":      "ca-app-pub-XXXX~XXXX"
         //   "EXPO_PUBLIC_ADMOB_BANNER_ID_ANDROID":   "ca-app-pub-XXXX/XXXX"
         //   "EXPO_PUBLIC_ADMOB_REWARDED_ID_ANDROID": "ca-app-pub-XXXX/XXXX"
       }

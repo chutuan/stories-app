@@ -7,7 +7,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
  * `AD_TASKS` trong `store/rewards` (30/30/40/50) — hằng số này chỉ là mức nền,
  * mọi khoản thưởng thật đều do `recordAdWatch()` quyết định.
  */
-export const COIN_PER_REWARD = 30;
+export const COIN_PER_REWARD = 90;
 /** Giá mở 1 chương. Bằng đúng 1 lượt quảng cáo -> xem 1 quảng cáo mở 1 chương. */
 export const COIN_PER_CHAPTER = 30;
 export const STARTER_COINS = 0;

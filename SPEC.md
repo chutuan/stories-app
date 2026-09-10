@@ -7,7 +7,7 @@ Mọi tên endpoint, tên field JSON phải khớp CHÍNH XÁC giữa 2 bên.
 - Backend: Laravel + MySQL. Hai vai trò: (a) **Admin web** (Blade) để CRUD thể loại/truyện/chương + upload ảnh; (b) **REST API** công khai cho mobile đọc.
 - Mobile: Expo + TypeScript + expo-router. Chế độ **guest** (không đăng nhập). Xu và danh sách chương đã mở khóa lưu **local** bằng AsyncStorage.
 - Kiếm tiền: **Banner** (trên cùng màn đọc) + **Rewarded** (AdMob).
-- Kinh tế xu: 1 rewarded xem hết = **+30 xu**. Mở 1 chương = **30 xu** (1 quảng cáo = 1 chương).
+- Kinh tế xu: 1 rewarded xem hết = **+90 xu**. Mở 1 chương = **30 xu** (1 quảng cáo = 3 chương).
 - Khóa chương: **Chương 1 miễn phí**, **chương 2 trở đi khóa** (theo `story.free_chapters`, mặc định 1).
 
 ## 2. Data model (MySQL)
@@ -228,8 +228,12 @@ từng khinh thường.
 ## 8. Mobile — cấu trúc & hành vi
 
 ### Kinh tế xu (constants)
-- `COIN_PER_REWARD = 30` — mức nền; lượt xem thứ 1..4 trong ngày trả theo bậc
-  `AD_TASKS = [30, 30, 40, 50]` của `store/rewards`, tối đa `AD_TASK_LIMIT = 4` lượt/ngày.
+- `COIN_PER_REWARD = 90` — PHẲNG cho cả 4 lượt: `AD_TASKS = [90, 90, 90, 90]` trong
+  `store/rewards`, `AD_TASK_LIMIT = 4` lượt/ngày (tối đa 360 xu = 12 chương).
+  Để phẳng vì nút bấm hứa đúng một con số; bậc thang làm nút hứa một đằng trả một nẻo.
+- Chỉ nhận xu khi AdMob bắn `EARNED_REWARD`, tức đã xem đủ lâu để được tính thưởng.
+  Đóng sớm -> `closed` với `earned = false` -> không xu. Bản build thiếu native module
+  thì `showRewarded()` trả `unavailable` và CHỈ bản dev mới được cấp thưởng giả.
 - `COIN_PER_CHAPTER = 30`
 - `STARTER_COINS = 0`
 - MỌI khoản xu thưởng quảng cáo phải đi qua `useRewards().recordAdWatch()` — đó là nơi

@@ -208,9 +208,14 @@ function ReaderScreen() {
     setMessage(null);
     setWatchingAd(true);
     try {
-      const { rewarded } = await showRewarded();
+      const { rewarded, unavailable } = await showRewarded();
       if (!rewarded) {
-        notify('You did not finish the ad. Please try again.', false);
+        notify(
+          unavailable
+            ? 'Ads are not available right now. Please try again later.'
+            : 'You need to watch the whole ad to earn coins.',
+          false,
+        );
         return;
       }
       // Xu thưởng chỉ được cộng qua recordAdWatch — đó là nơi DUY NHẤT đếm lượt

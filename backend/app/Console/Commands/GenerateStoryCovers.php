@@ -33,6 +33,7 @@ class GenerateStoryCovers extends Command
         {--force : Vẽ lại kể cả khi đã có ảnh bìa}
         {--limit= : Số truyện tối đa xử lý}
         {--dry : Chỉ in prompt để xem trước, không gọi model ảnh}
+        {--out= : Vẽ ra file này thay vì ghi đè bìa thật (thử prompt an toàn)}
         {--queue : Đẩy vào hàng đợi thay vì chạy ngay (cần chạy queue:work)}';
 
     protected $description = 'Vẽ ảnh bìa AI như ảnh chụp thật cho truyện (OpenAI Images)';
@@ -50,7 +51,9 @@ class GenerateStoryCovers extends Command
         if ($storyId = $this->option('story')) {
             $query->whereKey((int) $storyId);
         }
-        if (! $this->option('force') && ! $this->option('dry')) {
+        // --out chỉ vẽ ra file rời nên không lọc theo bìa đã có: mục đích của nó
+        // chính là vẽ lại truyện ĐÃ có bìa để so sánh.
+        if (! $this->option('force') && ! $this->option('dry') && ! $this->option('out')) {
             $query->whereNull('thumbnail');
         }
         // Truyện đang có job vẽ bìa thì bỏ qua (trừ khi chỉ xem trước prompt).
@@ -74,6 +77,8 @@ class GenerateStoryCovers extends Command
         }
 
         $force = (bool) $this->option('force');
+        $ok = 0;
+        $failed = 0;
 
         // --- Chỉ xem trước prompt ---
         if ($this->option('dry')) {
@@ -93,6 +98,32 @@ class GenerateStoryCovers extends Command
             return self::SUCCESS;
         }
 
+        // --- Vẽ ra file rời để thử prompt, KHÔNG đụng bìa đang chạy ---
+        if ($out = $this->option('out')) {
+            foreach ($stories as $i => $story) {
+                // Nhiều truyện thì chèn id vào tên file cho khỏi đè lên nhau.
+                $target = $stories->count() > 1
+                    ? preg_replace('/(\.[a-z]+)$/i', "-{$story->id}$1", (string) $out)
+                    : (string) $out;
+
+                $this->line("  → [{$story->id}] {$story->title}");
+                try {
+                    file_put_contents($target, $generator->renderBytes($story));
+                    $this->info('    ✓ '.$target.' ('.round(filesize($target) / 1024).' KB)');
+                    $ok++;
+                } catch (Throwable $e) {
+                    $this->error('    ✗ '.$e->getMessage());
+                    $failed++;
+                }
+                unset($i);
+            }
+
+            $this->newLine();
+            $this->info("Xong: {$ok} ảnh, {$failed} lỗi. Bìa thật KHÔNG bị đụng tới.");
+
+            return $failed > 0 ? self::FAILURE : self::SUCCESS;
+        }
+
         // --- Đẩy vào hàng đợi ---
         if ($this->option('queue')) {
             foreach ($stories as $story) {
@@ -109,8 +140,6 @@ class GenerateStoryCovers extends Command
 
         // --- Chạy ngay ---
         $this->info("Sẽ vẽ bìa cho {$stories->count()} truyện.");
-        $ok = 0;
-        $failed = 0;
 
         foreach ($stories as $story) {
             $this->line("  → [{$story->id}] {$story->title}");

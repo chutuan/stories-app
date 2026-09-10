@@ -310,9 +310,14 @@ function RewardsContent() {
     if (watchingAd || adsDone) return;
     setWatchingAd(true);
     try {
-      const { rewarded } = await showRewarded();
+      const { rewarded, unavailable } = await showRewarded();
       if (!rewarded) {
-        notify("You didn't finish the ad, so no coins were added.", false);
+        notify(
+          unavailable
+            ? 'Ads are not available right now. Please try again later.'
+            : 'You need to watch the whole ad to earn coins.',
+          false,
+        );
         return;
       }
       const got = recordAdWatch();
