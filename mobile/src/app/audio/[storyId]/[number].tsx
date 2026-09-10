@@ -42,7 +42,6 @@ import {
   FontSize,
   FontWeight,
   Gradients,
-  hashSeed,
   Layout,
   LineHeight,
   Palette,
@@ -128,16 +127,6 @@ function formatTime(seconds: number): string {
   const ss = String(s).padStart(2, '0');
   if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${ss}`;
   return `${m}:${ss}`;
-}
-
-/**
- * ĐIỂM ĐÁNH GIÁ LÀ MÔ PHỎNG — backend CHƯA có API đánh giá.
- * Điểm được suy ra TẤT ĐỊNH từ id truyện (hashSeed) nên một truyện luôn hiện
- * đúng một điểm, không đổi mỗi lần render và không phải số ngẫu nhiên.
- * Khi backend có bảng đánh giá thật thì thay hàm này bằng dữ liệu thật.
- */
-function simulatedRating(storyId: string | number): number {
-  return 4 + (hashSeed(`danh-gia:${storyId}`) % 10) / 10; // 4,0 – 4,9
 }
 
 /** Bỏ tiền tố "Chương N:" trùng lặp trong tên chương (số chương đã hiện riêng). */
@@ -415,8 +404,6 @@ export default function AudioPlayerScreen() {
   const authorLabel = author && author.length > 0 ? author : 'Unknown author';
   const title = chapter ? chapterLabel(chapter) : null;
   const totalChapters = story?.chapters_count ?? null;
-  const rating = useMemo(() => simulatedRating(storyId), [storyId]);
-  const ratingText = rating.toFixed(1);
 
   const chapterRows = useMemo<ChapterRow[]>(() => {
     const list = story?.chapters ?? [];
@@ -715,12 +702,6 @@ export default function AudioPlayerScreen() {
               </View>
             </View>
 
-            {/* Điểm đánh giá (MÔ PHỎNG tất định từ id truyện — xem simulatedRating) */}
-            <View style={styles.ratingRow}>
-              <Text style={styles.ratingValue}>{ratingText}</Text>
-              <Stars rating={rating} />
-            </View>
-
             {/* Tên chương */}
             {title ? (
               <Text style={styles.title} numberOfLines={2}>
@@ -897,26 +878,6 @@ export default function AudioPlayerScreen() {
 /* ------------------------------------------------------------------ */
 /* THÀNH PHẦN PHỤ                                                      */
 /* ------------------------------------------------------------------ */
-
-/** 5 ngôi sao theo điểm đánh giá (mô phỏng). */
-function Stars({ rating }: { rating: number }) {
-  return (
-    <View style={styles.starsRow}>
-      {[0, 1, 2, 3, 4].map((i) => {
-        const full = rating >= i + 1;
-        const half = !full && rating >= i + 0.5;
-        return (
-          <Ionicons
-            key={i}
-            name={full ? 'star' : half ? 'star-half' : 'star-outline'}
-            size={14}
-            color={full || half ? Palette.coin : Palette.borderStrong}
-          />
-        );
-      })}
-    </View>
-  );
-}
 
 /** Nút tua 15 giây. */
 function SkipButton({
@@ -1308,20 +1269,6 @@ const styles = StyleSheet.create({
   },
 
   // --- Đánh giá / tên chương / tác giả ---
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  ratingValue: {
-    color: Palette.text,
-    fontSize: FontSize.body,
-    fontWeight: FontWeight.black,
-  },
-  starsRow: {
-    flexDirection: 'row',
-    gap: 2,
-  },
   title: {
     color: Palette.text,
     fontSize: FontSize.h1,

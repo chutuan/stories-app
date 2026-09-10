@@ -434,7 +434,7 @@ function RewardsContent() {
         </Text>
       </View>
 
-      {/* --- Hai ô nhỏ: điểm danh + vòng quay --- */}
+      {/* --- Điểm danh hằng ngày --- */}
       <View style={styles.tileRow}>
         <Pressable
           onPress={onCheckIn}
@@ -462,16 +462,6 @@ function RewardsContent() {
             {checkedToday ? 'Checked in' : `Get +${formatCoins(todayCheckInCoins)}`}
           </Text>
         </Pressable>
-
-        <View style={[styles.tile, styles.tileSoon]}>
-          <View style={[styles.tileIcon, { backgroundColor: Palette.surfaceAlt }]}>
-            <Ionicons name="disc" size={19} color={Palette.faint} />
-          </View>
-          <Text style={styles.tileTitle}>Lucky draw</Text>
-          <Text style={[styles.tileStatus, { color: Palette.faint }]} numberOfLines={1}>
-            Coming soon
-          </Text>
-        </View>
       </View>
 
       {/* --- Nhiệm vụ quảng cáo --- */}
@@ -838,9 +828,6 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: Palette.border,
     ...Shadow.card,
-  },
-  tileSoon: {
-    backgroundColor: Palette.surfaceAlt,
   },
   tileIcon: {
     width: 40,

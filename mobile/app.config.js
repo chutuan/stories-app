@@ -39,8 +39,6 @@ module.exports = {
         ITSAppUsesNonExemptEncryption: false,
         // Bắt buộc khi dùng AdMob trên iOS 14+: App Tracking Transparency.
         // Thiếu chuỗi này App Store sẽ từ chối build có SDK quảng cáo.
-        NSUserTrackingUsageDescription:
-          'This identifier will be used to deliver personalized ads and to measure how well they perform.',
       },
     },
     android: {

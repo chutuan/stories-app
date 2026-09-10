@@ -44,12 +44,18 @@ const REWARDED_UNIT_ID =
   process.env.EXPO_PUBLIC_ADMOB_REWARDED_ID ||
   REWARDED_TEST_ID;
 
+/** Tuỳ chọn gắn vào MỌI yêu cầu quảng cáo — xem NON_PERSONALIZED. */
+type AdRequestOptions = { requestNonPersonalizedAdsOnly: boolean };
+
 type AdsModule = {
-  default: () => { initialize: () => Promise<unknown> };
-  BannerAd: React.ComponentType<{ unitId: string; size: string }>;
+  default: () => {
+    initialize: () => Promise<unknown>;
+    setRequestConfiguration?: (config: Record<string, unknown>) => Promise<unknown>;
+  };
+  BannerAd: React.ComponentType<{ unitId: string; size: string; requestOptions?: AdRequestOptions }>;
   BannerAdSize: Record<string, string>;
   RewardedAd: {
-    createForAdRequest: (unitId: string) => RewardedAdInstance;
+    createForAdRequest: (unitId: string, options?: AdRequestOptions) => RewardedAdInstance;
   };
   RewardedAdEventType: { LOADED: string; EARNED_REWARD: string };
   /** Sự kiện chung của mọi loại quảng cáo. Khai optional vì bản cũ của thư viện có thể thiếu. */
@@ -79,7 +85,16 @@ if (nativeModulePresent) {
     if (mod && typeof mod.default === 'function' && mod.BannerAd) {
       adsModule = mod;
       // initialize; nếu thất bại vẫn không crash
-      mod.default().initialize().catch(() => {});
+      // Đặt cấu hình TRƯỚC initialize để lần lấy quảng cáo đầu tiên cũng đúng chế độ.
+      const ads = mod.default();
+      ads
+        .setRequestConfiguration?.({
+          maxAdContentRating: 'T',
+          tagForChildDirectedTreatment: false,
+          tagForUnderAgeOfConsent: false,
+        })
+        ?.catch(() => {});
+      ads.initialize().catch(() => {});
       nativeAvailable = true;
     }
   } catch {
@@ -87,6 +102,21 @@ if (nativeModulePresent) {
     nativeAvailable = false;
   }
 }
+
+/**
+ * App KHÔNG theo dõi người dùng qua các app/website khác, nên MỌI yêu cầu quảng cáo
+ * đều ở chế độ không cá nhân hoá.
+ *
+ * Vì sao chọn hướng này: muốn quảng cáo cá nhân hoá trên iOS thì bắt buộc phải hiện
+ * hộp thoại App Tracking Transparency (Guideline 5.1.2(i)). Bản trước khai
+ * NSUserTrackingUsageDescription trong Info.plist mà KHÔNG hề gọi hộp thoại — hồ sơ
+ * nói có theo dõi còn app thì không xin phép, đúng thứ Apple đánh trượt. Bỏ hẳn
+ * tracking là cách gọn nhất: không cần ATT, không cần CMP, và bảng App Privacy khai
+ * "Used for Tracking = No" cho mọi mục.
+ *
+ * Đánh đổi: doanh thu mỗi lượt hiển thị thấp hơn quảng cáo cá nhân hoá.
+ */
+const NON_PERSONALIZED: AdRequestOptions = { requestNonPersonalizedAdsOnly: true };
 
 export const adsAvailable = nativeAvailable;
 
@@ -97,7 +127,7 @@ export function BannerAd() {
     const size = adsModule.BannerAdSize.ANCHORED_ADAPTIVE_BANNER ?? adsModule.BannerAdSize.BANNER;
     return (
       <View style={styles.bannerReal}>
-        <RealBanner unitId={BANNER_UNIT_ID} size={size} />
+        <RealBanner unitId={BANNER_UNIT_ID} size={size} requestOptions={NON_PERSONALIZED} />
       </View>
     );
   }
@@ -175,7 +205,7 @@ export function showRewarded(): Promise<RewardedResult> {
     };
 
     try {
-      const rewarded = mod.RewardedAd.createForAdRequest(REWARDED_UNIT_ID);
+      const rewarded = mod.RewardedAd.createForAdRequest(REWARDED_UNIT_ID, NON_PERSONALIZED);
 
       const on = (type: string, listener: (payload?: unknown) => void) => {
         const off = rewarded.addAdEventListener(type, listener);

@@ -17,7 +17,6 @@ import {
   FontSize,
   FontWeight,
   Gradients,
-  hashSeed,
   Layout,
   LineHeight,
   Palette,
@@ -48,32 +47,15 @@ const DESC_LINES = 4;
 /** Mô tả dài hơn ngần này ký tự thì mới hiện nút "Xem thêm". */
 const DESC_TOGGLE_MIN = 165;
 
-/**
- * ⚠️ DỮ LIỆU MÔ PHỎNG — API hiện CHƯA có trường đánh giá (rating).
- * Điểm số và số lượt đánh giá được suy ra TẤT ĐỊNH từ id truyện: cùng một
- * truyện luôn ra cùng con số, không nhảy mỗi lần render hay mỗi lần mở app.
- * Khi backend có rating thật, xoá hàm này và đọc thẳng từ `story`.
+/*
+ * ĐÃ GỠ: `simulatedRating()` và `starIcons()`.
  *
- * @returns `score` trong khoảng 8.5–9.9; `count` là số lượt đánh giá giả lập
- *          (một phần cố định theo id + một phần tỉ lệ với lượt xem).
+ * Chúng bịa ra điểm 8.5–9.9 và vài trăm "lượt đánh giá" từ hash id truyện rồi bày
+ * ra như đánh giá thật. Không có ai đánh giá cả — backend chưa hề có bảng rating.
+ * Đó là bằng chứng xã hội giả với người đọc, và là thứ App Store soi.
+ *
+ * Khi nào backend có đánh giá THẬT thì dựng lại phần này từ dữ liệu thật.
  */
-function simulatedRating(storyId: number, views: number): { score: number; count: number } {
-  const h = hashSeed(`rating:${storyId}`);
-  const score = 8.5 + (h % 15) / 10;
-  const count = 180 + (h % 620) + Math.round(Math.max(0, views) / 260);
-  return { score, count };
-}
-
-/** Đổi điểm thang 10 thành 5 ngôi sao đầy / nửa / rỗng. */
-function starIcons(score10: number): IoniconName[] {
-  const stars = score10 / 2;
-  return [0, 1, 2, 3, 4].map((i) => {
-    if (stars >= i + 0.75) return 'star';
-    if (stars >= i + 0.25) return 'star-half';
-    return 'star-outline';
-  });
-}
-
 /**
  * Bỏ tiền tố "Chương N" trùng lặp trong tên chương, vì số chương đã hiện ở ô bên trái.
  * Không khớp thì giữ nguyên tên gốc từ API.
@@ -201,7 +183,6 @@ export default function StoryDetailScreen() {
   const saved = isSaved(story.id);
   const completed = story.status === 'completed';
   const firstChapter = chapters[0]?.number ?? 1;
-  const rating = simulatedRating(story.id, story.views);
 
   return (
     <View style={styles.screen}>
@@ -265,26 +246,6 @@ export default function StoryDetailScreen() {
                 </Text>
               </View>
             ) : null}
-
-            {/* ---------- Đánh giá (dữ liệu mô phỏng, xem simulatedRating) ---------- */}
-            <View
-              style={styles.ratingRow}
-              accessibilityRole="text"
-              accessibilityLabel={`Rated ${rating.score.toFixed(1)} out of 10 from ${plural(
-                rating.count,
-                'rating',
-                'ratings',
-              )}`}>
-              <Text style={styles.ratingScore}>{rating.score.toFixed(1)}</Text>
-              <View style={styles.stars}>
-                {starIcons(rating.score).map((name, i) => (
-                  <Ionicons key={i} name={name} size={14} color={Palette.coin} />
-                ))}
-              </View>
-              <Text style={styles.ratingCount} numberOfLines={1}>
-                {formatViews(rating.count)} {rating.count === 1 ? 'rating' : 'ratings'}
-              </Text>
-            </View>
 
             {/* ---------- Hàng thông tin nhanh: 3 ô ngăn cách ---------- */}
             <View style={styles.statCard}>

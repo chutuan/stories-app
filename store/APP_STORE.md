@@ -147,11 +147,17 @@ Thứ duy nhất thu thập dữ liệu là **Google AdMob**. Khai như sau:
 
 | Data type | Collected | Purpose | Linked to identity | Used for tracking |
 |---|---|---|---|---|
-| Identifiers → Device ID | Yes | Third-Party Advertising | No | **Yes** |
-| Usage Data → Advertising Data | Yes | Third-Party Advertising | No | **Yes** |
+| Identifiers → Device ID | Yes | Third-Party Advertising | No | **No** |
+| Usage Data → Advertising Data | Yes | Third-Party Advertising | No | **No** |
 
-Vì có "Used for tracking" nên **bắt buộc** hiện App Tracking Transparency —
-`NSUserTrackingUsageDescription` đã khai sẵn trong `app.config.js`.
+**"Used for tracking" phải là No cho cả hai dòng.** App đặt
+`requestNonPersonalizedAdsOnly: true` cho mọi yêu cầu quảng cáo (xem
+`mobile/src/lib/ads.tsx`), tức không theo dõi người dùng qua app/website khác. Vì vậy
+KHÔNG cần App Tracking Transparency, và `NSUserTrackingUsageDescription` đã được gỡ
+khỏi `app.config.js`.
+
+Khai "Yes" ở đây mà app không hề hiện hộp thoại ATT chính là mâu thuẫn Apple đã cảnh
+báo ở lần nộp trước — hồ sơ nói có theo dõi, binary thì không xin phép.
 
 > ⚠️ Trước khi bấm nộp, đối chiếu lại với trang khai báo quyền riêng tư hiện hành của AdMob
 > (Google có cập nhật danh mục theo thời gian). Bảng trên phản ánh đúng những gì app này làm,

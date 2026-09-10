@@ -45,8 +45,8 @@
     <li>Google's practices are described in
       <a href="https://policies.google.com/technologies/partner-sites" rel="noopener">How Google uses
       information from sites or apps that use our services</a>.</li>
-    <li>On iOS you are asked, via Apple's App Tracking Transparency prompt, whether to allow
-      tracking. If you decline, you will still see ads, but they will not be personalised.</li>
+    <li>Ads are always requested in non-personalised mode. We do not track you across other
+      apps or websites, so the app never asks for App Tracking Transparency permission.</li>
     <li>On Android you can reset or delete your advertising ID in
       <em>Settings → Google → Ads</em>.</li>
   </ul>
