@@ -53,6 +53,19 @@
   <p>Watching a rewarded ad is always your choice. You can read every free chapter without watching
     one.</p>
 
+  <h2>Advertising on this website</h2>
+  <p>Separately from the app, the <strong>tunastory.com</strong> website serves ads through
+    <strong>Google AdSense</strong>. Google and its partners may set or read cookies in your browser
+    to serve and measure those ads. This applies only to the website you are reading now — it does
+    not change what the mobile app does, and the app still requests all of its ads in
+    non-personalised mode.</p>
+  <ul>
+    <li>You can review and turn off personalised advertising for your Google account at
+      <a href="https://myadcenter.google.com/" rel="noopener">My Ad Center</a>.</li>
+    <li>You can block or delete cookies in your browser settings at any time. The website remains
+      readable without them.</li>
+  </ul>
+
   <h2>What we do not use</h2>
   <p>The app contains no analytics SDK, no crash-reporting SDK and no social-network SDK.
     Advertising is the only third-party component in the app.</p>

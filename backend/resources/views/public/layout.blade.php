@@ -5,6 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>@yield('title', 'Stories') — Stories</title>
 <meta name="description" content="@yield('description', 'Stories — read hidden-billionaire fiction on your phone.')">
+{{-- Google AdSense. Cùng publisher ID với AdMob của app (pub-9892355907152840),
+     nhưng là HAI sản phẩm riêng: AdSense phục vụ website, AdMob phục vụ app, và
+     mỗi bên đòi một file xác thực riêng (/ads.txt cho AdSense, /app-ads.txt cho
+     AdMob — xem routes/web.php).
+
+     Chỉ nhúng khi ADMOB_PUBLISHER_ID có giá trị, cùng lý do với route /ads.txt:
+     máy dev không nên gọi ra Google, và thẻ script mang client rỗng thì AdSense
+     báo lỗi thay vì im lặng bỏ qua. --}}
+@if (filled(config('app.admob_publisher_id')))
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-{{ config('app.admob_publisher_id') }}"
+     crossorigin="anonymous"></script>
+@endif
 <style>
   :root{--bg:#FDF8F4;--surface:#fff;--text:#1A1614;--muted:#6E635C;
         --accent:#FF9052;--accent-deep:#F2703A;--border:rgba(26,22,20,.10)}

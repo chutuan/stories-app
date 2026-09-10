@@ -27,6 +27,21 @@ Route::get('/app-ads.txt', function () {
     );
 })->name('public.app-ads');
 
+// ads.txt cho AdSense: cùng vai trò với app-ads.txt ở trên nhưng cho WEBSITE.
+// Hai file KHÔNG thay thế được cho nhau — Google thu thập app-ads.txt cho quảng
+// cáo trong app và ads.txt cho quảng cáo trên trang web, dù publisher ID là một.
+// Thiếu ads.txt thì AdSense vẫn chạy nhưng bị hạn chế người mua và giảm doanh thu.
+Route::get('/ads.txt', function () {
+    $pub = config('app.admob_publisher_id');
+    abort_if(blank($pub), 404);
+
+    return response(
+        "google.com, {$pub}, DIRECT, f08c47fec0942fa0\n",
+        200,
+        ['Content-Type' => 'text/plain; charset=UTF-8']
+    );
+})->name('public.ads');
+
 Route::prefix('admin')->name('admin.')->group(function () {
     Route::get('login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('login', [AuthController::class, 'login'])->name('login.attempt');
