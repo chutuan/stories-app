@@ -1,43 +1,50 @@
 # Ô App Review Information → Notes (giới hạn 4.000 ký tự)
 
-Ô Notes trong App Store Connect chặn cứng ở 4.000 ký tự. Phần A trong
-APPLE_REVIEW_REPLY.md dài 7.880 ký tự — đó là văn bản đầy đủ để dán vào ô
-**Reply** (không giới hạn) khi trả lời thư từ chối. Bản dưới đây là bản rút gọn
-cho ô **Notes**, giữ nguyên cả 6 mục Apple hỏi.
+Ô Notes chặn cứng ở 4.000 ký tự; phần A trong APPLE_REVIEW_REPLY.md dài 7.880 và
+dùng cho ô **Reply** (ô đó không giới hạn). Bản dưới là bản rút gọn cho ô Notes.
 
-Nhớ thay [PASTE LINK] bằng link video demo trước khi dán.
+**Nhớ thay `[PASTE LINK]` bằng link video demo trước khi dán.**
+
+Bản này KHÁC bản đầu ở chỗ: không còn dẫn người review đi xem quảng cáo để lấy xu.
+AdMob đang để app ở trạng thái "Yêu cầu xem xét" và chỉ duyệt sau khi app lên
+App Store, nên tỉ lệ lấp quảng cáo hiện bằng 0. Nếu ghi chú vẫn bảo "bấm Watch ad"
+thì người review làm theo và không mở được gì — đường thẳng tới lần từ chối thứ hai.
+Thay vào đó bản này nêu ba đường không cần quảng cáo: hai truyện đọc free trọn vẹn,
+điểm danh +15, và mốc đọc 10 phút +15 (cộng lại đúng 30 xu = một chương).
 
 ```text
 NO ACCOUNT, NO PURCHASES, NO TRACKING
-
 1. SCREEN RECORDING
-Attached / at: [PASTE LINK]
-- Account registration, login, deletion: NOT APPLICABLE. Stories has no accounts of any kind — no sign-up, no sign-in, no profile. It is fully usable from first launch. Coin balance, unlocked chapters, saved stories and reading settings live only in local device storage (AsyncStorage) and are never sent to us. Nothing can be created, so nothing can be deleted.
-- User-generated content: NOT APPLICABLE. Users cannot post, comment, upload, message or share. No profiles, no social features, so reporting/blocking is not required.
-- Paid content: there are NO in-app purchases and NO subscriptions. Nothing can be bought with money. Chapter 1 of every story is free. Later chapters cost 30 "coins", an in-app virtual item earned FREE ONLY by (a) daily check-in, (b) reading-time milestones, (c) watching a Google AdMob rewarded video to completion (90 coins, so one ad unlocks three chapters). Coins cannot be purchased or transferred and have no monetary value.
-- Tracking: NOT APPLICABLE. The app never requests App Tracking Transparency, never reads the IDFA, and contains no NSUserTrackingUsageDescription. Ads are requested non-personalised. Our App Privacy answers say "used for tracking: No", which matches the binary.
+Video: [PASTE LINK]
+- Account registration, login, deletion: NOT APPLICABLE. Stories has no accounts — no sign-up, no sign-in, no profile. It is fully usable from first launch. Coin balance, unlocked chapters, saved stories and reading settings live only in local device storage (AsyncStorage), never sent to us. Nothing can be created, so nothing can be deleted.
+- User-generated content: NOT APPLICABLE. Users cannot post, comment, upload, message or share. No profiles or social features, so reporting/blocking does not apply.
+- Paid content: NO in-app purchases, NO subscriptions. Nothing is bought with money. Two stories — WHOSE SON ARE YOU and THE INVENTORY — are completely free, every chapter, with narrated audio. Elsewhere chapter 1 is free and later chapters cost 30 "coins", a virtual item earned FREE ONLY. Coins cannot be bought or transferred and have no monetary value.
+- Tracking: NOT APPLICABLE. No App Tracking Transparency request, no IDFA access, no NSUserTrackingUsageDescription in the binary. Ads are non-personalised. Our App Privacy answers say "used for tracking: No", matching the binary.
 
 2. PURPOSE AND AUDIENCE
-Stories is a free short-fiction reading app: serialised English drama about people who are underestimated or betrayed. Each story is 3-10 short chapters sized for a few minutes on a phone; some carry narrated audio. Audience: adult readers of popular commercial fiction, roughly 18-45. No explicit sex, graphic violence or strong profanity. No user interaction. Not aimed at children. Business model: advertising only.
+A free short-fiction reading app: serialised English drama about people who are underestimated or betrayed. Stories run 3-10 short chapters, sized for a few minutes on a phone; some are narrated. Audience: adult readers of commercial fiction, 18-45. No explicit sex, graphic violence or strong profanity. No user interaction. Not for children. Business model: advertising only.
 
 3. HOW TO ACCESS EVERY FEATURE
 No credentials needed — there is no account system. Just launch the app.
-1) Home opens on a shelf of stories.
-2) Tap any story for its synopsis, genres and chapter list.
-3) Tap "Read now": chapter 1 is free and opens immediately. A banner ad shows at the top. The "Aa" button opens reading settings.
-4) Audio: narration exists for 4 of our 10 stories while we produce the rest; the "Listen" control is disabled on the others. THE SIXTY-DOLLAR SUIT has audio for all 10 chapters — open it and tap the headphone button. Audio streams as MP3 from our own server.
-5) Unlock a chapter: in THE SIXTY-DOLLAR SUIT tap chapter 2. It costs 30 coins. A new install has 0 coins, so tap "Watch ad - +90 coins" and watch the rewarded video TO THE END (closing early grants nothing, by Google's design). Then tap "Unlock" and the chapter opens.
-6) Rewards tab shows the three ways to earn coins. Library tab shows saved stories.
+1) Home opens on a shelf of stories; tap one for its synopsis and chapter list.
+2) READ A WHOLE STORY FREE: open WHOSE SON ARE YOU (3 chapters) or THE INVENTORY (5 chapters), or use the "Free" tab on Home. Every chapter opens at once, no coins.
+3) AUDIO: both stories above are narrated in full. Tap the headphone button in the reading screen header. Audio streams as MP3 from our server.
+4) READING SETTINGS: the "Aa" button opens font size, spacing, brightness and page themes.
+5) LOCKED CHAPTERS: open another story, tap chapter 2 for the unlock screen (30 coins). Three free ways to earn coins:
+   a) Daily check-in: +15 coins, Rewards tab.
+   b) Reading milestones: +15 after 10 minutes, then +25, +40, +60. Check-in plus the 10-minute milestone gives 30 coins — one chapter unlocked WITHOUT any ad.
+   c) Rewarded video: +90 coins, watched to the end.
+   PLEASE NOTE: ads may not display during review. Our AdMob account still lists this app as "review required", which Google only completes once an app is live on the App Store, so fill is currently zero. The app handles that correctly, showing "Ads are not available right now". Paths (a), (b) and the two free stories work regardless, so every feature stays reachable.
 
 4. EXTERNAL SERVICES
-At runtime the app contacts only two:
+Two only, at runtime:
 - api.tunastory.com, our own VPS: read-only REST API serving story text, covers and MP3s. GET only. No user data or device identifier is ever sent.
-- Google AdMob: banner and rewarded ads, requested non-personalised.
-No analytics, attribution, crash-reporting or social SDKs — no Firebase, Facebook, Sentry, AppsFlyer, Adjust or Segment. No over-the-air code updates.
-Content production happens on our server before publication, never in the app: OpenAI gpt-4o-mini-tts for narration, gpt-image-1 for cover art. All story text is original fiction created by us for this app with the assistance of AI writing tools and reviewed by us. Narration and cover art are generated from our own text and owned by us. No licensed or third-party works, no fan fiction, no user submissions, no scraped content.
+- Google AdMob: banner and rewarded ads, non-personalised.
+No analytics, attribution, crash-reporting or social SDKs of any kind. No over-the-air code updates.
+Content is produced on our server before publication, never in the app: OpenAI gpt-4o-mini-tts for narration, gpt-image-1 for covers. All story text is original fiction written for this app with AI assistance and reviewed by us; narration and covers derive from our own text and are ours. No licensed or third-party works, no fan fiction, no user submissions, no scraped content.
 
 5. REGIONAL DIFFERENCES
-None. Identical everywhere: no geographic gating, no region-specific content, pricing or feature flags. English only, worldwide. Only AdMob varies the ads it serves by region, handled entirely by Google.
+None. Identical everywhere: no geographic gating, no region-specific content, pricing or feature flags. English only, worldwide.
 
 6. REGULATED INDUSTRY / THIRD-PARTY MATERIAL
-Not a financial, medical, gambling, health, dating or government service; no regulated advice. No third-party protected material, so no licences are required.```
+Not a financial, medical, gambling, health, dating or government service; no regulated advice. No third-party protected material, so no licences apply.```

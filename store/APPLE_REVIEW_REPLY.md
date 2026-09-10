@@ -166,15 +166,33 @@ Trình tự cảnh phải có, theo đúng thứ tự (khoảng 2–3 phút):
    (Kịch bản trước dùng *The Janitor Owns the Company*; truyện đó đã bị gỡ khỏi kho ngày
    10/09/2026 cùng 9 truyện demo khác — mỗi "chương" chỉ khoảng 200 từ, quá mỏng để chạy
    Google AdSense trên bản web.)
-4. Chạm **Read now** → đọc chương 1 (miễn phí). Cuộn vài đoạn. **Cho thấy banner quảng
-   cáo ở đầu màn**.
+4. Chạm **Read now** → đọc chương 1 (miễn phí). Cuộn vài đoạn.
 5. Chạm nút **Aa** → đổi cỡ chữ và nền đọc → đóng lại.
 6. Chạm nút **tai nghe** → màn nghe → bấm phát, để chạy vài giây cho thấy audio thật.
-7. Quay lại danh sách chương → chạm **chương 2** → màn khoá hiện "30 coins".
-8. Chạm **Watch ad · +90 coins** → **xem hết** quảng cáo rewarded (đóng sớm là không được
-   cộng xu, nên đừng bấm X) → cho thấy số xu nhảy lên 90.
-9. Chạm **Unlock** → chương 2 mở ra, đọc được.
-10. Mở tab **Rewards** cho thấy ba cách kiếm xu, rồi tab **Library**.
+7. Quay lại danh sách chương → chạm **chương 2** → màn khoá hiện "Unlock · 30 coins".
+   Dừng ở đây vài giây cho thấy rõ giá và số dư — **ĐỪNG bấm "Watch ad"** (lý do ở dưới).
+8. Quay lại màn chủ → tab **Free** → mở **Whose Son Are You** → đọc hết chương 1, chạm
+   **Next** sang chương 2, rồi chương 3. Đây là phần quan trọng nhất của cả video: nó chứng
+   minh người dùng đọc trọn một truyện mà không tốn xu và không xem quảng cáo nào.
+9. Chạm nút **tai nghe** trong chính truyện đó → phát vài giây (truyện này có audio đủ 3
+   chương).
+10. Mở tab **Rewards**: cho thấy **Check in +15**, các mốc đọc **+15/+25/+40/+60**, và ô
+    **Watch ad · +90 coins**. Chỉ CHỈ vào chúng, không bấm.
+11. Mở tab **Library**, kết thúc.
+
+**VÌ SAO KHÔNG QUAY CẢNH XEM QUẢNG CÁO.** Bảng điều khiển AdMob đang để app iOS ở trạng
+thái *"Yêu cầu xem xét"*, và mục *"Thông tin chi tiết về cửa hàng ứng dụng"* còn trống vì
+app chưa lên App Store. Google chỉ duyệt sau khi app được phát hành, nên hiện tỉ lệ lấp
+quảng cáo bằng **0** — bấm "Watch ad" trên máy thật chỉ hiện *"Ads are not available right
+now"*. Quay đúng cảnh đó vào video nộp cho Apple là tự tay đưa bằng chứng rằng tính năng
+kiếm xu không chạy. Đây là vòng luẩn quẩn không gỡ được trước khi nộp: chưa phát hành thì
+AdMob chưa duyệt.
+
+Bù lại, ngày 10/09/2026 đã mở **hai truyện đọc miễn phí trọn vẹn** — *Whose Son Are You*
+(3 chương) và *The Inventory* (5 chương), cả hai có audio đủ — nên mọi tính năng Apple hỏi
+đều quay được mà không phụ thuộc quảng cáo. Ghi chú gửi người review
+(`store/APP_REVIEW_NOTES.md`) đã nói thẳng chuyện AdMob chưa duyệt, nên không có gì mâu
+thuẫn giữa video và lời khai.
 
 Không cần quay đăng ký/đăng nhập/xoá tài khoản — app không có. Thư ở phần A đã nói rõ
 điều đó để người review không đi tìm.
