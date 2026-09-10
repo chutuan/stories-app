@@ -5,11 +5,28 @@ use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ChapterController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\StoryController;
+use App\Http\Controllers\Web\ReadController;
 use Illuminate\Support\Facades\Route;
 
 // Trang công khai — domain gốc phục vụ người dùng cuối và các trang bắt buộc
 // để nộp App Store / Google Play (privacy, terms). Admin nằm ở /admin.
-Route::view('/', 'public.home')->name('public.home');
+// --- Bản web đọc truyện (chạy AdSense) ---
+//
+// Ràng buộc model khai TẠI ĐÂY bằng {story:slug} / {category:slug} chứ KHÔNG
+// đặt getRouteKeyName() trên model. Lý do sống còn: routes/api.php dùng chính
+// ràng buộc đó với `show(Story $story)`, nên đổi khoá trên model sẽ biến
+// /api/stories/1 thành 404 và giết luôn app đang chạy. Cú pháp {tham số:cột}
+// chỉ đổi khoá cho đúng route này.
+Route::get('/', [ReadController::class, 'home'])->name('public.home');
+Route::get('/browse', [ReadController::class, 'browse'])->name('public.browse');
+Route::get('/search', [ReadController::class, 'search'])->name('public.search');
+Route::get('/genre/{category:slug}', [ReadController::class, 'category'])->name('public.category');
+Route::get('/story/{story:slug}', [ReadController::class, 'story'])->name('public.story');
+Route::get('/story/{story:slug}/chapter/{number}', [ReadController::class, 'chapter'])
+    ->whereNumber('number')
+    ->name('public.chapter');
+Route::get('/sitemap.xml', [ReadController::class, 'sitemap'])->name('public.sitemap');
+
 Route::view('/privacy', 'public.privacy')->name('public.privacy');
 Route::view('/terms', 'public.terms')->name('public.terms');
 

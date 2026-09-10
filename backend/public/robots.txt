@@ -1,2 +1,14 @@
 User-agent: *
-Disallow:
+Disallow: /admin
+Disallow: /search
+
+# Cho phép trình thu thập quảng cáo của Google vào mọi trang. Không có hai dòng
+# này, AdSense/AdMob vẫn quét được (chúng đi theo User-agent: * ở trên), nhưng
+# khai tường minh để lần sau ai siết robots.txt thì không vô tình chặn quảng cáo.
+User-agent: Mediapartners-Google
+Allow: /
+
+User-agent: AdsBot-Google
+Allow: /
+
+Sitemap: https://tunastory.com/sitemap.xml

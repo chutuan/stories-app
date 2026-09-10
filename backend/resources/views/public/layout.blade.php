@@ -1,10 +1,75 @@
+{{--
+  Layout chung cho toàn bộ trang công khai: trang đọc truyện, trang giới thiệu,
+  privacy, terms.
+
+  Ba thứ layout này chịu trách nhiệm và từng trang KHÔNG nên tự làm lại:
+   - thẻ SEO (title/description/canonical/OpenGraph/Twitter) — xem @section bên dưới
+   - favicon
+   - thẻ AdSense
+
+  Trang con điều khiển bằng:
+   - @section('title')        tiêu đề, KHÔNG kèm "— Stories" (layout tự nối)
+   - @section('description')  mô tả cho <meta description> và OpenGraph
+   - @section('og_image')     ảnh chia sẻ mạng xã hội (mặc định: icon app)
+   - @section('og_type')      'website' (mặc định) hoặc 'article' cho trang chương
+   - @section('robots')       ví dụ 'noindex' cho trang kết quả tìm kiếm
+   - @push('head')            JSON-LD hoặc thẻ riêng của trang
+   - @section('wide')         đặt bất kỳ giá trị nào để dùng khung rộng (lưới truyện)
+--}}
+@php
+    /*
+     | Blade ĐÃ escape sẵn: dạng hai tham số `@section('description', $x)` gọi
+     | e($x) bên trong startSection(). Nếu ở đây in bằng {{ }} thì escape lần
+     | hai và dấu nháy trong truyện ra thành "Ethan&amp;#039;s" ngay giữa thẻ
+     | <meta description> — Google hiển thị đúng cái chuỗi rác đó trên kết quả
+     | tìm kiếm.
+     |
+     | Giải mã một lần rồi escape một lần: đúng cho cả dạng hai tham số lẫn dạng
+     | khối @section...@endsection (không được escape sẵn), và chạy lại nhiều lần
+     | vẫn ra cùng kết quả.
+     */
+    $seo = static fn (string $v): string => e(html_entity_decode($v, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+
+    $seoTitle = trim($__env->yieldContent('title', 'Stories'));
+    $seoDescription = trim($__env->yieldContent(
+        'description',
+        'Short serialised fiction you can finish in one sitting — hidden billionaires, secret identities and long-overdue revenge.'
+    ));
+    $seoImage = trim($__env->yieldContent('og_image', asset('icons/icon-512.png')));
+    $seoType = trim($__env->yieldContent('og_type', 'website'));
+    $seoRobots = trim($__env->yieldContent('robots', 'index, follow'));
+    $isWide = trim($__env->yieldContent('wide', '')) !== '';
+@endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>@yield('title', 'Stories') — Stories</title>
-<meta name="description" content="@yield('description', 'Stories — read hidden-billionaire fiction on your phone.')">
+
+<title>{!! $seo($seoTitle) !!} — Stories</title>
+<meta name="description" content="{!! $seo($seoDescription) !!}">
+<meta name="robots" content="{{ $seoRobots }}">
+{{-- Canonical bỏ chuỗi truy vấn: trang danh sách có ?page= vẫn phải trỏ về
+     chính nó, nhưng ?utm_* hay tham số rác thì không được sinh ra bản sao. --}}
+<link rel="canonical" href="{{ url()->current() }}{{ request()->query('page') > 1 ? '?page='.(int) request()->query('page') : '' }}">
+
+<meta property="og:site_name" content="Stories">
+<meta property="og:type" content="{{ $seoType }}">
+<meta property="og:title" content="{!! $seo($seoTitle) !!}">
+<meta property="og:description" content="{!! $seo($seoDescription) !!}">
+<meta property="og:url" content="{{ url()->current() }}">
+<meta property="og:image" content="{!! $seo($seoImage) !!}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{!! $seo($seoTitle) !!}">
+<meta name="twitter:description" content="{!! $seo($seoDescription) !!}">
+<meta name="twitter:image" content="{!! $seo($seoImage) !!}">
+
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="{{ asset('icons/icon-32.png') }}">
+<link rel="icon" type="image/png" sizes="16x16" href="{{ asset('icons/icon-16.png') }}">
+<link rel="apple-touch-icon" href="{{ asset('icons/icon-180.png') }}">
+<meta name="theme-color" content="#FF9052">
+
 {{-- Google AdSense. Cùng publisher ID với AdMob của app (pub-9892355907152840),
      nhưng là HAI sản phẩm riêng: AdSense phục vụ website, AdMob phục vụ app, và
      mỗi bên đòi một file xác thực riêng (/ads.txt cho AdSense, /app-ads.txt cho
@@ -24,13 +89,20 @@
   body{margin:0;background:var(--bg);color:var(--text);line-height:1.7;
        font:16px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
   .wrap{max-width:760px;margin:0 auto;padding:0 20px}
-  header{border-bottom:1px solid var(--border);background:var(--surface)}
-  header .wrap{display:flex;align-items:center;justify-content:space-between;height:64px}
-  .logo{font-size:22px;font-weight:800;letter-spacing:-.02em;text-decoration:none;color:var(--text)}
+  .wrap.wide{max-width:1080px}
+  header{border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:10}
+  header .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:64px;flex-wrap:wrap}
+  .logo{font-size:22px;font-weight:800;letter-spacing:-.02em;text-decoration:none;color:var(--text);white-space:nowrap}
   .logo span{color:var(--accent-deep)}
-  nav a{margin-left:18px;color:var(--muted);text-decoration:none;font-size:14px}
-  nav a:hover{color:var(--accent-deep)}
-  main{padding:44px 0 72px}
+  nav{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+  nav a{color:var(--muted);text-decoration:none;font-size:14px}
+  nav a:hover,nav a[aria-current="page"]{color:var(--accent-deep)}
+  .searchbox{display:flex;gap:6px}
+  .searchbox input{font:inherit;font-size:14px;padding:7px 12px;border:1px solid var(--border);
+                   border-radius:999px;background:var(--bg);color:var(--text);min-width:150px}
+  .searchbox button{font:inherit;font-size:14px;padding:7px 14px;border:0;border-radius:999px;
+                    background:var(--accent-deep);color:#fff;cursor:pointer}
+  main{padding:36px 0 72px}
   h1{font-size:32px;line-height:1.25;margin:0 0 8px;letter-spacing:-.02em}
   h2{font-size:19px;margin:34px 0 10px;letter-spacing:-.01em}
   .updated{color:var(--muted);font-size:14px;margin:0 0 28px}
@@ -41,16 +113,78 @@
   .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:22px 24px;margin:22px 0}
   footer{border-top:1px solid var(--border);padding:26px 0;color:var(--muted);font-size:14px}
   footer a{color:var(--muted);margin-right:16px}
+
+  /* --- lưới truyện --- */
+  .grid{display:grid;gap:22px;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));margin:18px 0 0;padding:0;list-style:none}
+  .grid li{margin:0}
+  .scard{display:block;text-decoration:none;color:inherit}
+  .scard img,.scard .noart{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:12px;
+                           border:1px solid var(--border);background:#EFE7E0;display:block}
+  .scard .noart{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;text-align:center;padding:10px}
+  .scard h3{font-size:15px;line-height:1.35;margin:9px 0 2px;font-weight:650}
+  .scard .meta{color:var(--muted);font-size:13px;margin:0}
+
+  /* --- chi tiết truyện --- */
+  .hero{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap}
+  .hero img,.hero .noart{width:180px;aspect-ratio:2/3;object-fit:cover;border-radius:14px;
+                         border:1px solid var(--border);background:#EFE7E0;flex:none}
+  .hero .noart{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px}
+  .hero-body{flex:1;min-width:240px}
+  .tags{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 0;padding:0;list-style:none}
+  .tags li{margin:0}
+  .tag{display:inline-block;font-size:13px;padding:3px 11px;border-radius:999px;
+       background:#fff;border:1px solid var(--border);color:var(--muted);text-decoration:none}
+  .tag.on{background:var(--accent-deep);border-color:var(--accent-deep);color:#fff}
+  .btn{display:inline-block;margin-top:16px;padding:11px 22px;border-radius:999px;
+       background:var(--accent-deep);color:#fff;text-decoration:none;font-weight:650}
+  .chapters{list-style:none;padding:0;margin:14px 0 0;border:1px solid var(--border);
+            border-radius:14px;overflow:hidden;background:var(--surface)}
+  .chapters li{margin:0;border-top:1px solid var(--border)}
+  .chapters li:first-child{border-top:0}
+  .chapters a{display:flex;gap:12px;padding:13px 18px;text-decoration:none;color:inherit;align-items:baseline}
+  .chapters a:hover{background:#FFF6F0}
+  .chapters .n{color:var(--muted);font-size:13px;min-width:34px;flex:none}
+
+  /* --- màn đọc --- */
+  .chapter-body{font-size:18px;line-height:1.85}
+  .chapter-body p{margin:0 0 1.15em}
+  .pager{display:flex;justify-content:space-between;gap:12px;margin:34px 0 0;flex-wrap:wrap}
+  .pager a{padding:11px 20px;border-radius:999px;background:var(--surface);
+           border:1px solid var(--border);text-decoration:none;font-size:14px}
+  .crumbs{font-size:13px;color:var(--muted);margin:0 0 10px}
+  .crumbs a{color:var(--muted)}
+
+  /* --- ô quảng cáo --- */
+  .adslot{margin:30px 0;min-height:100px;text-align:center;overflow:hidden}
+  .adslot ins{display:block}
+
+  .pagination{display:flex;gap:8px;flex-wrap:wrap;margin:30px 0 0;padding:0;list-style:none}
+  .pagination li{margin:0}
+  .pagination a,.pagination span{display:inline-block;padding:7px 13px;border-radius:9px;
+        border:1px solid var(--border);text-decoration:none;font-size:14px;background:var(--surface)}
+  .pagination .cur{background:var(--accent-deep);border-color:var(--accent-deep);color:#fff}
+  .empty{text-align:center;color:var(--muted);padding:44px 0}
 </style>
+@stack('head')
 </head>
 <body>
-<header><div class="wrap">
-  <a class="logo" href="/">Sto<span>ries</span></a>
-  <nav><a href="/">Home</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a></nav>
+<header><div class="wrap{{ $isWide ? ' wide' : '' }}">
+  <a class="logo" href="{{ route('public.home') }}">Sto<span>ries</span></a>
+  <nav>
+    <a href="{{ route('public.browse') }}">Browse</a>
+    <a href="{{ route('public.privacy') }}">Privacy</a>
+    <form class="searchbox" action="{{ route('public.search') }}" method="get" role="search">
+      <input type="search" name="q" value="{{ request('q') }}" placeholder="Search stories" aria-label="Search stories">
+      <button type="submit">Search</button>
+    </form>
+  </nav>
 </div></header>
-<main><div class="wrap">@yield('content')</div></main>
-<footer><div class="wrap">
-  <a href="/privacy">Privacy Policy</a><a href="/terms">Terms of Service</a>
+<main><div class="wrap{{ $isWide ? ' wide' : '' }}">@yield('content')</div></main>
+<footer><div class="wrap{{ $isWide ? ' wide' : '' }}">
+  <a href="{{ route('public.home') }}">Home</a>
+  <a href="{{ route('public.browse') }}">Browse</a>
+  <a href="{{ route('public.privacy') }}">Privacy Policy</a>
+  <a href="{{ route('public.terms') }}">Terms of Service</a>
   <a href="mailto:{{ config('app.support_email') }}">{{ config('app.support_email') }}</a>
   <div style="margin-top:10px">&copy; {{ date('Y') }} Stories</div>
 </div></footer>

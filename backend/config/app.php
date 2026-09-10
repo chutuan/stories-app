@@ -80,10 +80,18 @@ return [
     'admob_publisher_id' => env('ADMOB_PUBLISHER_ID'),
 
     /*
+     | Ad unit AdSense cho website. Bỏ trống thì các ô quảng cáo trong bài KHÔNG
+     | được in ra (xem resources/views/public/partials/ad.blade.php) — chỉ riêng
+     | thẻ script trong layout vẫn đủ để chạy Auto ads.
+     |
+     | Lấy giá trị ở AdSense -> Quảng cáo -> Theo đơn vị quảng cáo -> mã data-ad-slot.
+     */
+    'adsense_slot_article' => env('ADSENSE_SLOT_ARTICLE'),
+
+    /*
     | Ngày cập nhật văn bản pháp lý, hiện trên trang Privacy và Terms.
     */
     'legal_updated' => env('LEGAL_UPDATED', '9 September 2026'),
-
 
     /*
     |--------------------------------------------------------------------------
