@@ -86,12 +86,12 @@ có tài khoản, không có mua trong ứng dụng, và không theo dõi ngư�
 >    spacing, background theme, brightness).
 > 4. **Listen to audio** — narrated audio is available for a subset of our catalogue while
 >    we continue producing it; the "Listen" control is disabled on stories that do not
->    have it yet. *The Janitor Owns the Company*, *The Sixty-Dollar Suit* and *Undrafted*
+>    have it yet. *The Sixty-Dollar Suit*, *Undrafted*, *The Inventory* and *Whose Son Are You*
 >    all have audio for every chapter. Open one of those, then tap the headphone button in
 >    the reading screen header, or the "Listen" row on the story detail screen. Audio is
 >    streamed as an MP3 file from our own server.
 > 5. **Unlock a later chapter** — open a story whose chapter 2 is locked (for example
->    *The Janitor Owns the Company*) and tap chapter 2. A screen explains it costs 30
+>    *The Sixty-Dollar Suit*) and tap chapter 2. A screen explains it costs 30
 >    coins. A new install starts with 0 coins, so tap "Watch ad · +90 coins", watch the
 >    rewarded video **to the end** — the reward is only credited on Google's
 >    `EARNED_REWARD` callback, closing the ad early grants nothing — and 90 coins are
@@ -160,9 +160,12 @@ Trình tự cảnh phải có, theo đúng thứ tự (khoảng 2–3 phút):
 1. Màn hình chính của iPhone, **chạm vào icon Stories** để mở — Apple yêu cầu video phải
    bắt đầu từ lúc khởi chạy app.
 2. Đợi màn hình chủ hiện danh sách truyện, cuộn xuống cho thấy các hàng truyện.
-3. Chạm vào **The Janitor Owns the Company** → màn chi tiết: tóm tắt, thể loại, danh sách
-   chương. **Dùng đúng truyện này** cho cả bước đọc, nghe và mở khoá — nó có audio đủ 5
-   chương và chương 2 đang khoá, nên quay được trọn vẹn mọi thứ Apple hỏi trong một mạch.
+3. Chạm vào **The Sixty-Dollar Suit** → màn chi tiết: tóm tắt, thể loại, danh sách chương.
+   **Dùng đúng truyện này** cho cả bước đọc, nghe và mở khoá — nó có audio đủ 10 chương và
+   chương 2 đang khoá, nên quay được trọn vẹn mọi thứ Apple hỏi trong một mạch.
+   (Kịch bản trước dùng *The Janitor Owns the Company*; truyện đó đã bị gỡ khỏi kho ngày
+   10/09/2026 cùng 9 truyện demo khác — mỗi "chương" chỉ khoảng 200 từ, quá mỏng để chạy
+   Google AdSense trên bản web.)
 4. Chạm **Read now** → đọc chương 1 (miễn phí). Cuộn vài đoạn. **Cho thấy banner quảng
    cáo ở đầu màn**.
 5. Chạm nút **Aa** → đổi cỡ chữ và nền đọc → đóng lại.
@@ -199,8 +202,8 @@ chuỗi đó khỏi `app.config.js`, và quảng cáo chạy `requestNonPersonal
 bảng App Privacy giữ nguyên **Used for tracking: No** — đúng với binary.
 
 **c) Chỉ 3 trên 13 truyện có audio — chưa làm, không chặn nộp.**
-Hiện chỉ *The Janitor Owns the Company*, *The Sixty-Dollar Suit* và *Undrafted* có file
-MP3; 10 truyện còn lại nút "Listen" bị tắt. Mô tả trên App Store đã ghi
+Hiện chỉ *The Sixty-Dollar Suit*, *Undrafted*, *The Inventory* và *Whose Son Are You* có
+file MP3 — 4 trên 10 truyện; 6 truyện còn lại nút "Listen" bị tắt. Mô tả trên App Store đã ghi
 *"where audio is available"* nên không khai sai, nhưng người review bấm trúng truyện
 không có audio vẫn có thể coi là tính năng dở dang. Chạy
 `php artisan chapters:audio --queue` trên máy chủ để phủ kín — **không cần build lại**,
