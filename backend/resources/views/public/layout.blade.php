@@ -164,6 +164,72 @@
         border:1px solid var(--border);text-decoration:none;font-size:14px;background:var(--surface)}
   .pagination .cur{background:var(--accent-deep);border-color:var(--accent-deep);color:#fff}
   .empty{text-align:center;color:var(--muted);padding:44px 0}
+  /* ---------- Màn hẹp ----------
+     Đo trên iPhone 375px trước khi sửa: header cao 136px (17% màn hình) vì logo,
+     nav và ô tìm kiếm xếp thành ba hàng — mà header lại sticky nên chiếm chỗ đó
+     vĩnh viễn. Lưới truyện tụt xuống 1 cột vì minmax(160px) không đủ chỗ cho hai
+     cột trong 335px nội dung. Thẻ hero vỡ hàng vì ảnh 180px cộng thân tối thiểu
+     240px vượt bề ngang màn hình. */
+  .narrow-only{display:none}
+
+  @media (max-width:600px){
+    .wide-only{display:none}
+    .narrow-only{display:inline}
+
+    .wrap,.wrap.wide{padding:0 16px}
+    main{padding:22px 0 56px}
+
+    /* Header về MỘT hàng, cao ~56px thay vì 136px */
+    header .wrap{min-height:56px;gap:10px;flex-wrap:nowrap}
+    .logo{font-size:19px}
+    nav{gap:12px;flex:1;justify-content:flex-end;flex-wrap:nowrap}
+    .searchbox{flex:1;max-width:180px}
+    .searchbox input{min-width:0;width:100%;padding:8px 12px}
+    /* Nút mũi tên: giữ tối thiểu 40px cho vừa đầu ngón tay */
+    .searchbox button{padding:8px 14px;min-width:40px;font-size:16px;line-height:1}
+
+    /* Hai cột truyện thay vì một — thẻ 1 cột to bằng nửa màn hình, cuộn mãi
+       không hết mà vẫn chỉ thấy được hai truyện. */
+    .grid{grid-template-columns:repeat(2,1fr);gap:14px}
+    .scard h3{font-size:14px}
+    .scard .meta{font-size:12px}
+
+    /* Hero: ảnh và chữ đi CẠNH nhau. Xếp dọc thì ảnh 120px đứng một mình một
+       hàng, để lại mảng trắng hai phần ba bề ngang. flex-basis:100% là thứ đẩy
+       thân chữ xuống dòng, nên đổi thành flex:1 kèm min-width:0 (thiếu min-width
+       thì nội dung dài vẫn phá vỡ flex item). */
+    .hero{gap:14px;flex-wrap:nowrap}
+    .hero img,.hero .noart{width:126px}
+    .hero-body{min-width:0;flex:1}
+    .hero-body h1,.hero-body h2{font-size:20px;line-height:1.25}
+    /* Tóm tắt cắt còn 4 dòng: đọc đủ để tò mò mà không đẩy nút xuống quá sâu */
+    .hero-body p:not(.meta){display:-webkit-box;-webkit-line-clamp:4;
+      -webkit-box-orient:vertical;overflow:hidden;font-size:14px;margin:8px 0 0}
+    .hero .btn{margin-top:12px;padding:10px 18px;font-size:14px}
+
+    h1{font-size:25px}
+    h2{font-size:17px;margin:26px 0 8px}
+    .card{padding:18px 16px;border-radius:14px}
+
+    /* Màn đọc: thu lề để dòng dài hơn, trước đó chỉ ~37 ký tự mỗi dòng */
+    .chapter-body{font-size:17px;line-height:1.75}
+
+    /* Previous / Next không được vỡ dòng, và phải đủ to để bấm */
+    .pager{gap:8px;flex-wrap:nowrap}
+    .pager a{flex:1;text-align:center;padding:12px 8px;font-size:13px;
+             white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+    .chapters a{padding:15px 14px}
+    .tag{padding:5px 12px}
+    footer a{display:inline-block;margin:0 14px 8px 0}
+  }
+
+  /* Rất hẹp (iPhone SE): nhường thêm chỗ cho ô tìm kiếm */
+  @media (max-width:360px){
+    nav{gap:8px}
+    .searchbox{max-width:150px}
+    .logo{font-size:18px}
+  }
 </style>
 @stack('head')
 </head>
@@ -172,10 +238,11 @@
   <a class="logo" href="{{ route('public.home') }}">Sto<span>ries</span></a>
   <nav>
     <a href="{{ route('public.browse') }}">Browse</a>
-    <a href="{{ route('public.privacy') }}">Privacy</a>
+    {{-- Privacy vẫn ở footer nên trên màn hẹp ẩn đi, nhường chỗ cho ô tìm kiếm --}}
+    <a class="wide-only" href="{{ route('public.privacy') }}">Privacy</a>
     <form class="searchbox" action="{{ route('public.search') }}" method="get" role="search">
       <input type="search" name="q" value="{{ request('q') }}" placeholder="Search stories" aria-label="Search stories">
-      <button type="submit">Search</button>
+      <button type="submit" aria-label="Search"><span class="wide-only">Search</span><span class="narrow-only" aria-hidden="true">→</span></button>
     </form>
   </nav>
 </div></header>
