@@ -3,7 +3,7 @@
 Ô Notes chặn cứng ở 4.000 ký tự; phần A trong APPLE_REVIEW_REPLY.md dài 7.880 và
 dùng cho ô **Reply** (ô đó không giới hạn). Bản dưới là bản rút gọn cho ô Notes.
 
-**Nhớ thay `[PASTE LINK]` bằng link video demo trước khi dán.**
+Link video đã điền sẵn (bản rút gọn, bỏ `?usp=sharing` để tiết kiệm 12 ký tự).
 
 Bản này KHÁC bản đầu ở chỗ: không còn dẫn người review đi xem quảng cáo để lấy xu.
 AdMob đang để app ở trạng thái "Yêu cầu xem xét" và chỉ duyệt sau khi app lên
@@ -15,14 +15,14 @@ Thay vào đó bản này nêu ba đường không cần quảng cáo: hai truy�
 ```text
 NO ACCOUNT, NO PURCHASES, NO TRACKING
 1. SCREEN RECORDING
-Video: [PASTE LINK]
-- Account registration, login, deletion: NOT APPLICABLE. Stories has no accounts — no sign-up, no sign-in, no profile. It is fully usable from first launch. Coin balance, unlocked chapters, saved stories and reading settings live only in local device storage (AsyncStorage), never sent to us. Nothing can be created, so nothing can be deleted.
+Video: https://drive.google.com/file/d/1Rb5-UFqJYZWWDgwKTFWrmV44Vaw9PVY7/view
+- Account registration, login, deletion: NOT APPLICABLE. Stories has no accounts of any kind and is fully usable from first launch. Coin balance, unlocked chapters, saved stories and reading settings live only in local device storage, never sent to us. Nothing is created, so nothing can be deleted.
 - User-generated content: NOT APPLICABLE. Users cannot post, comment, upload, message or share. No profiles or social features, so reporting/blocking does not apply.
 - Paid content: NO in-app purchases, NO subscriptions. Nothing is bought with money. Two stories — WHOSE SON ARE YOU and THE INVENTORY — are completely free, every chapter, with narrated audio. Elsewhere chapter 1 is free and later chapters cost 30 "coins", a virtual item earned FREE ONLY. Coins cannot be bought or transferred and have no monetary value.
 - Tracking: NOT APPLICABLE. No App Tracking Transparency request, no IDFA access, no NSUserTrackingUsageDescription in the binary. Ads are non-personalised. Our App Privacy answers say "used for tracking: No", matching the binary.
 
 2. PURPOSE AND AUDIENCE
-A free short-fiction reading app: serialised English drama about people who are underestimated or betrayed. Stories run 3-10 short chapters, sized for a few minutes on a phone; some are narrated. Audience: adult readers of commercial fiction, 18-45. No explicit sex, graphic violence or strong profanity. No user interaction. Not for children. Business model: advertising only.
+A free short-fiction reading app: serialised English drama about people who are underestimated or betrayed. Stories run 3-10 short chapters, a few minutes each; some are narrated. Audience: adult readers of commercial fiction, 18-45. No explicit sex, graphic violence or strong profanity. No user interaction. Not for children. Business model: advertising only.
 
 3. HOW TO ACCESS EVERY FEATURE
 No credentials needed — there is no account system. Just launch the app.
@@ -44,7 +44,7 @@ No analytics, attribution, crash-reporting or social SDKs of any kind. No over-t
 Content is produced on our server before publication, never in the app: OpenAI gpt-4o-mini-tts for narration, gpt-image-1 for covers. All story text is original fiction written for this app with AI assistance and reviewed by us; narration and covers derive from our own text and are ours. No licensed or third-party works, no fan fiction, no user submissions, no scraped content.
 
 5. REGIONAL DIFFERENCES
-None. Identical everywhere: no geographic gating, no region-specific content, pricing or feature flags. English only, worldwide.
+None. Identical everywhere: no geographic gating, no region-specific content, pricing or feature flags. English only.
 
 6. REGULATED INDUSTRY / THIRD-PARTY MATERIAL
 Not a financial, medical, gambling, health, dating or government service; no regulated advice. No third-party protected material, so no licences apply.```
