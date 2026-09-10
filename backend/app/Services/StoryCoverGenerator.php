@@ -54,17 +54,17 @@ class StoryCoverGenerator
      * @var array<string, string>
      */
     private const PROFILES = [
-        'billionaire' => 'Night-time wealth with real colour: deep navy and near-black offset by warm gold spilling from chandeliers, headlights or a lit skyline behind him. Hard rim light along the jaw and shoulders so he cuts away from the dark. Cold blue shadow against warm gold highlight — never a flat grey night.',
-        'ceo' => 'Hard daylight raking through floor-to-ceiling glass, cutting sharp geometric shadows across the room and across his face. Steel grey and white, broken by ONE saturated accent — a deep red tie, amber whisky, a green sign light. Crisp, controlled, faintly intimidating.',
-        'secret-identity' => 'Split lighting: the face clearly and brightly lit from one side while the other falls into deep shadow. Teal shadow against warm amber key. Keep the face readable — the mystery comes from what is BEHIND him being expensive while he is not, never from hiding him in murk.',
-        'romance' => 'Golden-hour or lamplight with visible glow and gentle lens bloom around the highlights. Saturated amber, blush and cream, warm and rich rather than pale. Close framing, faces near each other, shallow focus melting the background.',
-        'revenge' => 'High contrast hard side light, saturated cold blue ground with ONE hot accent — brake lights, a fire, a lit doorway behind him. Rain, wet glass or drifting smoke to catch the light. Absolute stillness in the posture that reads as threat.',
-        'family-drama' => 'Warm practical light from a kitchen bulb or a window, rich saturated domestic colour — patterned wallpaper, worn wood, a bright tablecloth. Honest and lived-in, but never drab or grey. Faces close, caught mid-feeling.',
-        'rags-to-riches' => 'Low golden sun down a working street, long shadows, dust and haze catching the light. Saturated ochre, faded denim blue and warm concrete, strong contrast. Camera slightly below him so the frame lifts.',
-        'second-chance' => 'Blue hour: deep teal sky and street, with a warm amber window or streetlight glow as the single accent burning against it. Calm, spacious, cinematic. Cool ground, warm highlight, no muddy middle.',
+        'billionaire' => 'Night-time wealth with real colour: deep navy offset by warm gold spilling from chandeliers, headlights or a lit skyline behind them. Hard rim light along jaw and shoulders so the figures cut away from the dark, and enough spill on the faces to read every expression. Cold blue shadow against warm gold highlight — never a flat grey night and never a blacked-out frame.',
+        'ceo' => 'Hard daylight raking through floor-to-ceiling glass, cutting sharp geometric shadows across the room and the faces. Steel grey and white, broken by ONE saturated accent — a deep red tie, amber whisky, a green sign light. Crisp, controlled, faintly intimidating.',
+        'secret-identity' => 'Split lighting: the protagonist\'s face clearly and brightly lit from one side, the other side falling to shadow but never to black. Teal shadow against warm amber key. The mystery comes from what is BEHIND them being expensive while they are not — never from hiding anyone in murk.',
+        'romance' => 'Golden-hour or lamplight with visible glow and gentle lens bloom around the highlights. Saturated amber, blush and cream, warm and rich rather than pale. Faces near each other, shallow focus softening the room without erasing it.',
+        'revenge' => 'High contrast hard side light, saturated cold blue ground with ONE hot accent — brake lights, a fire, a lit doorway. Rain, wet glass or drifting smoke to catch the light. Keep every face lit enough to read. Absolute stillness in the posture that reads as threat.',
+        'family-drama' => 'Warm practical light from a kitchen bulb, a table lamp or a window, rich saturated domestic colour — patterned wallpaper, worn wood, a bright rug, children\'s things underfoot. Honest and lived-in, never drab or grey. Several people in one room, caught mid-feeling.',
+        'rags-to-riches' => 'Low golden sun down a working street, long shadows, dust and haze catching the light. Saturated ochre, faded denim blue and warm concrete, strong contrast. Camera slightly low so the frame lifts.',
+        'second-chance' => 'Blue hour: deep teal sky and street, with a warm amber window or open doorway burning as the single accent against it. Calm, spacious, cinematic, faces caught in that warm spill. Cool ground, warm highlight, no muddy middle.',
     ];
 
-    private const FALLBACK_PROFILE = 'Natural cinematic lighting, believable everyday setting, restrained colour grade, calm editorial framing.';
+    private const FALLBACK_PROFILE = 'Natural cinematic lighting from real lamps and windows, a believable lived-in everyday setting, warm restrained colour grade, every face lit enough to read.';
 
     /**
      * Thứ tự ưu tiên khi truyện có NHIỀU thể loại — giữ đúng cách làm của audio để
@@ -91,11 +91,13 @@ class StoryCoverGenerator
     private const CONSTRAINTS = <<<'TXT'
     Style and technical requirements:
     - ABSOLUTELY NO TEXT ANYWHERE. No letters, words, numbers, logos, brand names, signage, posters, newspapers, name plates, screens with writing or watermarks — including on buildings, clothing and props. If a surface would normally carry a sign, leave it blank.
-    - THUMBNAIL FIRST: this image is seen about 150 pixels wide on a phone, next to other covers. The main person must fill a large part of the frame, face clearly lit, eyes roughly in the upper half. No wide full-body shots, no small distant figures, no large empty areas.
-    - Make the subject separate instantly from the background: light them brighter than what is behind, or use a hard rim light along the head and shoulders.
+    - A CINEMATIC FILM STILL, not a portrait and not a symbol. Medium-wide framing that keeps the whole room and everyone in it readable, the way a frame grab from a prestige television drama looks. The protagonist stands nearest the camera; the other people are further back but still large enough to read their posture and what they are doing.
+    - THUMBNAIL TEST: this image is seen about 150 pixels wide on a phone, next to other covers. At that size a stranger must still be able to tell who is upset, who they are upset with, and roughly where this is happening. Achieve that with clear separation between figures, distinct blocks of colour, and the protagonist's face lit brighter than anything else — NOT by cropping in to a headshot.
+    - NEVER a silhouette, never a lone figure against an empty background, never a mostly dark frame. Every face that matters must be lit well enough to read the expression. If the scene is at night, the light comes from lamps, windows and open doorways inside the frame.
     - Rich saturated colour and real contrast between deep shadow and bright highlight. Avoid flat grey, muddy shadow, and a washed-out low-contrast look.
     - A photorealistic photograph, as if shot on a full-frame camera with an 85mm lens at f/2: natural depth of field, true-to-life skin texture with visible pores and imperfections, believable wear on clothing. Never an illustration, painting, 3D render, CGI or AI-art look.
     - Real, ordinary-looking people with expressive faces. Not fashion models, not airbrushed, not symmetrical beauty.
+    - Fill the setting with the specific, ordinary objects the scene calls for — the toys, the paint tins, the luggage, the paperwork, the food left out. An empty, tidy, generic room reads as stock photography and kills the drama.
     - Vertical 3:4 portrait. Keep the top-left corner and the bottom-right corner free of important detail — small badges are drawn over those two corners.
     - Do not depict any real, famous or identifiable person.
     TXT;
@@ -168,7 +170,7 @@ class StoryCoverGenerator
     }
 
     /* ------------------------------------------------------------------ */
-    /* PROMPT                                                              */
+    /* PROMPT */
     /* ------------------------------------------------------------------ */
 
     /** Tông hình ảnh theo thể loại của truyện (tất định khi truyện có nhiều thể loại). */
@@ -233,20 +235,30 @@ class StoryCoverGenerator
         recognition, defiance or reveal. Never a calm establishing shot, never a generic stock
         idea. Then describe it as one photograph.
 
+        STAGE THE CONFRONTATION, DO NOT SHOOT A PORTRAIT. The frame must show the two sides of
+        the conflict standing in the same room at the same moment — the wife in the doorway with the
+        suitcase while the husband builds a crib for the other woman; the mother holding her child
+        at the lost-children desk while the father poses for family photographs behind her. A single
+        person alone against a background is a headshot, not a cover, and it tells the reader
+        nothing about the story.
+
         The frame must carry three things at once:
-        1. One person close to camera with a clearly readable emotion on their face.
-        2. The contradiction this story runs on, with BOTH halves visible in the same frame — the
-           worn work clothes against the marble lobby, the cheap car under the glass tower, the one
-           calm face among panicking ones.
+        1. TWO TO FOUR people, all in one shot. The protagonist is nearest the camera and is the
+           emotional centre; the others are the people the story is about — the spouse, the rival,
+           the child. Every person must be doing something that belongs to the conflict.
+        2. A REAL PLACE, described specifically, filled with the objects that carry the story: the
+           half-painted nursery, the plastic tubs of baby clothes, the abandoned bench, the packed
+           suitcase, the crutches. The room itself should tell a stranger what went wrong.
         3. One strong light source and one strong colour.
 
-        Answer with 60-110 words of plain prose, no headings, no bullet points, no quotation marks.
-        Cover, in this order: who is in the frame (approximate age, build, hair, ethnicity if the
-        text indicates it), exactly what they wear and how worn it is, their expression and posture,
-        the location and the objects that carry the contradiction, the light source and its colour,
-        and the camera framing (for example a tight medium shot from slightly below).
+        Answer with 90-140 words of plain prose, no headings, no bullet points, no quotation marks.
+        Cover, in this order: every person in the frame (approximate age, build, hair, ethnicity if
+        the text indicates it), exactly what each wears and how worn it is, what each is doing and
+        the expression on the protagonist's face, the location and the specific objects lying around
+        it, the light source and its colour, and the camera framing (for example a medium-wide shot
+        from the doorway at chest height).
 
-        Rules: at most two people, and one of them clearly dominant in the frame. Describe only
+        Rules: two to four people, with the protagonist clearly dominant in the frame. Describe only
         what a camera could see — no thoughts, no plot, no character names. NEVER describe any
         text, sign, logo, brand, poster, name plate or screen with writing; if the setting would
         normally have one, describe that surface as blank. Keep clothing and setting true to the
@@ -295,7 +307,7 @@ class StoryCoverGenerator
     }
 
     /* ------------------------------------------------------------------ */
-    /* ẢNH                                                                 */
+    /* ẢNH */
     /* ------------------------------------------------------------------ */
 
     /** Gọi model ảnh rồi cắt/thu về đúng 600x800 JPEG. */
