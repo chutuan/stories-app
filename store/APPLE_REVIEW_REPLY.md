@@ -20,7 +20,7 @@ có tài khoản, không có mua trong ứng dụng, và không theo dõi ngư�
 > ### 1. Screen recording
 >
 > A screen recording captured on an iPhone running the latest iOS is attached / available
-> at: **[dán link vào đây]**
+> at: **https://drive.google.com/file/d/1Rb5-UFqJYZWWDgwKTFWrmV44Vaw9PVY7/view**
 >
 > Please note the following about the flows Apple asked us to include:
 >
@@ -35,12 +35,16 @@ có tài khoản, không có mua trong ứng dụng, và không theo dõi ngư�
 >   reporting and blocking mechanisms are not required.
 > - **Accessing paid content or features** — the recording shows this. Stories contains
 >   **no in-app purchases and no subscriptions**; nothing in the app can be bought with
->   money. Chapter 1 of every story is free to read. Later chapters are unlocked with an
->   in-app virtual item called "coins", which users **earn for free only** by: (a) a daily
->   check-in, (b) reaching daily reading-time milestones, and (c) watching a Google AdMob
->   rewarded video to completion. Unlocking one chapter costs 30 coins; one rewarded video
->   watched to the end grants 90 coins, so a single ad unlocks three chapters. Coins cannot
->   be purchased, cannot be transferred, and have no monetary value.
+>   money. **Two stories are completely free, every chapter, with narrated audio:
+>   *Whose Son Are You* (3 chapters) and *The Inventory* (5 chapters).** They are also
+>   listed under the "Free" tab on the home screen. For every other story chapter 1 is
+>   free and later chapters are unlocked with an in-app virtual item called "coins",
+>   which users **earn for free only** by: (a) a daily check-in worth 15 coins,
+>   (b) reading-time milestones worth 15 coins after ten minutes and more thereafter, and
+>   (c) watching a Google AdMob rewarded video to completion, worth 90 coins. Unlocking a
+>   chapter costs 30 coins — so the daily check-in plus the ten-minute reading milestone
+>   already unlocks one chapter **without watching any advertisement**. Coins cannot be
+>   purchased, cannot be transferred, and have no monetary value.
 > - **Tracking** — *not applicable*. The app does not request App Tracking Transparency
 >   permission, does not read the IDFA, and contains no `NSUserTrackingUsageDescription`
 >   string. Advertising is requested in non-personalised mode
@@ -81,9 +85,10 @@ có tài khoản, không có mua trong ứng dụng, và không theo dõi ngư�
 >    rows for recently updated and newest stories.
 > 2. **Story detail** — tap any story to see its synopsis, genres and chapter list.
 > 3. **Read a free chapter** — tap "Read now", or tap chapter 1 in the list. Chapter 1 of
->    every story is free and opens immediately. A banner ad appears at the top of the
->    reading screen. The "Aa" button in the header opens reading settings (font size, line
->    spacing, background theme, brightness).
+>    every story is free and opens immediately. The reading screen carries a banner ad slot
+>    at the top; it may be empty during your review for the reason explained in step 5. The
+>    "Aa" button in the header opens reading settings (font size, line spacing, background
+>    theme, brightness).
 > 4. **Listen to audio** — narrated audio is available for a subset of our catalogue while
 >    we continue producing it; the "Listen" control is disabled on stories that do not
 >    have it yet. *The Sixty-Dollar Suit*, *Undrafted*, *The Inventory* and *Whose Son Are You*
@@ -91,11 +96,18 @@ có tài khoản, không có mua trong ứng dụng, và không theo dõi ngư�
 >    the reading screen header, or the "Listen" row on the story detail screen. Audio is
 >    streamed as an MP3 file from our own server.
 > 5. **Unlock a later chapter** — open a story whose chapter 2 is locked (for example
->    *The Sixty-Dollar Suit*) and tap chapter 2. A screen explains it costs 30
->    coins. A new install starts with 0 coins, so tap "Watch ad · +90 coins", watch the
->    rewarded video **to the end** — the reward is only credited on Google's
->    `EARNED_REWARD` callback, closing the ad early grants nothing — and 90 coins are
->    added. Then tap "Unlock" and the chapter opens.
+>    *The Sixty-Dollar Suit*) and tap chapter 2. A screen explains it costs 30 coins.
+>
+>    **Please note that advertising may not display during your review.** Our AdMob
+>    account still lists this app with the approval status "review required", and the
+>    store-listing field is still empty because the app is not yet on the App Store.
+>    Google completes that approval only after an app is published, so ad fill is
+>    currently zero and the app correctly reports "Ads are not available right now"
+>    instead of failing silently. This affects only the rewarded-video route to coins.
+>    Every feature remains reachable without it: the two completely free stories above,
+>    the daily check-in, and the reading-time milestones. We did not want to submit a
+>    recording of a feature that Google has not yet enabled for us, so the attached video
+>    demonstrates the unlock screen and then reads a full free story instead.
 > 6. **Rewards tab** — shows the daily check-in, reading-time milestones and the daily ad
 >    tasks, which are the three ways coins are earned.
 > 7. **Library tab** — stories the user has saved with the bookmark button.
