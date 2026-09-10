@@ -11,6 +11,7 @@ use App\Models\Story;
 use App\Services\SocialCardGenerator;
 use App\Support\StructuredData;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -80,8 +81,12 @@ class ReadController extends Controller
     }
 
     /** Truyện trong một thể loại. */
-    public function category(Category $category): View
+    public function category(Category $category): View|RedirectResponse
     {
+        if ($r = $this->canonicalOr(route('public.category', $category))) {
+            return $r;
+        }
+
         $stories = $this->cards()
             ->whereHas('categories', fn ($q) => $q->whereKey($category->getKey()))
             ->orderByDesc('updated_at')
@@ -100,9 +105,26 @@ class ReadController extends Controller
         ]);
     }
 
-    /** Trang chi tiết truyện: tóm tắt + danh sách chương. */
-    public function story(Story $story): View
+    /**
+     * Chuyển hướng 301 khi URL đang dùng KHÁC dạng chuẩn.
+     *
+     * Đối chiếu MySQL của bảng không phân biệt hoa thường, nên
+     * /story/The-Sixty-Dollar-Suit tìm thấy đúng truyện và trả 200 kèm canonical
+     * tự trỏ về chính biến thể viết hoa đó — mỗi cách viết hoa là một URL trùng,
+     * và số cách viết hoa thì không giới hạn.
+     */
+    private function canonicalOr(string $canonical): ?RedirectResponse
     {
+        return url()->current() === $canonical ? null : redirect($canonical, 301);
+    }
+
+    /** Trang chi tiết truyện: tóm tắt + danh sách chương. */
+    public function story(Story $story): View|RedirectResponse
+    {
+        if ($r = $this->canonicalOr(route('public.story', $story))) {
+            return $r;
+        }
+
         $story->load(['categories', 'chapters' => fn ($q) => $q->orderBy('number')]);
 
         return view('public.story', [
@@ -124,8 +146,12 @@ class ReadController extends Controller
      * Chương được tìm theo `number` trong phạm vi truyện chứ không theo id, để
      * URL đọc được và trùng khớp với cách app đánh địa chỉ chương.
      */
-    public function chapter(Story $story, int $number): View
+    public function chapter(Story $story, int $number): View|RedirectResponse
     {
+        if ($r = $this->canonicalOr(route('public.chapter', [$story, $number]))) {
+            return $r;
+        }
+
         $chapter = Chapter::query()
             ->where('story_id', $story->getKey())
             ->where('number', $number)
