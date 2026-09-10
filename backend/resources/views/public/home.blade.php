@@ -1,40 +1,24 @@
 @extends('public.layout')
 
 @section('title', 'Read hidden-billionaire fiction free')
-@section('description', 'Free short serials you can finish in one sitting — the janitor who owns the tower, the broke husband with a hidden empire, the beggar at the board meeting. New chapters weekly.')
+{{-- Mô tả cũ nêu đích danh ba truyện — the janitor who owns the tower, the broke
+     husband with a hidden empire, the beggar at the board meeting — CẢ BA đã bị gỡ
+     khỏi kho ngày 10/09/2026. Google hiển thị đúng chuỗi này dưới kết quả tìm kiếm,
+     nên người bấm vào sẽ không tìm thấy thứ được hứa. Mô tả mới nói về thể loại
+     thật của kho hiện tại, không đính vào truyện cụ thể nào để khỏi lạc hậu lần nữa. --}}
+@section('description', 'Free short serials about betrayal, custody battles and hidden wealth — every chapter readable on the web, no account and no payment. Two stories are free in full, with narrated audio.')
 @section('wide', '1')
 
 @push('head')
-<script type="application/ld+json">
-{!! json_encode([
-    '@context' => 'https://schema.org',
-    '@type' => 'WebSite',
-    'name' => 'Stories',
-    'url' => route('public.home'),
-    'description' => 'Free short serialised fiction — hidden billionaires, secret identities and long-overdue revenge.',
-    'potentialAction' => [
-        '@type' => 'SearchAction',
-        'target' => ['@type' => 'EntryPoint', 'urlTemplate' => route('public.search').'?q={search_term_string}'],
-        'query-input' => 'required name=search_term_string',
-    ],
-], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
-</script>
-<script type="application/ld+json">
-{!! json_encode([
-    '@context' => 'https://schema.org',
-    '@type' => 'Organization',
-    'name' => 'Stories',
-    'url' => route('public.home'),
-    'logo' => asset('icons/icon-512.png'),
-    'email' => config('app.support_email'),
-], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
-</script>
+@foreach ($jsonLd as $block)
+<script type="application/ld+json">{!! $block !!}</script>
+@endforeach
 @endpush
 
 @section('content')
   <h1>Short serials, free to read</h1>
-  <p class="updated">Stories about people who get underestimated — and what happens when the
-    truth comes out. Every chapter is free on the web.</p>
+  <p class="updated">Stories about people who get underestimated or betrayed — and what happens
+    when the truth comes out. Every chapter is free to read on the web.</p>
 
   @if ($featured)
     <div class="card">

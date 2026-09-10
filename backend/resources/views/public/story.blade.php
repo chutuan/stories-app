@@ -1,8 +1,10 @@
 @extends('public.layout')
 
 @section('title', $story->title)
-@section('description', Str::limit($story->description
-    ?: $story->title.' — a free short serial you can read in one sitting.', 155))
+{{-- Str::limit cắt đúng số ký tự nên chẻ đôi từ giữa chừng; Str::words cắt ở
+     ranh giới từ. 29 trang từng có mô tả gãy kiểu "…it was my f…". --}}
+@section('description', Str::words($story->description
+    ?: $story->title.' — a free short serial you can read in one sitting.', 26, '…'))
 {{-- Ảnh chia sẻ dựng riêng khổ ngang 1200×630, KHÔNG dùng ảnh bìa dọc: ô xem
      trước của Facebook/Zalo là 1,91:1 nên ảnh dọc bị cắt lấy dải giữa, mất mặt
      nhân vật. Xem App\Services\SocialCardGenerator. --}}
@@ -22,20 +24,9 @@
 @endpush
 
 @push('head')
-<script type="application/ld+json">
-{!! json_encode(array_filter([
-    '@context' => 'https://schema.org',
-    '@type' => 'Book',
-    'name' => $story->title,
-    'url' => route('public.story', $story),
-    'author' => $story->author ? ['@type' => 'Person', 'name' => $story->author] : null,
-    'description' => $story->description ?: null,
-    'image' => $story->thumbnail_url ?: null,
-    'numberOfPages' => $story->chapters->count(),
-    'inLanguage' => 'en',
-    'genre' => $story->categories->pluck('name')->all() ?: null,
-]), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
-</script>
+@foreach ($jsonLd as $block)
+<script type="application/ld+json">{!! $block !!}</script>
+@endforeach
 @endpush
 
 @section('content')

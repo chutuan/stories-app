@@ -1,33 +1,18 @@
 @extends('public.layout')
 
 @section('title', $category ? $category->name.' stories' : 'Browse all stories')
+{{-- KHÔNG strtolower tên thể loại: nó biến "CEO" thành "ceo". Giữ nguyên cách
+     viết hoa như trong dữ liệu, và cho mỗi thể loại một câu riêng thay vì một
+     khuôn mẫu chỉ khác đúng một từ. --}}
 @section('description', $category
-    ? 'Free '.strtolower($category->name).' serials — read every chapter on the web, no account needed.'
-    : 'Every story in the Stories catalogue. Free short serials about hidden wealth, secret identities and overdue revenge.')
+    ? $stories->total().' free '.$category->name.' serials on Stories — every chapter readable on the web, no account and no payment.'
+    : 'Browse all '.$stories->total().' stories on Stories: short serials about hidden wealth, secret identities and overdue revenge, free to read on the web.')
 @section('wide', '1')
 
 @push('head')
-{{-- ItemList giúp Google hiểu đây là trang DANH MỤC dẫn tới các trang truyện,
-     chứ không phải một trang nội dung mỏng lặp lại tiêu đề. --}}
-<script type="application/ld+json">
-{!! json_encode([
-    '@context' => 'https://schema.org',
-    '@type' => 'CollectionPage',
-    'name' => $category ? $category->name.' stories' : 'All stories',
-    'url' => $category ? route('public.category', $category) : route('public.browse'),
-    'isPartOf' => ['@type' => 'WebSite', 'name' => 'Stories', 'url' => route('public.home')],
-    'mainEntity' => [
-        '@type' => 'ItemList',
-        'numberOfItems' => $stories->total(),
-        'itemListElement' => collect($stories->items())->values()->map(fn ($s, $i) => [
-            '@type' => 'ListItem',
-            'position' => $stories->firstItem() + $i,
-            'url' => route('public.story', $s),
-            'name' => $s->title,
-        ])->all(),
-    ],
-], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
-</script>
+@foreach ($jsonLd as $block)
+<script type="application/ld+json">{!! $block !!}</script>
+@endforeach
 @endpush
 
 @section('content')

@@ -1,23 +1,16 @@
 @extends('public.layout')
 
 @php
-    // Nhiều tên chương trong kho đã mang sẵn tiền tố "Chapter N:". In nguyên si
-    // sẽ ra "Chapter 3 — Chapter 3: The Elevator" trên cả <title> lẫn <h1>, vừa
-    // xấu vừa loãng từ khoá. Cắt tiền tố rồi tự dựng lại một lần duy nhất.
-    $cleanTitle = trim(preg_replace('/^\s*Chapter\s+\d+\s*[:\-–—]\s*/i', '', (string) $chapter->title));
-    $heading = 'Chapter '.$chapter->number.($cleanTitle !== '' ? ': '.$cleanTitle : '');
-    $excerpt = Str::limit($paragraphs[0] ?? $story->description ?? '', 155);
-
-    // Chữ cái lớn đầu đoạn chỉ bật khi đoạn mở đầu bắt đầu bằng CHỮ CÁI.
-    // CSS ::first-letter gộp cả dấu câu đứng trước, nên chương mở bằng lời thoại
-    // ('"You do not sell a thousand," Alys said.') sẽ phóng to cái dấu ngoặc kép
-    // thành một khối cao ba dòng — trông như lỗi hiển thị. Hai chương trong kho
-    // hiện đang mở đầu như vậy.
+    // $heading và $metaDescription do controller dựng — xem ReadController::chapterDescription().
+    // Trước đây mô tả lấy nguyên đoạn văn đầu tiên, khiến 55/75 trang có mô tả vô nghĩa.
     $dropCap = (bool) preg_match('/^\p{L}/u', $paragraphs[0] ?? '');
 @endphp
 
-@section('title', $heading.' — '.$story->title)
-@section('description', $excerpt)
+{{-- Tiêu đề bỏ tên chương dài dòng: 47/75 trang từng vượt 60 ký tự nên bị
+     Google cắt cụt trên trang kết quả. Tên truyện đứng trước vì đó mới là thứ
+     người ta tìm; layout tự nối ' — Stories'. --}}
+@section('title', $story->title.' · Chapter '.$chapter->number)
+@section('description', $metaDescription)
 @section('og_image', route('public.og', $story))
 @section('og_image_w', '1200')
 @section('og_image_h', '630')
@@ -35,33 +28,9 @@
 @endpush
 
 @push('head')
-<script type="application/ld+json">
-{!! json_encode(array_filter([
-    '@context' => 'https://schema.org',
-    '@type' => 'Article',
-    'headline' => $heading.' — '.$story->title,
-    'url' => route('public.chapter', [$story, $chapter->number]),
-    'description' => $excerpt ?: null,
-    'image' => $story->thumbnail_url ?: null,
-    'inLanguage' => 'en',
-    'datePublished' => $chapter->created_at?->toAtomString(),
-    'dateModified' => $chapter->updated_at?->toAtomString(),
-    'author' => ['@type' => 'Person', 'name' => $story->author ?: 'Stories'],
-    'publisher' => ['@type' => 'Organization', 'name' => 'Stories'],
-    'isPartOf' => ['@type' => 'Book', 'name' => $story->title, 'url' => route('public.story', $story)],
-]), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
-</script>
-<script type="application/ld+json">
-{!! json_encode([
-    '@context' => 'https://schema.org',
-    '@type' => 'BreadcrumbList',
-    'itemListElement' => [
-        ['@type' => 'ListItem', 'position' => 1, 'name' => 'Home', 'item' => route('public.home')],
-        ['@type' => 'ListItem', 'position' => 2, 'name' => $story->title, 'item' => route('public.story', $story)],
-        ['@type' => 'ListItem', 'position' => 3, 'name' => 'Chapter '.$chapter->number],
-    ],
-], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
-</script>
+@foreach ($jsonLd as $block)
+<script type="application/ld+json">{!! $block !!}</script>
+@endforeach
 @endpush
 
 @section('content')

@@ -9,6 +9,7 @@ use App\Models\Category;
 use App\Models\Chapter;
 use App\Models\Story;
 use App\Services\SocialCardGenerator;
+use App\Support\StructuredData;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -50,16 +51,31 @@ class ReadController extends Controller
             'updated' => $this->cards()->orderByDesc('updated_at')->limit(12)->get(),
             'newest' => $this->cards()->orderByDesc('created_at')->limit(12)->get(),
             'categories' => Category::query()->orderBy('name')->get(),
+            'jsonLd' => [
+                StructuredData::website(route('public.home'), route('public.search')),
+                StructuredData::organization(
+                    route('public.home'),
+                    asset('icons/icon-512.png'),
+                    config('app.support_email'),
+                ),
+            ],
         ]);
     }
 
     /** Toàn bộ kho truyện, phân trang. */
     public function browse(): View
     {
+        $stories = $this->cards()->orderByDesc('updated_at')->paginate(self::PER_PAGE);
+        $this->abortOnEmptyPage($stories);
+
         return view('public.browse', [
-            'stories' => $this->cards()->orderByDesc('updated_at')->paginate(self::PER_PAGE),
+            'stories' => $stories,
             'categories' => Category::query()->orderBy('name')->get(),
             'category' => null,
+            'jsonLd' => [StructuredData::collection(
+                $stories, null, route('public.browse'), route('public.home'),
+                fn (Story $s) => route('public.story', $s),
+            )],
         ]);
     }
 
@@ -71,10 +87,16 @@ class ReadController extends Controller
             ->orderByDesc('updated_at')
             ->paginate(self::PER_PAGE);
 
+        $this->abortOnEmptyPage($stories);
+
         return view('public.browse', [
             'stories' => $stories,
             'categories' => Category::query()->orderBy('name')->get(),
             'category' => $category,
+            'jsonLd' => [StructuredData::collection(
+                $stories, $category, route('public.category', $category), route('public.home'),
+                fn (Story $s) => route('public.story', $s),
+            )],
         ]);
     }
 
@@ -83,7 +105,17 @@ class ReadController extends Controller
     {
         $story->load(['categories', 'chapters' => fn ($q) => $q->orderBy('number')]);
 
-        return view('public.story', ['story' => $story]);
+        return view('public.story', [
+            'story' => $story,
+            'jsonLd' => [
+                StructuredData::book($story, route('public.story', $story), route('public.og', $story)),
+                StructuredData::breadcrumbs([
+                    ['name' => 'Home', 'url' => route('public.home')],
+                    ['name' => 'All stories', 'url' => route('public.browse')],
+                    ['name' => $story->title],
+                ]),
+            ],
+        ]);
     }
 
     /**
@@ -116,12 +148,32 @@ class ReadController extends Controller
             ->orderBy('number')
             ->first(['number', 'title']);
 
+        $paragraphs = $this->paragraphs((string) $chapter->content);
+        $clean = trim(preg_replace('/^\s*Chapter\s+\d+\s*[:\-–—]\s*/iu', '', (string) $chapter->title) ?? '');
+        $heading = 'Chapter '.$chapter->number.($clean !== '' ? ': '.$clean : '');
+
         return view('public.chapter', [
             'story' => $story,
             'chapter' => $chapter,
             'prev' => $prev,
             'next' => $next,
-            'paragraphs' => $this->paragraphs((string) $chapter->content),
+            'paragraphs' => $paragraphs,
+            'heading' => $heading,
+            'metaDescription' => $this->chapterDescription($story, $chapter, $clean, $paragraphs),
+            'jsonLd' => [
+                StructuredData::article(
+                    $story, $chapter, $heading,
+                    route('public.chapter', [$story, $chapter->number]),
+                    route('public.story', $story),
+                    route('public.og', $story),
+                    $this->chapterDescription($story, $chapter, $clean, $paragraphs),
+                ),
+                StructuredData::breadcrumbs([
+                    ['name' => 'Home', 'url' => route('public.home')],
+                    ['name' => $story->title, 'url' => route('public.story', $story)],
+                    ['name' => 'Chapter '.$chapter->number],
+                ]),
+            ],
         ]);
     }
 
@@ -219,6 +271,71 @@ class ReadController extends Controller
             // rồi chia sẻ lại mà không phải chờ hàng tháng.
             'Cache-Control' => 'public, max-age=604800',
         ]);
+    }
+
+    /**
+     * Trang phân trang vượt quá trang cuối phải trả 404, không phải 200.
+     *
+     * `/browse?page=99` đang trả 200 kèm `index, follow` và canonical tự trỏ, hiển
+     * thị "No stories here yet." — đó là soft 404, và vì N không có giới hạn nên nó
+     * mở ra một không gian URL vô hạn cho Googlebot bò vào. Trang 1 vẫn hợp lệ khi
+     * kho rỗng, nên chỉ chặn từ trang 2 trở đi.
+     */
+    private function abortOnEmptyPage(LengthAwarePaginator $page): void
+    {
+        if ($page->currentPage() > 1 && $page->isEmpty()) {
+            abort(404);
+        }
+    }
+
+    /**
+     * Mô tả meta cho trang chương.
+     *
+     * KHÔNG dùng nguyên đoạn văn đầu tiên. Truyện thường mở bằng một dòng tiêu đề
+     * IN HOA hoặc một câu thoại cụt ("Okay."), nên 55 trên 75 trang từng có mô tả
+     * vô nghĩa — có trang chỉ 14 ký tự, có trang là nguyên dòng chữ hoa trang trí.
+     *
+     * Thay vào đó: nêu đây là chương mấy của truyện nào, rồi mới ghép đoạn văn xuôi
+     * ĐẦU TIÊN ĐỦ DÀI, và cắt ở ranh giới TỪ chứ không cắt giữa chữ.
+     */
+    private function chapterDescription(Story $story, Chapter $chapter, string $cleanTitle, array $paragraphs): string
+    {
+        $lead = '';
+        foreach ($paragraphs as $p) {
+            $p = trim($p);
+            // Bỏ qua dòng tiêu đề in hoa và câu quá ngắn — chúng không mô tả gì.
+            if (mb_strlen($p) < 60 || $p === mb_strtoupper($p, 'UTF-8')) {
+                continue;
+            }
+            $lead = $p;
+            break;
+        }
+
+        $prefix = $cleanTitle !== ''
+            ? sprintf('%s, chapter %d of %s. ', $cleanTitle, $chapter->number, $story->title)
+            : sprintf('Chapter %d of %s. ', $chapter->number, $story->title);
+
+        return $this->clip($prefix.$lead, 155);
+    }
+
+    /**
+     * Cắt chuỗi ở ranh giới TỪ.
+     *
+     * Str::limit() cắt đúng số ký tự nên chẻ đôi từ giữa chừng — 29 trang từng có
+     * mô tả gãy kiểu "…she thought it was my f…". Google hiển thị nguyên chuỗi đó.
+     */
+    private function clip(string $text, int $max): string
+    {
+        $text = trim(preg_replace('/\s+/u', ' ', $text) ?? '');
+
+        if (mb_strlen($text) <= $max) {
+            return $text;
+        }
+
+        $cut = mb_substr($text, 0, $max - 1);
+        $space = mb_strrpos($cut, ' ');
+
+        return rtrim($space !== false ? mb_substr($cut, 0, $space) : $cut, ' ,.;:—-').'…';
     }
 
     /** Truy vấn dùng chung cho mọi lưới truyện — giữ một chỗ để khỏi lệch nhau. */
