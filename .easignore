@@ -12,3 +12,11 @@ store/APP_STORE.md
 # Hạ tầng server, không liên quan app mobile
 deploy/
 backend/
+
+# Thư mục native sinh bởi `expo prebuild`. PHẢI loại ra.
+# .easignore ĐƯỢC ƯU TIÊN HƠN .gitignore, nên dù /ios đã bị gitignore thì nếu không
+# ghi ở đây nó vẫn được tải lên EAS. Mà EAS thấy thư mục native có sẵn là BỎ QUA
+# prebuild — tức mọi thay đổi trong app.config.js (khoá Info.plist, ID AdMob, plugin)
+# sẽ không được áp, build ra binary theo cấu hình cũ mà không báo lỗi gì.
+mobile/ios/
+mobile/android/
