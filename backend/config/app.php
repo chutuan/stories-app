@@ -89,6 +89,15 @@ return [
     'adsense_slot_article' => env('ADSENSE_SLOT_ARTICLE'),
 
     /*
+     | Google Analytics 4 cho WEBSITE (không phải app — app không có SDK phân tích
+     | nào, và lời khai gửi Apple dựa vào điều đó).
+     |
+     | Bỏ trống thì thẻ gtag KHÔNG được in ra: máy dev không nên bơm dữ liệu giả
+     | vào báo cáo, và mọi lần chạy test cũng không được tính thành phiên truy cập.
+     */
+    'ga_measurement_id' => env('GA_MEASUREMENT_ID'),
+
+    /*
     | Ngày cập nhật văn bản pháp lý, hiện trên trang Privacy và Terms.
     */
     'legal_updated' => env('LEGAL_UPDATED', '9 September 2026'),

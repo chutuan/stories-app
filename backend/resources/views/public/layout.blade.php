@@ -82,6 +82,20 @@
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-{{ config('app.admob_publisher_id') }}"
      crossorigin="anonymous"></script>
 @endif
+
+{{-- Google Analytics 4 — chỉ cho WEBSITE. App không có SDK phân tích nào, và thư
+     gửi Apple khai đúng như vậy; đừng đem thẻ này sang app. Cùng quy tắc với
+     AdSense: thiếu ID thì không in gì, để máy dev không bơm dữ liệu giả vào báo
+     cáo và mỗi lần chạy test không bị tính thành một phiên truy cập. --}}
+@if (filled(config('app.ga_measurement_id')))
+<script async src="https://www.googletagmanager.com/gtag/js?id={{ config('app.ga_measurement_id') }}"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', '{{ config('app.ga_measurement_id') }}');
+</script>
+@endif
 <style>
   :root{--bg:#FDF8F4;--surface:#fff;--text:#1A1614;--muted:#6E635C;
         --accent:#FF9052;--accent-deep:#F2703A;--border:rgba(26,22,20,.10)}

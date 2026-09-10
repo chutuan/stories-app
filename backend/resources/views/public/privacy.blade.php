@@ -53,12 +53,17 @@
   <p>Watching a rewarded ad is always your choice. You can read every free chapter without watching
     one.</p>
 
-  <h2>Advertising on this website</h2>
+  <h2>Advertising and analytics on this website</h2>
   <p>Separately from the app, the <strong>tunastory.com</strong> website serves ads through
-    <strong>Google AdSense</strong>. Google and its partners may set or read cookies in your browser
-    to serve and measure those ads. This applies only to the website you are reading now — it does
-    not change what the mobile app does, and the app still requests all of its ads in
-    non-personalised mode.</p>
+    <strong>Google AdSense</strong> and measures traffic with <strong>Google Analytics</strong>.
+    Google and its partners may set or read cookies in your browser to serve and measure those
+    ads, and Google Analytics records which pages are opened, roughly where in the world the
+    visit came from, and which browser was used. We use it only to see which stories people
+    read; we never attach a name, an email address or any other identity to it, because we do
+    not hold one.</p>
+  <p>This applies only to the website you are reading now. It does <strong>not</strong> change
+    what the mobile app does: the app contains no analytics SDK at all, and still requests every
+    ad in non-personalised mode.</p>
   <ul>
     <li>You can review and turn off personalised advertising for your Google account at
       <a href="https://myadcenter.google.com/" rel="noopener">My Ad Center</a>.</li>
@@ -66,9 +71,10 @@
       readable without them.</li>
   </ul>
 
-  <h2>What we do not use</h2>
-  <p>The app contains no analytics SDK, no crash-reporting SDK and no social-network SDK.
-    Advertising is the only third-party component in the app.</p>
+  <h2>What the app does not use</h2>
+  <p>The mobile app contains no analytics SDK, no crash-reporting SDK and no social-network SDK.
+    Advertising is the only third-party component in the app. The analytics described in the
+    previous section runs on the website only and is never present in the app.</p>
 
   <h2>Children</h2>
   <p>Stories is not directed at children under 13 and we do not knowingly collect information from
