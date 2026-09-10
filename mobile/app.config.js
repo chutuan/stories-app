@@ -37,8 +37,12 @@ module.exports = {
         // Tuân thủ xuất khẩu mã hoá: app chỉ dùng HTTPS/TLS tiêu chuẩn, thuộc diện
         // miễn trừ. Khai false để App Store Connect không hỏi lại mỗi lần nộp build.
         ITSAppUsesNonExemptEncryption: false,
-        // Bắt buộc khi dùng AdMob trên iOS 14+: App Tracking Transparency.
-        // Thiếu chuỗi này App Store sẽ từ chối build có SDK quảng cáo.
+        // CỐ Ý KHÔNG khai NSUserTrackingUsageDescription. App không gọi
+        // requestTrackingAuthorization, không đọc IDFA, và quảng cáo chạy
+        // requestNonPersonalizedAdsOnly. Bản 1.0.0 (2) từng khai chuỗi này mà
+        // không bao giờ hiện hộp ATT, Apple chặn nộp và bắt hoặc khai App Privacy
+        // "used for tracking = Yes" hoặc nộp binary mới. Thêm lại chuỗi này là
+        // quay về đúng chỗ bị chặn — chỉ thêm nếu THẬT SỰ gọi ATT.
       },
     },
     android: {
@@ -94,6 +98,16 @@ module.exports = {
           // android.permission.RECORD_AUDIO -> Google Play bắt giải trình và
           // người dùng thấy app xin quyền micro vô cớ. Tắt đi.
           recordAudioAndroid: false,
+          // Cùng lý do, phía iOS: mặc định plugin chèn
+          // NSMicrophoneUsageDescription vào Info.plist. Khai quyền không dùng
+          // là đúng loại lỗi Apple đánh trượt.
+          microphonePermission: false,
+          // Màn nghe đặt shouldPlayInBackground: false và dừng phát khi rời màn,
+          // nên app KHÔNG phát nền. Để mặc định (true) thì plugin thêm
+          // UIBackgroundModes: ['audio'] — khai một capability không dùng, rủi ro
+          // Guideline 2.5.4. Bật lại ĐỒNG THỜI với shouldPlayInBackground nếu sau
+          // này làm phát nền thật.
+          enableBackgroundPlayback: false,
         },
       ],
     ],

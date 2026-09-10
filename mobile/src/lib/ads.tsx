@@ -1,4 +1,4 @@
-import { NativeModules, Platform, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, TurboModuleRegistry, View } from 'react-native';
 
 import { FontSize, FontWeight, Palette, Radius, Spacing } from '@/constants/theme';
 
@@ -73,10 +73,21 @@ let nativeAvailable = false;
 
 // QUAN TRỌNG: chỉ coi là "có ads thật" khi native module ĐÃ được link.
 // Package JS luôn nằm trong node_modules nên require() không throw trong Expo Go;
-// vì vậy phải kiểm tra NativeModules trước, nếu không banner/rewarded thật sẽ crash.
-const nativeModulePresent = Object.keys(NativeModules).some((k) =>
-  k.startsWith('RNGoogleMobileAds'),
-);
+// vì vậy phải kiểm tra native trước, nếu không banner/rewarded thật sẽ crash.
+//
+// PHẢI TRA CỨU THEO TÊN, KHÔNG ĐƯỢC LIỆT KÊ. Bản cũ dùng
+// `Object.keys(NativeModules).some(...)` và im lặng tắt sạch quảng cáo trên
+// bản phát hành: với New Architecture (RCT_NEW_ARCH_ENABLED=1, mặc định từ
+// SDK 54) `NativeModules` là `global.nativeModuleProxy` — một jsi::HostObject
+// mà BridgelessNativeModuleProxy KHÔNG cài `getPropertyNames`, nên
+// `Object.keys()` luôn trả mảng rỗng dù module đã link đủ. Hậu quả: banner
+// thành ô xám, showRewarded() trả `unavailable` ngay, người dùng không còn
+// đường kiếm xu nào.
+//
+// `TurboModuleRegistry.get` trả null (không ném) khi thiếu module, nên vẫn
+// đúng cho Expo Go và web.
+const nativeModulePresent =
+  TurboModuleRegistry.get('RNGoogleMobileAdsModule') != null;
 
 if (nativeModulePresent) {
   try {
@@ -178,6 +189,10 @@ export function showRewarded(): Promise<RewardedResult> {
     const events = mod.AdEventType ?? { ERROR: 'error', OPENED: 'opened', CLOSED: 'closed' };
 
     let earned = false;
+    // Quảng cáo đã thực sự hiện lên màn hình chưa. Dùng để phân biệt HAI thứ mà
+    // người dùng đọc rất khác nhau: chưa chiếu được (lỗi/no-fill/hết giờ tải) và
+    // đã chiếu nhưng đóng sớm. Nhập nhèm hai cái là đổ lỗi oan cho người dùng.
+    let opened = false;
     let settled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
     const unsubs: (() => void)[] = [];
@@ -198,10 +213,16 @@ export function showRewarded(): Promise<RewardedResult> {
       resolve(result);
     };
 
-    /** Đặt lại mốc chờ; hết giờ thì trả về đúng trạng thái thưởng đang có. */
+    /**
+     * Đặt lại mốc chờ. Hết giờ trong lúc còn ĐANG TẢI (chưa từng mở) là lỗi phía
+     * quảng cáo, phải trả `unavailable`; hết giờ sau khi đã mở mới xét tới thưởng.
+     */
     const arm = (ms: number) => {
       if (timer) clearTimeout(timer);
-      timer = setTimeout(() => finish({ rewarded: earned }), ms);
+      timer = setTimeout(
+        () => finish(opened ? { rewarded: earned } : { rewarded: false, unavailable: true }),
+        ms,
+      );
     };
 
     try {
@@ -218,10 +239,15 @@ export function showRewarded(): Promise<RewardedResult> {
         // quảng cáo vừa mở -> trả về "không nhận thưởng" trong khi người dùng đang
         // ngồi xem, và lát nữa 'closed' tới thì Promise đã chốt, xu mất trắng.
         arm(AD_WATCH_TIMEOUT_MS);
+        // show() trả Promise (MobileAd.show), nên lỗi thường tới BẤT ĐỒNG BỘ và
+        // `try/catch` trần không bắt được: bản cũ nuốt lỗi rồi ngồi chờ hết
+        // AD_WATCH_TIMEOUT_MS = 5 phút mới nhả nút. Bắt cả hai đường.
         try {
-          rewarded.show();
+          Promise.resolve(rewarded.show()).catch(() =>
+            finish({ rewarded: false, unavailable: true }),
+          );
         } catch {
-          finish({ rewarded: false });
+          finish({ rewarded: false, unavailable: true });
         }
       });
 
@@ -230,19 +256,27 @@ export function showRewarded(): Promise<RewardedResult> {
       });
 
       // Quảng cáo đã hiện: người dùng đang ngồi xem, nới mốc chờ ra.
-      on(events.OPENED, () => arm(AD_WATCH_TIMEOUT_MS));
+      on(events.OPENED, () => {
+        opened = true;
+        arm(AD_WATCH_TIMEOUT_MS);
+      });
 
       on(events.CLOSED, () => finish({ rewarded: earned }));
 
       // CHỖ BẢN CŨ THIẾU: hết hàng để trả (no fill), rớt mạng, sai unit ID... AdMob
       // chỉ bắn 'error' và KHÔNG bao giờ bắn 'closed'. Không nghe sự kiện này thì
       // Promise không bao giờ kết thúc.
-      on(events.ERROR, () => finish({ rewarded: false }));
+      // Lỗi sau khi quảng cáo đã mở thì cứ theo `earned`; lỗi trước đó nghĩa là
+      // không chiếu được -> `unavailable`, để nơi gọi báo "hiện chưa có quảng
+      // cáo" thay vì "bạn chưa xem hết".
+      on(events.ERROR, () =>
+        finish(opened ? { rewarded: earned } : { rewarded: false, unavailable: true }),
+      );
 
       arm(AD_LOAD_TIMEOUT_MS);
       rewarded.load();
     } catch {
-      finish({ rewarded: false });
+      finish({ rewarded: false, unavailable: true });
     }
   });
 }
