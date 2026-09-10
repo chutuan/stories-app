@@ -82,7 +82,21 @@ plutil -replace CFBundleVersion -string "$BUILD_NUMBER" ios/Stories/Info.plist
 sed -i '' "s/CURRENT_PROJECT_VERSION = .*;/CURRENT_PROJECT_VERSION = $BUILD_NUMBER;/g" \
   ios/Stories.xcodeproj/project.pbxproj
 
-# ---- 7. Soát lại ------------------------------------------------------------
+# ---- 7. Ký mã -----------------------------------------------------------------
+# prebuild để trống DEVELOPMENT_TEAM, nên mở Xcode ra là gặp lỗi ký và phải chọn
+# tay trong Signing & Capabilities mỗi lần. Đặt sẵn cho khỏi quên.
+# 22W729ZRX2 = Tuan Chu Duc (Individual). Đổi nếu sau này chuyển tài khoản.
+python3 - <<'PYEOF'
+import pathlib
+p = pathlib.Path('ios/Stories.xcodeproj/project.pbxproj')
+s = p.read_text()
+s = s.replace(
+    'PRODUCT_BUNDLE_IDENTIFIER = com.chutuan.stories;',
+    'CODE_SIGN_STYLE = Automatic;\n\t\t\t\tDEVELOPMENT_TEAM = 22W729ZRX2;\n\t\t\t\tPRODUCT_BUNDLE_IDENTIFIER = com.chutuan.stories;')
+p.write_text(s)
+PYEOF
+
+# ---- 8. Soát lại ------------------------------------------------------------
 echo
 echo "── Kiểm tra Info.plist ──"
 P=ios/Stories/Info.plist
