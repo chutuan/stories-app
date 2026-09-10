@@ -7,6 +7,13 @@
     $cleanTitle = trim(preg_replace('/^\s*Chapter\s+\d+\s*[:\-–—]\s*/i', '', (string) $chapter->title));
     $heading = 'Chapter '.$chapter->number.($cleanTitle !== '' ? ': '.$cleanTitle : '');
     $excerpt = Str::limit($paragraphs[0] ?? $story->description ?? '', 155);
+
+    // Chữ cái lớn đầu đoạn chỉ bật khi đoạn mở đầu bắt đầu bằng CHỮ CÁI.
+    // CSS ::first-letter gộp cả dấu câu đứng trước, nên chương mở bằng lời thoại
+    // ('"You do not sell a thousand," Alys said.') sẽ phóng to cái dấu ngoặc kép
+    // thành một khối cao ba dòng — trông như lỗi hiển thị. Hai chương trong kho
+    // hiện đang mở đầu như vậy.
+    $dropCap = (bool) preg_match('/^\p{L}/u', $paragraphs[0] ?? '');
 @endphp
 
 @section('title', $heading.' — '.$story->title)
@@ -45,16 +52,26 @@
 @endpush
 
 @section('content')
+<div class="progress" id="readProgress"></div>
+
+<div class="reader">
   <p class="crumbs">
     <a href="{{ route('public.home') }}">Home</a> ›
     <a href="{{ route('public.story', $story) }}">{{ $story->title }}</a> ›
     Chapter {{ $chapter->number }}
   </p>
 
-  <h1 style="font-size:26px">{{ $heading }}</h1>
-  <p class="updated">{{ $story->title }} @if ($story->author) · {{ $story->author }} @endif</p>
+  {{-- Tên truyện làm dòng dẫn nhỏ phía trên: người đọc tới thẳng từ Google cần
+       biết ngay đang đọc truyện nào, mà không để nó tranh chỗ với tên chương. --}}
+  <p class="reader-kicker">{{ $story->title }}</p>
+  <h1>{{ $heading }}</h1>
+  <p class="reader-by">
+    @if ($story->author) {{ $story->author }} · @endif
+    Chapter {{ $chapter->number }} of {{ $story->chapters()->count() }}
+  </p>
+  <hr class="reader-rule">
 
-  <article class="chapter-body">
+  <article class="chapter-body{{ $dropCap ? ' dropcap' : '' }}">
     @foreach ($paragraphs as $i => $paragraph)
       <p>{{ $paragraph }}</p>
 
@@ -90,4 +107,26 @@
       <a href="{{ route('public.browse') }}">More stories ›</a>
     @endif
   </nav>
+</div>
+
+{{-- Thanh tiến độ: đọc một chương 1.800 từ trên điện thoại là cuộn rất lâu, không
+     có mốc nào cho biết còn bao xa. Dùng passive listener và requestAnimationFrame
+     để không làm khựng thao tác cuộn. --}}
+<script>
+(function () {
+  var bar = document.getElementById('readProgress');
+  if (!bar) return;
+  var ticking = false;
+  function update() {
+    var max = document.documentElement.scrollHeight - innerHeight;
+    bar.style.width = (max > 0 ? Math.min(1, scrollY / max) * 100 : 0) + '%';
+    ticking = false;
+  }
+  addEventListener('scroll', function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(update); }
+  }, { passive: true });
+  addEventListener('resize', update, { passive: true });
+  update();
+})();
+</script>
 @endsection

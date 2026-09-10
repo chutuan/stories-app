@@ -145,14 +145,48 @@
   .chapters a:hover{background:#FFF6F0}
   .chapters .n{color:var(--muted);font-size:13px;min-width:34px;flex:none}
 
-  /* --- màn đọc --- */
-  .chapter-body{font-size:18px;line-height:1.85}
-  .chapter-body p{margin:0 0 1.15em}
-  .pager{display:flex;justify-content:space-between;gap:12px;margin:34px 0 0;flex-wrap:wrap}
-  .pager a{padding:11px 20px;border-radius:999px;background:var(--surface);
-           border:1px solid var(--border);text-decoration:none;font-size:14px}
-  .crumbs{font-size:13px;color:var(--muted);margin:0 0 10px}
+  /* --- màn đọc ---
+     Ba con số quyết định đọc dài có mỏi mắt hay không, đo trên bản cũ ở 1280px:
+     80 ký tự mỗi dòng (chuẩn văn xuôi là 60-75), font SANS thừa kế từ body, và
+     khoảng cách đoạn chỉ 1.15em trong khi giãn dòng tận 1.85 — các đoạn dính vào
+     nhau thành một khối chữ đặc. Sửa cả ba. */
+  /* Đặt bằng px, KHÔNG bằng em: em ở đây tính theo font 16px của .reader chứ
+     không phải 20px của phần chữ, nên 35em ra 560px = 57 ký tự mỗi dòng, hẹp hơn
+     mong muốn. 660px ở cỡ chữ 20px Charter cho khoảng 67 ký tự — giữa vùng 60-75. */
+  .reader{max-width:660px;margin:0 auto}
+  .reader-kicker{font-size:12px;letter-spacing:.09em;text-transform:uppercase;
+                 color:var(--accent-deep);font-weight:700;margin:0 0 6px}
+  .reader h1{font-size:30px;line-height:1.2;margin:0 0 6px;letter-spacing:-.015em}
+  .reader-by{color:var(--muted);font-size:14px;margin:0 0 22px}
+  .reader-rule{border:0;border-top:1px solid var(--border);margin:0 0 30px}
+
+  .chapter-body{
+    /* Charter và Iowan Old Style có sẵn trên máy Apple, Georgia có ở mọi nơi —
+       không tải font ngoài, nên không thêm một lượt chờ mạng nào trước khi chữ
+       hiện ra. */
+    font-family:Charter,"Bitstream Charter","Iowan Old Style","Palatino Linotype",Georgia,"Times New Roman",serif;
+    font-size:20px;line-height:1.62;color:#241E1B;
+    /* Chữ serif nhỏ dễ bị mảnh trên nền sáng; tắt tối ưu hoá độ nét của macOS
+       cho nét dày lại đúng như thiết kế. */
+    -webkit-font-smoothing:antialiased;
+  }
+  .chapter-body p{margin:0 0 1.35em}
+  /* Đoạn đầu tiên: chữ cái đầu lớn, mắt biết bắt đầu từ đâu */
+  .chapter-body.dropcap > p:first-child::first-letter{
+    font-size:3.1em;line-height:.86;float:left;margin:.04em .09em 0 0;
+    color:var(--accent-deep);font-weight:600}
+
+  .pager{display:flex;justify-content:space-between;gap:12px;margin:44px 0 0;flex-wrap:wrap}
+  .pager a{padding:13px 20px;border-radius:12px;background:var(--surface);
+           border:1px solid var(--border);text-decoration:none;font-size:14px;
+           color:var(--text);font-weight:600;transition:border-color .15s,background .15s}
+  .pager a:hover{border-color:var(--accent);background:#FFF6F0}
+  .crumbs{font-size:13px;color:var(--muted);margin:0 0 18px}
   .crumbs a{color:var(--muted)}
+
+  /* Thanh tiến độ đọc bám đỉnh trang */
+  .progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:20;
+            background:linear-gradient(90deg,var(--accent),var(--accent-deep))}
 
   /* --- ô quảng cáo --- */
   .adslot{margin:30px 0;min-height:100px;text-align:center;overflow:hidden}
@@ -211,8 +245,14 @@
     h2{font-size:17px;margin:26px 0 8px}
     .card{padding:18px 16px;border-radius:14px}
 
-    /* Màn đọc: thu lề để dòng dài hơn, trước đó chỉ ~37 ký tự mỗi dòng */
-    .chapter-body{font-size:17px;line-height:1.75}
+    /* Màn đọc trên điện thoại: 19px serif trong bề ngang 343px cho khoảng 42-45
+       ký tự mỗi dòng — hẹp hơn chuẩn văn xuôi nhưng đó là giới hạn của thiết bị,
+       bù lại bằng giãn dòng rộng hơn. */
+    .chapter-body{font-size:19px;line-height:1.68}
+    .reader h1{font-size:24px}
+    .reader-by{margin-bottom:18px}
+    .reader-rule{margin-bottom:24px}
+    .chapter-body.dropcap > p:first-child::first-letter{font-size:2.9em}
 
     /* Previous / Next không được vỡ dòng, và phải đủ to để bấm */
     .pager{gap:8px;flex-wrap:nowrap}
