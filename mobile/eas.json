@@ -60,20 +60,27 @@
       "env": {
         // Domain API production. Đổi tại đây nếu sau này tách staging riêng.
         // BẮT BUỘC https:// — iOS App Transport Security chặn HTTP thường.
-        // AdMob: EAS KHÔNG cho phép giá trị rỗng trong "env", nên các khoá dưới đây
-        // được BỎ HẲN thay vì để "". Khi code không thấy biến, nó tự fallback về
-        // App ID / unit ID TEST của Google (chạy được nhưng KHÔNG ra doanh thu).
+        "EXPO_PUBLIC_API_URL": "https://api.tunastory.com/api",
+
+        // --- AdMob ---
+        // KHÔNG phải bí mật: mọi ID này nằm sẵn trong binary đã phát hành và trong
+        // app-ads.txt công khai, nên commit vào kho là bình thường.
         //
-        // Khi có ID thật từ AdMob Console, thêm các dòng này (có giá trị, không để rỗng).
-        // LƯU Ý: iOS và Android là HAI APP RIÊNG trong AdMob -> App ID và ad unit ID
-        // đều khác nhau. Unit ID của bên này KHÔNG chạy cho bên kia.
-        //   "EXPO_PUBLIC_ADMOB_IOS_APP_ID":            "ca-app-pub-XXXX~XXXX",
-        //   "EXPO_PUBLIC_ADMOB_ANDROID_APP_ID":        "ca-app-pub-XXXX~XXXX",
-        //   "EXPO_PUBLIC_ADMOB_BANNER_ID_IOS":         "ca-app-pub-XXXX/XXXX",
-        //   "EXPO_PUBLIC_ADMOB_BANNER_ID_ANDROID":     "ca-app-pub-XXXX/XXXX",
-        //   "EXPO_PUBLIC_ADMOB_REWARDED_ID_IOS":       "ca-app-pub-XXXX/XXXX",
-        //   "EXPO_PUBLIC_ADMOB_REWARDED_ID_ANDROID":   "ca-app-pub-XXXX/XXXX"
-        "EXPO_PUBLIC_API_URL": "https://api.tunastory.com/api"
+        // THIẾU khoá nào thì src/lib/ads.tsx im lặng rơi về ID TEST của Google, và
+        // bản phát hành sẽ hiện banner dán nhãn "Test Ad" — đúng lỗi của build
+        // 1.0.0 (2) đang bị Apple xét. EAS không cho để giá trị rỗng, nên khoá nào
+        // chưa có ID thật thì BỎ HẲN dòng đó chứ đừng để "".
+        //
+        // LƯU Ý: iOS và Android là HAI APP RIÊNG trong AdMob -> App ID lẫn unit ID
+        // đều khác nhau, unit ID của bên này KHÔNG chạy cho bên kia.
+        "EXPO_PUBLIC_ADMOB_IOS_APP_ID": "ca-app-pub-9892355907152840~9913447750",
+        "EXPO_PUBLIC_ADMOB_BANNER_ID_IOS": "ca-app-pub-9892355907152840/3899537894"
+
+        // CÒN THIẾU — thêm vào trước khi build bản nộp store:
+        //   "EXPO_PUBLIC_ADMOB_REWARDED_ID_IOS":     "ca-app-pub-XXXX/XXXX"   <- BẮT BUỘC
+        //   "EXPO_PUBLIC_ADMOB_ANDROID_APP_ID":      "ca-app-pub-XXXX~XXXX"   <- nếu phát hành Android
+        //   "EXPO_PUBLIC_ADMOB_BANNER_ID_ANDROID":   "ca-app-pub-XXXX/XXXX"
+        //   "EXPO_PUBLIC_ADMOB_REWARDED_ID_ANDROID": "ca-app-pub-XXXX/XXXX"
       }
     }
   },
