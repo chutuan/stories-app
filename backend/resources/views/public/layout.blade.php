@@ -35,12 +35,14 @@
         'description',
         'Short serialised fiction you can finish in one sitting — hidden billionaires, secret identities and long-overdue revenge.'
     ));
-    $seoImage = trim($__env->yieldContent('og_image', asset('icons/icon-512.png')));
+    // Mặc định là ảnh 1200×630 dựng sẵn, KHÔNG phải icon vuông 512: icon vuông
+    // đưa vào ô chia sẻ 1,91:1 sẽ bị viền hai bên hoặc bị hạ xuống ô nhỏ.
+    $seoImage = trim($__env->yieldContent('og_image', asset('icons/og-default.jpg')));
     // Kích thước ảnh chia sẻ. Facebook và LinkedIn cần biết TRƯỚC khi tải ảnh về
     // để dựng ô xem trước; thiếu hai thẻ này thì lần chia sẻ đầu tiên hay ra ô
     // không có ảnh, tới lần thứ hai mới hiện.
-    $seoImageW = trim($__env->yieldContent('og_image_w', '512'));
-    $seoImageH = trim($__env->yieldContent('og_image_h', '512'));
+    $seoImageW = trim($__env->yieldContent('og_image_w', '1200'));
+    $seoImageH = trim($__env->yieldContent('og_image_h', '630'));
     $seoImageAlt = trim($__env->yieldContent('og_image_alt', 'Stories — free short serialised fiction'));
     $seoType = trim($__env->yieldContent('og_type', 'website'));
     $seoRobots = trim($__env->yieldContent('robots', 'index, follow'));
