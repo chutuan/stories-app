@@ -36,7 +36,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/empty-state';
-import { Paywall } from '@/components/paywall';
 import { Skeleton } from '@/components/skeleton';
 import {
   coverGradient,
@@ -53,7 +52,8 @@ import {
   withAlpha,
 } from '@/constants/theme';
 import { API_URL } from '@/lib/api';
-import { useSubscription } from '@/store/subscription';
+import { formatCoins } from '@/lib/format';
+import { COIN_PER_CHAPTER, useWallet } from '@/store/wallet';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
@@ -188,11 +188,14 @@ export default function AudioPlayerScreen() {
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   /**
-   * AUDIO BÁN THEO GÓI ĐĂNG KÝ, KHÔNG BÁN BẰNG XU.
-   * Xu chỉ mở quyền ĐỌC. Chương miễn phí thì ai cũng nghe được; chương trả phí chỉ
-   * người có Premium mới nghe được, nên màn này không đụng tới ví xu nữa.
+   * Audio đi theo ĐÚNG quyền đọc: chương miễn phí thì ai cũng nghe, chương trả phí
+   * phải mở bằng xu ở màn đọc.
+   *
+   * Gói Premium đã bị TẮT TẠM THỜI để bản nộp App Store không chứa mua trong ứng
+   * dụng — bản Apple đang xét cũng không có. Bật lại bằng cách revert đúng một
+   * commit, xem thông điệp commit "Tắt tạm gói đăng ký".
    */
-  const { subscribed } = useSubscription();
+  const { isUnlocked } = useWallet();
   /**
    * Modal của React Native phủ TOÀN BỘ cửa sổ app, không nằm trong ngăn xếp
    * điều hướng. Nếu màn này vẫn còn mount bên dưới một màn khác (deep link đẩy
@@ -213,19 +216,6 @@ export default function AudioPlayerScreen() {
   /** Vị trí đang kéo trên thanh tiến trình (null = không kéo). */
   const [seeking, setSeeking] = useState<number | null>(null);
   const [coverFailed, setCoverFailed] = useState(false);
-  /**
-   * Màn bán gói — bật khi nghe hết mà chương sau chỉ dành cho thành viên.
-   * Lưu SỐ CHƯƠNG đang nghe lúc bật, nên đổi chương là tự tắt, không cần effect dọn.
-   */
-  const [paywallFor, setPaywallFor] = useState<number | null>(null);
-  /**
-   * Màn bán gói ĐANG CHỜ mục lục đóng xong (chỉ iOS).
-   * UIKit từ chối present một modal khi modal trước còn đang dismiss, và React
-   * Native KHÔNG thử lại lần present bị từ chối — modal sẽ mất luôn. Nên nếu người
-   * dùng đang mở mục lục đúng lúc chương kết thúc, phải chờ sheet biến mất hẳn rồi
-   * mới mở màn bán gói.
-   */
-  const [paywallAfterSheet, setPaywallAfterSheet] = useState<number | null>(null);
 
   /* ---- Tải chương ---- */
   useEffect(() => {
@@ -270,7 +260,7 @@ export default function AudioPlayerScreen() {
   const loading = !chapter && !failed;
 
   /* Chương trả phí chỉ dành cho thành viên; chương miễn phí thì ai cũng nghe. */
-  const locked = chapter ? !chapter.is_free && !subscribed : false;
+  const locked = chapter ? !chapter.is_free && !isUnlocked(storyId, chapterNumber) : false;
   const audioUrl = chapter && !locked ? chapter.audio_url : null;
   const hasAudio = audioUrl != null;
 
@@ -399,8 +389,6 @@ export default function AudioPlayerScreen() {
     (target: number | null, options?: { autoplay?: boolean }) => {
       if (target == null) return;
       setTocOpen(false);
-      setPaywallFor(null);
-      setPaywallAfterSheet(null);
       setSeeking(null);
       // `autoplay=1` để màn hình đích tự bấm phát; chuyển chương THỦ CÔNG không
       // gắn cờ này, giữ nguyên nếp cũ là người dùng tự bấm nút phát.
@@ -436,9 +424,9 @@ export default function AudioPlayerScreen() {
       number: c.number,
       title: chapterLabel(c),
       hasAudio: c.has_audio === true,
-      locked: !c.is_free && !subscribed,
+      locked: !c.is_free && !isUnlocked(storyId, c.number),
     }));
-  }, [story, subscribed]);
+  }, [story, isUnlocked, storyId]);
 
   /* ---- Chương kế tiếp ---- */
   const nextInfo = useMemo<NextChapter | null>(() => {
@@ -450,10 +438,10 @@ export default function AudioPlayerScreen() {
     return {
       number: target,
       title: meta ? chapterLabel(meta) : `Chapter ${target}`,
-      playable: isFree || subscribed,
+      playable: isFree || isUnlocked(storyId, target),
       hasAudio: meta ? meta.has_audio === true : null,
     };
-  }, [chapter, story, subscribed]);
+  }, [chapter, story, isUnlocked, storyId]);
 
   /* ---- Tự phát khi màn hình được mở bằng cách tự chuyển chương ----
      Mỗi player (mỗi chương) chỉ tự bấm phát ĐÚNG MỘT LẦN: người dùng bấm tạm
@@ -479,22 +467,18 @@ export default function AudioPlayerScreen() {
     // Hết truyện: không còn chương sau, cứ để thanh tiến trình đứng ở cuối.
     if (!nextInfo) return;
     if (!nextInfo.playable) {
-      if (tocOpen && Platform.OS === 'ios') {
-        // Xếp hàng: onDismiss của mục lục sẽ mở màn bán gói (xem paywallAfterSheet).
-        setPaywallAfterSheet(chapterNumber);
-        setTocOpen(false);
-        return;
-      }
-      // Android dùng Dialog, không có xung đột present/dismiss -> mở thẳng.
+      // Chương sau chưa mở khoá. Màn ĐỌC đã có sẵn giao diện trả xu / xem quảng cáo
+      // để mở, nên đưa thẳng người nghe sang đó thay vì dựng thêm một hộp thoại nữa
+      // trong màn nghe — mở khoá xong bấm nút tai nghe là nghe tiếp được.
       setTocOpen(false);
-      setPaywallFor(chapterNumber);
+      router.replace(`/reader/${storyId}/${nextInfo.number}?dir=next` as Href);
       return;
     }
     // Chương sau chắc chắn CHƯA có MP3 -> ở lại, nhảy sang cũng không phát được.
     // `null` (chưa biết) thì vẫn nhảy: màn hình đích tự báo nếu thiếu audio.
     if (nextInfo.hasAudio === false) return;
     goChapter(nextInfo.number, { autoplay: true });
-  }, [focused, nextInfo, goChapter, chapterNumber, tocOpen]);
+  }, [focused, nextInfo, goChapter, router, storyId]);
 
   /**
    * Bắt lúc nghe hết TRÊN LUỒNG SỰ KIỆN, không đọc từ state đã render.
@@ -521,8 +505,6 @@ export default function AudioPlayerScreen() {
     handleFinished();
   });
 
-  /* Màn bán gói chỉ thuộc về đúng chương đã bật nó; đổi chương là tự biến mất. */
-  const paywallOpen = focused && paywallFor === chapterNumber;
 
   /* Loại thông báo cần hiện phía trên thanh tiến trình. */
   const notice: 'locked' | 'no-audio' | null = !chapter
@@ -777,11 +759,11 @@ export default function AudioPlayerScreen() {
               />
             ) : notice === 'locked' ? (
               <Notice
-                icon="sparkles-outline"
-                title="Audio is for members"
-                description="Free chapters play for everyone. Go Premium to listen to every chapter."
-                actionLabel="See Premium"
-                onAction={() => setPaywallFor(chapterNumber)}
+                icon="lock-closed-outline"
+                title="This chapter is locked"
+                description={`Unlock it with ${formatCoins(COIN_PER_CHAPTER)} in the reader, then come back to listen.`}
+                actionLabel="Unlock in reader"
+                onAction={openReader}
               />
             ) : hasAudio && playbackError ? (
               <Notice
@@ -901,30 +883,12 @@ export default function AudioPlayerScreen() {
       {/* ---------- Mục lục ---------- */}
       <ChapterSheet
         visible={tocOpen && focused}
-        onDismiss={() => {
-          // Chỉ iOS bắn sự kiện này, và đây là lúc DUY NHẤT chắc chắn sheet đã rời
-          // khỏi màn hình, nên present modal kế tiếp mới không bị UIKit từ chối.
-          if (paywallAfterSheet == null) return;
-          setPaywallFor(paywallAfterSheet);
-          setPaywallAfterSheet(null);
-        }}
         rows={chapterRows}
         current={chapterNumber}
         storyTitle={storyTitle}
         bottomInset={insets.bottom}
         onSelect={goChapter}
         onClose={() => setTocOpen(false)}
-      />
-
-      {/* ---------- Gói Premium ---------- */}
-      <Paywall
-        visible={paywallOpen}
-        reason={
-          nextInfo
-            ? `“${nextInfo.title}” is a members-only chapter. Go Premium to keep listening.`
-            : 'Go Premium to listen to every chapter.'
-        }
-        onClose={() => setPaywallFor(null)}
       />
     </View>
   );
@@ -1079,8 +1043,6 @@ interface ChapterSheetProps {
   bottomInset: number;
   onSelect: (n: number) => void;
   onClose: () => void;
-  /** iOS: bắn khi sheet đã biến mất hẳn. Dùng để nối tiếp một modal khác. */
-  onDismiss?: () => void;
 }
 
 function ChapterSheet({
@@ -1091,7 +1053,6 @@ function ChapterSheet({
   bottomInset,
   onSelect,
   onClose,
-  onDismiss,
 }: ChapterSheetProps) {
   const currentIndex = rows.findIndex((r) => r.number === current);
 
@@ -1139,7 +1100,6 @@ function ChapterSheet({
       animationType="slide"
       statusBarTranslucent
       onRequestClose={onClose}
-      onDismiss={onDismiss}
     >
       <View style={styles.sheetWrap}>
         <Pressable

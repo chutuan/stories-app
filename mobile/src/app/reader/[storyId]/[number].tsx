@@ -15,7 +15,6 @@ import type { TextStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState } from '@/components/empty-state';
-import { Paywall } from '@/components/paywall';
 import { ReaderSettingsSheet } from '@/components/reader-settings-sheet';
 import { Skeleton, SkeletonText } from '@/components/skeleton';
 import {
@@ -39,7 +38,6 @@ import {
   type ReaderTheme,
 } from '@/store/reader-prefs';
 import { AD_TASK_LIMIT, useRewards } from '@/store/rewards';
-import { useSubscription } from '@/store/subscription';
 import { COIN_PER_CHAPTER, useWallet } from '@/store/wallet';
 
 /**
@@ -110,8 +108,6 @@ function ReaderScreen() {
   // Sổ cái quảng cáo dùng CHUNG với tab Phần thưởng: mọi lượt xem đều phải đếm
   // ở đây, nếu không hạn mức mỗi ngày sẽ vô hiệu và xu trở thành vô hạn.
   const { adsWatched, nextAdCoins, recordAdWatch, ready: rewardsReady } = useRewards();
-  // Premium mở SẴN mọi chương: không cần xu, và nghe được audio của mọi chương.
-  const { subscribed } = useSubscription();
   const {
     fontSize,
     lineHeight,
@@ -133,7 +129,6 @@ function ReaderScreen() {
   );
   const [watchingAd, setWatchingAd] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [paywallOpen, setPaywallOpen] = useState(false);
   const [totalChapters, setTotalChapters] = useState<number | null>(
     () => totalChaptersCache.get(String(storyId)) ?? null,
   );
@@ -187,7 +182,7 @@ function ReaderScreen() {
   }, [chapter]);
 
   const unlockedLocal = isUnlocked(storyId, chapterNumber);
-  const canRead = chapter ? chapter.is_free || unlockedLocal || subscribed : false;
+  const canRead = chapter ? chapter.is_free || unlockedLocal : false;
 
   const notify = useCallback(
     (text: string, ok: boolean) => {
@@ -248,16 +243,10 @@ function ReaderScreen() {
   const hasAudio = chapter?.audio_url != null;
 
   const openAudio = useCallback(() => {
-    // Audio của chương trả phí là quyền lợi của thành viên; xu KHÔNG mở được.
-    // Chương miễn phí thì ai cũng nghe, nên vẫn vào thẳng màn nghe.
-    if (chapter && !chapter.is_free && !subscribed) {
-      setPaywallOpen(true);
-      return;
-    }
     // Màn nghe do route riêng đảm nhiệm; ép kiểu vì bảng route sinh tự động
     // chỉ được cập nhật sau khi file /audio/... tồn tại trên đĩa.
     router.push(`/audio/${storyId}/${chapterNumber}` as Href);
-  }, [router, storyId, chapterNumber, chapter, subscribed]);
+  }, [router, storyId, chapterNumber]);
 
   const paragraphs = useMemo(
     () => (chapter && canRead ? toParagraphs(chapter.content) : []),
@@ -547,20 +536,6 @@ function ReaderScreen() {
                 Balance: <Text style={styles.walletHintValue}>{formatCoins(coins)}</Text>
               </Text>
             </View>
-
-            {/* Xu mở TỪNG chương; Premium mở cả kho + audio. Đặt lối lên ngay đây
-                vì đó là lúc người đọc đang thực sự vướng chương khoá. */}
-            <Pressable
-              onPress={() => setPaywallOpen(true)}
-              accessibilityRole="button"
-              accessibilityLabel="See Stories Premium"
-              style={({ pressed }) => [styles.premiumHint, pressed && styles.pressed]}
-            >
-              <Ionicons name="sparkles" size={13} color={Palette.accentDeep} />
-              <Text style={styles.premiumHintText}>
-                Or go Premium to unlock every chapter
-              </Text>
-            </Pressable>
           </LinearGradient>
         </ScrollView>
       )}
@@ -596,12 +571,6 @@ function ReaderScreen() {
 
       {/* Bảng cài đặt đọc */}
       <ReaderSettingsSheet visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
-
-      <Paywall
-        visible={paywallOpen}
-        reason="Read every chapter and listen to the full narration."
-        onClose={() => setPaywallOpen(false)}
-      />
     </View>
   );
 }
@@ -1023,19 +992,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.xs,
     marginTop: Spacing.xs,
-  },
-  premiumHint: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-  },
-  premiumHintText: {
-    color: Palette.accentDeep,
-    fontSize: FontSize.caption,
-    fontWeight: FontWeight.bold,
-    textDecorationLine: 'underline',
   },
   walletHintText: {
     color: Palette.muted,

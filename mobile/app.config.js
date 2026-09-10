@@ -59,9 +59,6 @@ module.exports = {
     },
     plugins: [
       'expo-router',
-      // Mua trong ứng dụng (gói Premium). Cần build native lại sau khi thêm —
-      // Expo Go không có module này, xem đường lui trong src/lib/iap.tsx.
-      'expo-iap',
       [
         // Nâng Kotlin lên 2.3.0. Lý do: react-native-google-mobile-ads 16.4 kéo về
         // play-services-ads 25.4.0, thư viện này biên dịch bằng Kotlin metadata 2.3.0
