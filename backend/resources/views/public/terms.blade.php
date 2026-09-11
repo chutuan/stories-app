@@ -32,9 +32,25 @@
   </ul>
 
   <h2>Content</h2>
-  <p>All stories in the app are works of fiction. Names, characters, businesses and events are
-    products of the imagination; any resemblance to real people or companies is coincidental.
-    Content in the app remains the property of its respective rights holders.</p>
+  <p>All stories are works of fiction. Names, characters, businesses and events are products of
+    the imagination; any resemblance to real people or companies is coincidental.</p>
+  <p>Every story here was created for this site and is owned by us. We publish no licensed or
+    third-party works, no fan fiction, no user submissions and nothing copied from elsewhere.</p>
+
+  <h2>How these stories are made</h2>
+  <p>We think you should know how the thing you are reading was produced, so here it is plainly:</p>
+  <ul>
+    <li><strong>The writing.</strong> Stories are drafted with the help of AI writing tools to a
+      brief we set, then read and approved by us before publication. They are not scraped,
+      spun or copied from other sites.</li>
+    <li><strong>The names on them.</strong> Author names such as Vivian Pryce, Nora Calloway,
+      Marin Halloway, Nora Ellison and Elise Harrow are <strong>house pen names</strong>. They are
+      not real people and do not represent anyone living.</li>
+    <li><strong>The cover art.</strong> Generated with OpenAI's image model from a brief written
+      against each story, then reviewed by us.</li>
+    <li><strong>The audio.</strong> Where a story is narrated, the voice is synthesised speech
+      (OpenAI text-to-speech) reading our own text. No human narrator is credited or implied.</li>
+  </ul>
 
   <h2>Advertising</h2>
   <p>The app is supported by ads. We do not control which specific ads Google serves and are not

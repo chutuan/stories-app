@@ -64,11 +64,17 @@
   <p>This applies only to the website you are reading now. It does <strong>not</strong> change
     what the mobile app does: the app contains no analytics SDK at all, and still requests every
     ad in non-personalised mode.</p>
+  <p>Google Analytics sets its own cookies in your browser and may use web beacons — tiny
+    invisible images embedded in a page — to record that a page was opened. We do not combine
+    any of it with a name, an email address or any other identity, because we hold none.</p>
   <ul>
     <li>You can review and turn off personalised advertising for your Google account at
       <a href="https://myadcenter.google.com/" rel="noopener">My Ad Center</a>.</li>
-    <li>You can block or delete cookies in your browser settings at any time. The website remains
-      readable without them.</li>
+    <li>You can opt out of Google Analytics on every website at once by installing the
+      <a href="https://tools.google.com/dlpage/gaoptout" rel="noopener">Google Analytics
+      Opt-out Browser Add-on</a>.</li>
+    <li>You can block or delete cookies and web beacons in your browser settings at any time.
+      The website remains fully readable without them.</li>
   </ul>
 
   <h2>What the app does not use</h2>

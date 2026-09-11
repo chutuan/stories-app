@@ -78,7 +78,16 @@ class StructuredData
             '@type' => 'Book',
             'name' => $story->title,
             'url' => $url,
-            'author' => $story->author ? ['@type' => 'Person', 'name' => $story->author] : null,
+            // Tác giả khai là ORGANIZATION, không phải Person.
+            //
+            // Tên hiển thị (Vivian Pryce, Nora Calloway, Marin Halloway...) là BÚT
+            // DANH của nhà xuất bản cho truyện soạn với hỗ trợ AI — không có con
+            // người nào mang tên đó. Khẳng định @type: Person cho máy đọc là nói
+            // với Google rằng họ có thật, và Publisher Policies cấm "khai gian về
+            // danh tính". Bút danh tự nó hoàn toàn hợp lệ; cái sai là khai nhầm
+            // LOẠI thực thể rồi không đính chính ở đâu cả.
+            'author' => ['@type' => 'Organization', 'name' => 'Stories'],
+            'publisher' => ['@type' => 'Organization', 'name' => 'Stories'],
             'description' => $story->description ?: null,
             'image' => $image,
             // KHÔNG dùng numberOfPages cho số chương: thuộc tính đó có nghĩa là số
@@ -113,7 +122,8 @@ class StructuredData
             'inLanguage' => 'en',
             'datePublished' => $chapter->created_at?->toAtomString(),
             'dateModified' => $chapter->updated_at?->toAtomString(),
-            'author' => ['@type' => 'Person', 'name' => $story->author ?: 'Stories'],
+            // Cùng lý do với Book::author — xem chú thích ở trên.
+            'author' => ['@type' => 'Organization', 'name' => 'Stories'],
             'publisher' => ['@type' => 'Organization', 'name' => 'Stories'],
             'isPartOf' => ['@type' => 'Book', 'name' => $story->title, 'url' => $storyUrl],
         ]);

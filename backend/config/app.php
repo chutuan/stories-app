@@ -71,7 +71,15 @@ return [
     | Email hỗ trợ hiển thị trên trang công khai (privacy/terms). Store yêu cầu
     | phải có kênh liên hệ thật.
     */
-    'support_email' => env('SUPPORT_EMAIL', 'support@tunastory.com'),
+    /*
+     | Địa chỉ liên hệ CÔNG KHAI trên site và trong hồ sơ gửi Apple/Google.
+     |
+     | KHÔNG dùng support@tunastory.com nữa: tên miền không có bản ghi MX nên mọi
+     | thư gửi tới đó bật lại. Google Publisher Policies cấm "khai gian thông tin
+     | website", mà một địa chỉ liên hệ không nhận được thư rơi đúng vào đó — và
+     | Apple cũng dùng địa chỉ này để liên hệ khi xét duyệt.
+     */
+    'support_email' => env('SUPPORT_EMAIL', 'chutuan020693@gmail.com'),
 
     /*
     | Publisher ID của AdMob (dạng pub-XXXXXXXXXXXXXXXX), dùng để phục vụ

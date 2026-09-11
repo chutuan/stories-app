@@ -143,6 +143,11 @@
   .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:22px 24px;margin:22px 0}
   footer{border-top:1px solid var(--border);padding:26px 0;color:var(--muted);font-size:14px}
   footer a{color:var(--muted);margin-right:16px}
+  .disclosure{margin:14px 0 0;font-size:13px;line-height:1.6;color:var(--muted);max-width:70ch}
+  .disclosure a{color:var(--muted);text-decoration:underline;margin:0}
+  /* Trên trang truyện và trang đọc, dòng khai đứng riêng trong khung nhạt */
+  .disclosure.inline{margin:30px 0 0;padding:13px 16px;background:var(--surface);
+    border:1px solid var(--border);border-radius:12px;font-size:12.5px}
 
   /* --- lưới truyện --- */
   /* Số cột đặt TƯỜNG MINH theo bề ngang, không để auto-fill tự chia.
@@ -342,6 +347,7 @@
   <a href="{{ route('public.privacy') }}">Privacy Policy</a>
   <a href="{{ route('public.terms') }}">Terms of Service</a>
   <a href="mailto:{{ config('app.support_email') }}">{{ config('app.support_email') }}</a>
+  @include('public.partials.disclosure')
   <div style="margin-top:10px">&copy; {{ date('Y') }} Stories</div>
 </div></footer>
 </body>

@@ -88,4 +88,6 @@
       @endforeach
     </ul>
   @endif
+
+  @include('public.partials.disclosure', ['inline' => true])
 @endsection

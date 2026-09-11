@@ -54,16 +54,22 @@
   <hr class="reader-rule">
 
   <article class="chapter-body{{ $dropCap ? ' dropcap' : '' }}">
+    @php $wordsSoFar = 0; $adShown = false; $totalWords = str_word_count(implode(' ', $paragraphs)); @endphp
     @foreach ($paragraphs as $i => $paragraph)
       <p>{{ $paragraph }}</p>
+      @php $wordsSoFar += str_word_count($paragraph); @endphp
 
-      {{-- Một ô quảng cáo trong bài, đặt sau đoạn thứ ba.
-           Không đặt sớm hơn: AdSense cấm quảng cáo lấn át nội dung ở đầu trang,
-           và người đọc cần thấy chữ trước đã. Không đặt nhiều ô giữa bài vì
-           chương ở đây chỉ dài 150-260 từ với phần lớn truyện — nhồi thêm là
-           thành "quảng cáo nhiều hơn nội dung", đúng thứ AdSense đánh trượt. --}}
-      @if ($i === 2 && count($paragraphs) > 6)
+      {{-- Ô quảng cáo trong bài, đặt theo SỐ TỪ ĐÃ ĐỌC chứ không theo số đoạn.
+           Bản cũ chèn sau đoạn thứ ba, mà truyện ở đây mở bằng nhiều câu rất ngắn
+           ("He was not searching for her."), nên trung vị chỉ 54 từ trước ô quảng
+           cáo, thấp nhất 15 từ. Google Publisher Policies cấm quảng cáo "cản trở
+           việc đọc nội dung" và cấm màn hình "nhiều quảng cáo hơn nội dung" —
+           chèn sau 15 từ là rơi thẳng vào đó.
+           Ngưỡng 400 từ cho người đọc vào hẳn mạch truyện trước. Chương ngắn hơn
+           600 từ thì không chèn ô nào giữa bài; vẫn còn ô cuối chương. --}}
+      @if (! ($adShown ?? false) && ($wordsSoFar ?? 0) >= 400 && $totalWords > 600)
         @include('public.partials.ad')
+        @php $adShown = true; @endphp
       @endif
     @endforeach
 
