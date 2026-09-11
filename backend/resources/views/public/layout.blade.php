@@ -145,14 +145,22 @@
   footer a{color:var(--muted);margin-right:16px}
 
   /* --- lưới truyện --- */
-  .grid{display:grid;gap:22px;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));margin:18px 0 0;padding:0;list-style:none}
+  /* Số cột đặt TƯỜNG MINH theo bề ngang, không để auto-fill tự chia.
+     minmax(160px,1fr) trong khung 1080px cho ra 5-6 cột, mỗi ảnh bìa chỉ còn
+     khoảng 170px — nhỏ tới mức không đọc được mặt nhân vật, mà bìa lại đang là
+     thứ bán truyện. Bốn cột cho ảnh ~250px, gần gấp rưỡi. */
+  .grid{display:grid;gap:26px 22px;grid-template-columns:repeat(4,1fr);margin:20px 0 0;padding:0;list-style:none}
   .grid li{margin:0}
   .scard{display:block;text-decoration:none;color:inherit}
   .scard img,.scard .noart{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:12px;
                            border:1px solid var(--border);background:#EFE7E0;display:block}
   .scard .noart{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;text-align:center;padding:10px}
-  .scard h3{font-size:15px;line-height:1.35;margin:9px 0 2px;font-weight:650}
+  .scard h3{font-size:16px;line-height:1.33;margin:11px 0 3px;font-weight:650}
   .scard .meta{color:var(--muted);font-size:13px;margin:0}
+  /* Bìa nhích lên khi rê chuột — tín hiệu bấm được, và làm lưới bớt tĩnh */
+  .scard img,.scard .noart{transition:transform .18s ease,box-shadow .18s ease}
+  .scard:hover img,.scard:hover .noart{transform:translateY(-3px);
+    box-shadow:0 10px 24px rgba(26,22,20,.16)}
 
   /* --- chi tiết truyện --- */
   .hero{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap}
@@ -228,6 +236,17 @@
         border:1px solid var(--border);text-decoration:none;font-size:14px;background:var(--surface)}
   .pagination .cur{background:var(--accent-deep);border-color:var(--accent-deep);color:#fff}
   .empty{text-align:center;color:var(--muted);padding:44px 0}
+  /* Màn hình rất rộng: thêm cột thứ năm thay vì kéo giãn ảnh quá khổ */
+  @media (min-width:1400px){
+    .wrap.wide{max-width:1320px}
+    .grid{grid-template-columns:repeat(5,1fr)}
+  }
+
+  /* Tablet dọc và cửa sổ hẹp: ba cột */
+  @media (max-width:1000px){
+    .grid{grid-template-columns:repeat(3,1fr)}
+  }
+
   /* ---------- Màn hẹp ----------
      Đo trên iPhone 375px trước khi sửa: header cao 136px (17% màn hình) vì logo,
      nav và ô tìm kiếm xếp thành ba hàng — mà header lại sticky nên chiếm chỗ đó
@@ -254,7 +273,7 @@
 
     /* Hai cột truyện thay vì một — thẻ 1 cột to bằng nửa màn hình, cuộn mãi
        không hết mà vẫn chỉ thấy được hai truyện. */
-    .grid{grid-template-columns:repeat(2,1fr);gap:14px}
+    .grid{grid-template-columns:repeat(2,1fr);gap:18px 14px}
     .scard h3{font-size:14px}
     .scard .meta{font-size:12px}
 
