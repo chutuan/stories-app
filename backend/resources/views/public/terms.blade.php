@@ -37,6 +37,25 @@
   <p>Every story here was created for this site and is owned by us. We publish no licensed or
     third-party works, no fan fiction, no user submissions and nothing copied from elsewhere.</p>
 
+  <h2>Copyright, scraping and AI training</h2>
+  <p>Every story, chapter, cover image and audio narration on this site is our own work and is
+    protected by copyright. You are welcome to read it, link to it and quote a short passage
+    with a credit and a link. You may not republish it, mirror it, translate it, turn it into a
+    video or audiobook, or feed it to a machine.</p>
+  <p>Specifically, and to leave no room for argument: <strong>we do not permit the use of any
+    content on this site as training data, fine-tuning data or retrieval material for machine
+    learning models or generative AI systems</strong>, whether by a crawler, an API, a dataset
+    reseller, or a person copying pages by hand. Our
+    <a href="https://tunastory.com/robots.txt">robots.txt</a> states this in machine-readable
+    form and every page carries a matching <code>X-Robots-Tag: noai</code> header. Ignoring
+    those signals does not create permission.</p>
+  <p>Automated bulk access is not allowed either — no crawling the whole library, no scripted
+    downloads, no site mirroring. We rate-limit and block that at the server, and we log it.</p>
+  <p>If you find our stories republished somewhere else, we want to know:
+    <a href="mailto:{{ config('app.support_email') }}">{{ config('app.support_email') }}</a>.
+    We file takedown notices, and the original publication dates and sitemap history on this
+    domain establish who published first.</p>
+
   <h2>How these stories are made</h2>
   <p>We think you should know how the thing you are reading was produced, so here it is plainly:</p>
   <ul>

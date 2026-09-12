@@ -1,14 +1,69 @@
+# --- Bot tìm kiếm và bot quảng cáo: mời vào ---
+#
+# Đây là nguồn sống của site, đừng siết. /admin là trang quản trị, /search là ô
+# tìm kiếm sinh ra vô số URL rỗng không đáng index.
 User-agent: *
 Disallow: /admin
 Disallow: /search
 
-# Cho phép trình thu thập quảng cáo của Google vào mọi trang. Không có hai dòng
-# này, AdSense/AdMob vẫn quét được (chúng đi theo User-agent: * ở trên), nhưng
-# khai tường minh để lần sau ai siết robots.txt thì không vô tình chặn quảng cáo.
+# Khai tường minh, dù chúng vẫn đi theo "User-agent: *" ở trên. Không có hai mục
+# này thì lần sau ai siết robots.txt sẽ vô tình chặn luôn quảng cáo — mà quảng cáo
+# bị chặn thì AdSense trả về ô trống chứ không phải báo lỗi, nên rất lâu mới phát
+# hiện.
 User-agent: Mediapartners-Google
 Allow: /
 
 User-agent: AdsBot-Google
 Allow: /
+
+# --- Bot thu thập dữ liệu huấn luyện AI: không ---
+#
+# Truyện ở đây do chúng tôi viết và là tài sản của chúng tôi. Cho Google index để
+# người đọc tìm thấy là một chuyện; nộp toàn bộ thư viện làm dữ liệu huấn luyện
+# cho mô hình của hãng khác là chuyện khác.
+#
+# robots.txt là THOẢ THUẬN TỰ NGUYỆN, không phải bức tường. OpenAI, Anthropic,
+# Google và Apple có công bố cam kết tuân thủ các mã dưới đây; Bytespider thì nổi
+# tiếng phớt lờ. Tầng chặn thật nằm ở nginx và Cloudflare — xem deploy/nginx.conf.
+#
+# Google-Extended và Applebot-Extended chỉ tồn tại trong robots.txt: chúng KHÔNG
+# phải crawler riêng, mà là cách nói "Googlebot/Applebot cứ index cho tìm kiếm,
+# nhưng đừng dùng nội dung này để huấn luyện". Vì vậy chặn hai mã này không hề
+# ảnh hưởng thứ hạng tìm kiếm.
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: ClaudeBot
+User-agent: Claude-Web
+User-agent: anthropic-ai
+User-agent: Google-Extended
+User-agent: Applebot-Extended
+User-agent: CCBot
+User-agent: Bytespider
+User-agent: PerplexityBot
+User-agent: Amazonbot
+User-agent: meta-externalagent
+User-agent: FacebookBot
+User-agent: Omgilibot
+User-agent: Diffbot
+User-agent: ImagesiftBot
+User-agent: Timpibot
+User-agent: YouBot
+Disallow: /
+
+# --- Bot đào backlink và quét ảnh: không ---
+#
+# Những con này đã có mặt trong log: heritrix của image-meta.com quét 242 lượt chỉ
+# để thu ảnh bìa, serpstatbot 113 lượt để bán dữ liệu backlink. Chúng tiêu băng
+# thông của site mà không đem lại một người đọc nào.
+User-agent: AhrefsBot
+User-agent: SemrushBot
+User-agent: MJ12bot
+User-agent: DotBot
+User-agent: DataForSeoBot
+User-agent: serpstatbot
+User-agent: ImageMetaBot
+User-agent: heritrix
+Disallow: /
 
 Sitemap: https://tunastory.com/sitemap.xml
