@@ -16,7 +16,8 @@ class StoryController extends Controller
     public function index(Request $request): View
     {
         $stories = Story::with('categories')
-            ->withCount('chapters')
+            ->withCount(['chapters', 'reactions'])
+            ->withAvg('reactions', 'score')
             ->when($request->query('search'), function ($q, $search) {
                 $q->where('title', 'like', "%{$search}%")
                     ->orWhere('author', 'like', "%{$search}%");
@@ -41,7 +42,7 @@ class StoryController extends Controller
     {
         $data = $this->validateData($request);
 
-        $story = new Story();
+        $story = new Story;
         $this->fill($story, $data);
         $story->slug = $this->uniqueSlug($data['title']);
 

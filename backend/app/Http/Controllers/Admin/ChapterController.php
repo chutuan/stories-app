@@ -16,7 +16,12 @@ class ChapterController extends Controller
 {
     public function index(Story $story): View
     {
-        $chapters = $story->chapters()->paginate(30);
+        // withAvg/withCount gộp bằng truy vấn con, nên vẫn là MỘT truy vấn cho cả
+        // trang thay vì đếm phiếu riêng cho từng chương (N+1).
+        $chapters = $story->chapters()
+            ->withCount('reactions')
+            ->withAvg('reactions', 'score')
+            ->paginate(30);
 
         return view('admin.chapters.index', compact('story', 'chapters'));
     }

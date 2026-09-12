@@ -16,5 +16,6 @@
   <p class="meta">
     {{ $story->chapters_count }} {{ Str::plural('chapter', $story->chapters_count) }}
     @if ($story->author) · {{ $story->author }} @endif
+    @include('public.partials.rating', ['compact' => true])
   </p>
 </a>

@@ -49,6 +49,8 @@
         {{ Str::plural('chapter', $story->chapters->count()) }} · {{ $story->status_label }}
       </p>
 
+      @include('public.partials.rating')
+
       @if ($story->categories->isNotEmpty())
         <ul class="tags">
           @foreach ($story->categories as $category)

@@ -227,6 +227,14 @@
   .crumbs{font-size:13px;color:var(--muted);margin:0 0 18px}
   .crumbs a{color:var(--muted)}
 
+  /* --- điểm hài lòng của truyện --- */
+  .rating{display:inline-flex;align-items:center;gap:6px;margin-top:8px;
+          color:var(--accent-deep);font-weight:650;font-size:14px}
+  .rating svg{width:19px;height:19px;flex:none}
+  .rating-count{color:var(--muted);font-weight:400;font-size:13px}
+  .rating.compact{margin:0 0 0 2px;font-size:12.5px;gap:3px;vertical-align:-3px}
+  .rating.compact svg{width:15px;height:15px}
+
   /* --- thang hài lòng cuối chương --- */
   .reaction{margin:44px 0 0;padding:22px 20px;background:var(--surface);
             border:1px solid var(--border);border-radius:16px;text-align:center}

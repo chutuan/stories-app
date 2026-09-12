@@ -190,6 +190,7 @@ class ReadController extends Controller
         }
 
         $story->load(['categories', 'chapters' => fn ($q) => $q->orderBy('number')]);
+        $story->loadCount('reactions')->loadAvg('reactions', 'score');
 
         return view('public.story', [
             'story' => $story,
@@ -435,7 +436,8 @@ class ReadController extends Controller
     {
         return Story::query()
             ->with('categories')
-            ->withCount('chapters')
+            ->withCount(['chapters', 'reactions'])
+            ->withAvg('reactions', 'score')
             ->withMax('chapters', 'number');
     }
 

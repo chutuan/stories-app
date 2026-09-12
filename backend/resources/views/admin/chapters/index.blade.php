@@ -19,6 +19,10 @@
                     <th>Tiêu đề</th>
                     <th class="text-center">Trạng thái</th>
                     <th class="text-center">Audio</th>
+                    {{-- Phản hồi của người đọc trên bản web: thang 5 mặt cười ở
+                         cuối mỗi chương. Cột này để thấy chương nào đắt, chương
+                         nào nhạt — xem App\Http\Controllers\Web\ReactionController. --}}
+                    <th class="text-center" style="width:130px;">Phản hồi</th>
                     <th class="text-end">Thao tác</th>
                 </tr>
             </thead>
@@ -48,6 +52,17 @@
                                 </span>
                             @endif
                         </td>
+                        <td class="text-center">
+                            @if ($chapter->reactions_count === 0)
+                                <span class="text-muted">—</span>
+                            @else
+                                @php $avg = round((float) $chapter->reactions_avg_score, 1); @endphp
+                                <span class="badge bg-{{ $avg >= 4 ? 'success' : ($avg >= 3 ? 'secondary' : 'danger') }}">
+                                    {{ number_format($avg, 1) }}/5
+                                </span>
+                                <div class="small text-muted">{{ $chapter->reactions_count }} phiếu</div>
+                            @endif
+                        </td>
                         <td class="text-end">
                             <a href="{{ route('admin.stories.chapters.edit', [$story, $chapter]) }}" class="btn btn-sm btn-outline-secondary">Sửa</a>
                             <form method="POST" action="{{ route('admin.stories.chapters.destroy', [$story, $chapter]) }}" class="d-inline" onsubmit="return confirm('Xóa chương này?');">
@@ -57,7 +72,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="5" class="text-center text-muted py-4">Chưa có chương nào.</td></tr>
+                    <tr><td colspan="6" class="text-center text-muted py-4">Chưa có chương nào.</td></tr>
                 @endforelse
             </tbody>
         </table>

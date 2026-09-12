@@ -24,6 +24,7 @@
                     <th>Thể loại</th>
                     <th>Trạng thái</th>
                     <th class="text-center">Chương</th>
+                    <th class="text-center" style="width:120px;">Phản hồi</th>
                     <th class="text-center">Nổi bật</th>
                     <th class="text-end">Thao tác</th>
                 </tr>
@@ -49,6 +50,17 @@
                         </td>
                         <td><span class="badge bg-secondary">{{ $story->status_label }}</span></td>
                         <td class="text-center">{{ $story->chapters_count }}</td>
+                        <td class="text-center">
+                            @if ($story->reactions_count === 0)
+                                <span class="text-muted">—</span>
+                            @else
+                                @php $avg = round((float) $story->reactions_avg_score, 1); @endphp
+                                <span class="badge bg-{{ $avg >= 4 ? 'success' : ($avg >= 3 ? 'secondary' : 'danger') }}">
+                                    {{ number_format($avg, 1) }}/5
+                                </span>
+                                <div class="small text-muted">{{ $story->reactions_count }} phiếu</div>
+                            @endif
+                        </td>
                         <td class="text-center">{!! $story->is_featured ? '⭐' : '—' !!}</td>
                         <td class="text-end text-nowrap">
                             <a href="{{ route('admin.stories.chapters.index', $story) }}" class="btn btn-sm btn-outline-primary">Chương</a>
@@ -60,7 +72,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="text-center text-muted py-4">Chưa có truyện nào.</td></tr>
+                    <tr><td colspan="8" class="text-center text-muted py-4">Chưa có truyện nào.</td></tr>
                 @endforelse
             </tbody>
         </table>
