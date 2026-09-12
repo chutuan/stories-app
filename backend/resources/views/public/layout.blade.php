@@ -239,6 +239,9 @@
   .reaction{margin:44px 0 0;padding:22px 20px;background:var(--surface);
             border:1px solid var(--border);border-radius:16px;text-align:center}
   .reaction h2{font-size:16px;margin:0 0 16px;letter-spacing:0}
+  /* Sau khi bỏ phiếu khối chỉ còn một dòng, nên bỏ khoảng trống phía dưới. */
+  .reaction h2.reaction-done{margin:0;color:var(--accent-deep)}
+  .reaction h2.reaction-done + .reaction-note{margin-top:8px}
   .faces{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
   .face{background:none;border:0;padding:8px 6px;cursor:pointer;color:var(--muted);
         border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:6px;
