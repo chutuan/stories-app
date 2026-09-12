@@ -63,6 +63,48 @@ class ReadController extends Controller
         ]);
     }
 
+    /**
+     * Trang giới thiệu.
+     *
+     * Số liệu lấy động từ cơ sở dữ liệu chứ không viết cứng: kho tăng gần như mỗi
+     * ngày (11 truyện hôm 10/09, 15 truyện hôm 12/09), mà một trang About ghi sai
+     * số lượng còn tệ hơn là không có trang About.
+     */
+    public function about(): View
+    {
+        $chapters = Chapter::query()->count();
+        $words = (int) Chapter::query()
+            ->selectRaw("SUM(LENGTH(content) - LENGTH(REPLACE(content, ' ', '')) + 1) AS w")
+            ->value('w');
+
+        // Truyện đọc miễn phí trọn vẹn: free_chapters >= tổng số chương. Cùng phép
+        // lọc với tab Free trên trang chủ (StoryController::index), giữ một định
+        // nghĩa duy nhất cho "free" trên toàn site.
+        $freeStories = Story::query()
+            ->withCount('chapters')
+            ->has('chapters')
+            ->whereRaw('stories.free_chapters >= (select count(*) from chapters where chapters.story_id = stories.id)')
+            ->orderBy('title')
+            ->get();
+
+        return view('public.about', [
+            'storyCount' => Story::query()->count(),
+            'chapterCount' => $chapters,
+            'wordCount' => $words,
+            'audioCount' => Story::query()->has('chapters')->get()
+                ->filter(fn (Story $s) => $s->chapters()->whereNotNull('audio_path')->count() === $s->chapters()->count())
+                ->count(),
+            'freeStories' => $freeStories,
+            'jsonLd' => [
+                StructuredData::aboutPage(route('public.about'), route('public.home')),
+                StructuredData::breadcrumbs([
+                    ['name' => 'Home', 'url' => route('public.home')],
+                    ['name' => 'About'],
+                ]),
+            ],
+        ]);
+    }
+
     /** Toàn bộ kho truyện, phân trang. */
     public function browse(): View
     {
@@ -243,6 +285,7 @@ class ReadController extends Controller
         $urls = [
             ['loc' => route('public.home'), 'priority' => '1.0', 'freq' => 'daily'],
             ['loc' => route('public.browse'), 'priority' => '0.8', 'freq' => 'daily'],
+            ['loc' => route('public.about'), 'priority' => '0.5', 'freq' => 'monthly'],
             ['loc' => route('public.privacy'), 'priority' => '0.3', 'freq' => 'yearly'],
             ['loc' => route('public.terms'), 'priority' => '0.3', 'freq' => 'yearly'],
         ];

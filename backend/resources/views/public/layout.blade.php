@@ -332,7 +332,9 @@
   <a class="logo" href="{{ route('public.home') }}">Sto<span>ries</span></a>
   <nav>
     <a href="{{ route('public.browse') }}">Browse</a>
-    {{-- Privacy vẫn ở footer nên trên màn hẹp ẩn đi, nhường chỗ cho ô tìm kiếm --}}
+    {{-- About và Privacy đều có ở footer nên trên màn hẹp ẩn đi, nhường chỗ cho
+         ô tìm kiếm — header phải giữ được một hàng. --}}
+    <a class="wide-only" href="{{ route('public.about') }}">About</a>
     <a class="wide-only" href="{{ route('public.privacy') }}">Privacy</a>
     <form class="searchbox" action="{{ route('public.search') }}" method="get" role="search">
       <input type="search" name="q" value="{{ request('q') }}" placeholder="Search stories" aria-label="Search stories">
@@ -344,6 +346,7 @@
 <footer><div class="wrap{{ $isWide ? ' wide' : '' }}">
   <a href="{{ route('public.home') }}">Home</a>
   <a href="{{ route('public.browse') }}">Browse</a>
+  <a href="{{ route('public.about') }}">About</a>
   <a href="{{ route('public.privacy') }}">Privacy Policy</a>
   <a href="{{ route('public.terms') }}">Terms of Service</a>
   <a href="mailto:{{ config('app.support_email') }}">{{ config('app.support_email') }}</a>

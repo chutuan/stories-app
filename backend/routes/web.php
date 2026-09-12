@@ -28,6 +28,7 @@ Route::get('/story/{story:slug}/chapter/{number}', [ReadController::class, 'chap
 Route::get('/og/{story:slug}.jpg', [ReadController::class, 'socialCard'])->name('public.og');
 Route::get('/sitemap.xml', [ReadController::class, 'sitemap'])->name('public.sitemap');
 
+Route::get('/about', [ReadController::class, 'about'])->name('public.about');
 Route::view('/privacy', 'public.privacy')->name('public.privacy');
 Route::view('/terms', 'public.terms')->name('public.terms');
 

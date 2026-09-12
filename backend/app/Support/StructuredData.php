@@ -129,6 +129,18 @@ class StructuredData
         ]);
     }
 
+    public static function aboutPage(string $url, string $home): string
+    {
+        return self::encode([
+            '@type' => 'AboutPage',
+            'name' => 'About Stories',
+            'url' => $url,
+            'inLanguage' => 'en',
+            'isPartOf' => ['@type' => 'WebSite', 'name' => 'Stories', 'url' => $home],
+            'about' => ['@type' => 'Organization', 'name' => 'Stories', 'url' => $home],
+        ]);
+    }
+
     /** @param list<array{name: string, url?: string}> $crumbs */
     public static function breadcrumbs(array $crumbs): string
     {
