@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ChapterController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\StoryController;
+use App\Http\Controllers\Web\ReactionController;
 use App\Http\Controllers\Web\ReadController;
 use Illuminate\Support\Facades\Route;
 
@@ -25,6 +26,12 @@ Route::get('/story/{story:slug}', [ReadController::class, 'story'])->name('publi
 Route::get('/story/{story:slug}/chapter/{number}', [ReadController::class, 'chapter'])
     ->whereNumber('number')
     ->name('public.chapter');
+// Thang hài lòng cuối chương. throttle chặn bấm liên tục bằng script; không có
+// tài khoản nên đây là lớp bảo vệ duy nhất ngoài cookie.
+Route::post('/story/{story:slug}/chapter/{number}/react', [ReactionController::class, 'store'])
+    ->whereNumber('number')
+    ->middleware('throttle:20,1')
+    ->name('public.react');
 Route::get('/og/{story:slug}.jpg', [ReadController::class, 'socialCard'])->name('public.og');
 Route::get('/sitemap.xml', [ReadController::class, 'sitemap'])->name('public.sitemap');
 

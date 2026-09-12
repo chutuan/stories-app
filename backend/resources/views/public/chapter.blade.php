@@ -78,6 +78,8 @@
     @endif
   </article>
 
+  @include('public.partials.reaction')
+
   @include('public.partials.ad')
 
   <nav class="pager" aria-label="Chapter navigation">

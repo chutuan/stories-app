@@ -250,6 +250,7 @@ class ReadController extends Controller
             'paragraphs' => $paragraphs,
             'heading' => $heading,
             'metaDescription' => $this->chapterDescription($story, $chapter, $clean, $paragraphs),
+            'reaction' => ReactionController::summary($chapter, request()),
             'jsonLd' => [
                 StructuredData::article(
                     $story, $chapter, $heading,

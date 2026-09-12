@@ -6,6 +6,7 @@ use App\Support\PublicFileUrl;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Chapter extends Model
 {
@@ -20,6 +21,12 @@ class Chapter extends Model
     protected $casts = [
         'number' => 'integer',
     ];
+
+    /** Phiếu hài lòng ở cuối chương — chỉ bản web dùng, xem ChapterReaction. */
+    public function reactions(): HasMany
+    {
+        return $this->hasMany(ChapterReaction::class);
+    }
 
     public function story(): BelongsTo
     {

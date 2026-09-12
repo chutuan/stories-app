@@ -227,6 +227,23 @@
   .crumbs{font-size:13px;color:var(--muted);margin:0 0 18px}
   .crumbs a{color:var(--muted)}
 
+  /* --- thang hài lòng cuối chương --- */
+  .reaction{margin:44px 0 0;padding:22px 20px;background:var(--surface);
+            border:1px solid var(--border);border-radius:16px;text-align:center}
+  .reaction h2{font-size:16px;margin:0 0 16px;letter-spacing:0}
+  .faces{display:flex;justify-content:center;gap:8px;flex-wrap:wrap}
+  .face{background:none;border:0;padding:8px 6px;cursor:pointer;color:var(--muted);
+        border-radius:12px;display:flex;flex-direction:column;align-items:center;gap:6px;
+        font:inherit;transition:color .15s,background .15s,transform .15s;min-width:64px}
+  .face svg{width:40px;height:40px;display:block}
+  .face-label{font-size:11px;line-height:1;opacity:0;transition:opacity .15s;white-space:nowrap}
+  .face:hover{color:var(--accent-deep);background:#FFF6F0;transform:translateY(-2px)}
+  .face:hover .face-label,.face.chosen .face-label{opacity:1}
+  .face.chosen{color:var(--accent-deep);background:#FFF1E8}
+  .face:focus-visible{outline:2px solid var(--accent-deep);outline-offset:2px}
+  .reaction-note{font-size:13px;color:var(--muted);margin:14px 0 0}
+  .reaction-stat{display:block;margin-top:4px;color:var(--accent-deep);font-weight:600}
+
   /* Thanh tiến độ đọc bám đỉnh trang */
   .progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:20;
             background:linear-gradient(90deg,var(--accent),var(--accent-deep))}
@@ -314,6 +331,13 @@
              white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
     .chapters a{padding:15px 14px}
+    /* Không có hover trên cảm ứng nên nhãn phải hiện sẵn, và mặt nhỏ lại cho
+       năm cái vừa một hàng trong 343px. */
+    .reaction{padding:18px 12px}
+    .faces{gap:2px}
+    .face{min-width:0;flex:1;padding:8px 2px}
+    .face svg{width:34px;height:34px}
+    .face-label{opacity:1;font-size:10px;white-space:normal;max-width:60px}
     .tag{padding:5px 12px}
     footer a{display:inline-block;margin:0 14px 8px 0}
   }
