@@ -15,6 +15,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -72,10 +73,33 @@ class ReadController extends Controller
      */
     public function about(): View
     {
-        $chapters = Chapter::query()->count();
-        $words = (int) Chapter::query()
-            ->selectRaw("SUM(LENGTH(content) - LENGTH(REPLACE(content, ' ', '')) + 1) AS w")
-            ->value('w');
+        // Thống kê kho: đếm trong PHP, không đếm bằng SQL.
+        //
+        // Bản đầu dùng SUM(LENGTH - LENGTH(REPLACE(content,' ',''))) và hụt ~9%
+        // (132.259 thay vì 145.939) vì đoạn văn ngăn nhau bằng \n\n chứ không
+        // phải dấu cách. Vá công thức SQL cho đúng mọi loại khoảng trắng là thứ
+        // vừa khó đọc vừa dễ sai lần nữa; str_word_count() thì không bàn cãi.
+        //
+        // Đệm một giờ: truyện mới chỉ thêm vài lần mỗi ngày, và không đáng kéo
+        // 146.000 từ ra khỏi cơ sở dữ liệu cho mỗi lượt xem trang About.
+        $stats = Cache::remember('about.stats', now()->addHour(), function (): array {
+            $contents = Chapter::query()->pluck('content');
+
+            return [
+                'stories' => Story::query()->count(),
+                'chapters' => $contents->count(),
+                'words' => $contents->sum(fn (?string $c) => str_word_count((string) $c)),
+                'audio' => Story::query()
+                    ->has('chapters')
+                    ->withCount([
+                        'chapters',
+                        'chapters as narrated_count' => fn ($q) => $q->whereNotNull('audio_path'),
+                    ])
+                    ->get()
+                    ->filter(fn (Story $s) => $s->chapters_count === $s->narrated_count)
+                    ->count(),
+            ];
+        });
 
         // Truyện đọc miễn phí trọn vẹn: free_chapters >= tổng số chương. Cùng phép
         // lọc với tab Free trên trang chủ (StoryController::index), giữ một định
@@ -88,12 +112,10 @@ class ReadController extends Controller
             ->get();
 
         return view('public.about', [
-            'storyCount' => Story::query()->count(),
-            'chapterCount' => $chapters,
-            'wordCount' => $words,
-            'audioCount' => Story::query()->has('chapters')->get()
-                ->filter(fn (Story $s) => $s->chapters()->whereNotNull('audio_path')->count() === $s->chapters()->count())
-                ->count(),
+            'storyCount' => $stats['stories'],
+            'chapterCount' => $stats['chapters'],
+            'wordCount' => $stats['words'],
+            'audioCount' => $stats['audio'],
             'freeStories' => $freeStories,
             'jsonLd' => [
                 StructuredData::aboutPage(route('public.about'), route('public.home')),
