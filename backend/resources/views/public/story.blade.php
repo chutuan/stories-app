@@ -60,7 +60,7 @@
       @endif
 
       @if ($story->description)
-        <p>{{ $story->description }}</p>
+        <p class="synopsis">{{ $story->description }}</p>
       @endif
 
       @if ($story->chapters->isNotEmpty())

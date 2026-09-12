@@ -214,6 +214,27 @@
     -webkit-font-smoothing:antialiased;
   }
   .chapter-body p{margin:0 0 1.35em}
+
+  /* --- Chặn sao chép thân truyện --- xem partials/protect.blade.php để biết
+     lớp này chặn được gì và KHÔNG chặn được gì. Chỉ nhắm vào thân chương và mô
+     tả truyện; ô tìm kiếm, email ở footer, tên truyện vẫn bôi đen được. */
+  .chapter-body,.synopsis{
+    -webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;
+    /* Chặn bảng "Copy / Look Up / Share" khi nhấn giữ trên iOS. Phần lớn người
+       đọc vào bằng điện thoại, nên thiếu dòng này là lớp chặn gần như vô nghĩa. */
+    -webkit-touch-callout:none;
+  }
+  /* Ảnh bìa: tắt kéo-thả ở tầng CSS, không chỉ dựa vào JS. */
+  .scard img,.shero img,.chapter-body img{-webkit-user-drag:none;user-drag:none}
+
+  /* In ra giấy / lưu thành PDF là đường copy sạch nhất còn lại, nên bịt luôn.
+     Đánh đổi: người đọc không in truyện ra để đọc ngoại tuyến được nữa. */
+  @media print{
+    .chapter-body,.synopsis{display:none!important}
+    .reader::after{
+      content:"This chapter is free to read at tunastory.com. Printing is disabled.";
+      display:block;font:16px Georgia,serif;color:#241E1B;padding:40px 0}
+  }
   /* Đoạn đầu tiên: chữ cái đầu lớn, mắt biết bắt đầu từ đâu */
   .chapter-body.dropcap > p:first-child::first-letter{
     font-size:3.1em;line-height:.86;float:left;margin:.04em .09em 0 0;
@@ -388,5 +409,6 @@
   @include('public.partials.disclosure')
   <div style="margin-top:10px">&copy; {{ date('Y') }} Stories</div>
 </div></footer>
+@include('public.partials.protect')
 </body>
 </html>
