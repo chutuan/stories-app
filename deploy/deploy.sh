@@ -323,10 +323,14 @@ ok "cache đã build"
 # Ảnh bìa WebP thu nhỏ cho web. Chỉ sinh bản còn thiếu hoặc cũ hơn ảnh gốc, nên
 # lần deploy không đổi ảnh thì gần như không tốn gì. Không để deploy chết vì việc
 # này: thiếu bản dẫn xuất thì <picture> tự rơi về ảnh gốc, trang vẫn đúng.
-if artisan covers:derive >/dev/null 2>&1; then
-    ok "ảnh bìa WebP đã sinh"
+COVERS_LOG="$(artisan covers:derive 2>&1)" && COVERS_OK=1 || COVERS_OK=0
+if [ "$COVERS_OK" = 1 ]; then
+    ok "ảnh bìa WebP: $(printf '%s' "$COVERS_LOG" | tail -1)"
 else
-    warn "không sinh được ảnh bìa WebP — web sẽ dùng ảnh gốc"
+    # In nguyên lỗi ra. Nuốt lỗi ở đây từng làm cả bước này hỏng im lặng, và chỉ
+    # phát hiện khi đo lại trọng lượng trang thấy vẫn nặng y như cũ.
+    warn "không sinh được ảnh bìa WebP — web dùng ảnh gốc. Lỗi:"
+    printf '%s\n' "$COVERS_LOG" | tail -5 >&2
 fi
 
 # -----------------------------------------------------------------------------
