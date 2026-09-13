@@ -23,6 +23,12 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         // Chốt token cho nhóm route /api/ingest (AI viết truyện tự đăng bài).
+        // Prepend: phải bọc NGOÀI CÙNG nhóm web thì trên đường ra nó mới chạy
+        // sau StartSession, nếu không cookie phiên và header no-cache bị gắn lại.
+        $middleware->web(prepend: [
+            \App\Http\Middleware\PublicPageCache::class,
+        ]);
+
         $middleware->alias([
             'ingest' => \App\Http\Middleware\VerifyIngestToken::class,
         ]);

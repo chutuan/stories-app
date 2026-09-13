@@ -320,6 +320,15 @@ artisan cache:clear || warn "cache:clear thất bại (bỏ qua)"
 
 ok "cache đã build"
 
+# Ảnh bìa WebP thu nhỏ cho web. Chỉ sinh bản còn thiếu hoặc cũ hơn ảnh gốc, nên
+# lần deploy không đổi ảnh thì gần như không tốn gì. Không để deploy chết vì việc
+# này: thiếu bản dẫn xuất thì <picture> tự rơi về ảnh gốc, trang vẫn đúng.
+if artisan covers:derive >/dev/null 2>&1; then
+    ok "ảnh bìa WebP đã sinh"
+else
+    warn "không sinh được ảnh bìa WebP — web sẽ dùng ảnh gốc"
+fi
+
 # -----------------------------------------------------------------------------
 # 8. KHỞI ĐỘNG LẠI DỊCH VỤ
 # -----------------------------------------------------------------------------

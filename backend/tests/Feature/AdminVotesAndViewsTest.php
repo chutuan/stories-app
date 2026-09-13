@@ -100,6 +100,35 @@ class AdminVotesAndViewsTest extends TestCase
         $this->assertSame(1, ViewCounter::summaryFor([$story->id])[$story->id]['unique']);
     }
 
+    public function test_trang_doc_cong_khai_cho_phep_cache_va_khong_dat_cookie(): void
+    {
+        $story = $this->story();
+
+        foreach (['/', '/browse', "/story/{$story->slug}"] as $url) {
+            $res = $this->get($url);
+
+            $res->assertOk();
+            $this->assertStringContainsString('s-maxage=600', $res->headers->get('Cache-Control'), $url);
+            $this->assertStringContainsString('public', $res->headers->get('Cache-Control'), $url);
+
+            // Cloudflare không cache response có Set-Cookie — còn sót một cái là
+            // cả phần header ở trên thành vô nghĩa.
+            $this->assertSame([], $res->headers->getCookies(), "{$url} không được đặt cookie");
+        }
+    }
+
+    public function test_trang_chuong_KHONG_duoc_cache_vi_noi_dung_rieng_tung_nguoi(): void
+    {
+        $story = $this->story();
+
+        $res = $this->get("/story/{$story->slug}/chapter/1");
+
+        $res->assertOk();
+        // Khối đánh giá hiện khác nhau tuỳ người đọc đã bỏ phiếu hay chưa; đem
+        // cache dùng chung là người này thấy lời cảm ơn của người khác.
+        $this->assertStringNotContainsString('s-maxage', (string) $res->headers->get('Cache-Control'));
+    }
+
     public function test_trang_danh_sach_truyen_hien_cot_luot_xem(): void
     {
         $story = $this->story();

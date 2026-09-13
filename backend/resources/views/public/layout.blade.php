@@ -157,6 +157,9 @@
   .grid{display:grid;gap:26px 22px;grid-template-columns:repeat(4,1fr);margin:20px 0 0;padding:0;list-style:none}
   .grid li{margin:0}
   .scard{display:block;text-decoration:none;color:inherit}
+  /* <picture> mặc định là inline nên sẽ chen một khoảng trắng dưới ảnh và làm
+     lệch lưới; cho nó block để bố cục y hệt như khi còn dùng <img> trần. */
+  .scard picture,.hero picture{display:block}
   .scard img,.scard .noart{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:12px;
                            border:1px solid var(--border);background:#EFE7E0;display:block}
   .scard .noart{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;text-align:center;padding:10px}

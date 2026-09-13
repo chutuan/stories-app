@@ -24,7 +24,7 @@
     <div class="card">
       <div class="hero">
         @if ($featured->thumbnail_url)
-          <img src="{{ $featured->thumbnail_url }}" alt="Cover art for {{ $featured->title }}" width="180" height="270">
+          @include('public.partials.cover', ['story' => $featured, 'sizes' => '180px', 'w' => 180, 'h' => 270, 'lazy' => false])
         @else
           <span class="noart">{{ $featured->title }}</span>
         @endif

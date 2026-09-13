@@ -19,11 +19,17 @@ use Illuminate\Support\Facades\Route;
 // ràng buộc đó với `show(Story $story)`, nên đổi khoá trên model sẽ biến
 // /api/stories/1 thành 404 và giết luôn app đang chạy. Cú pháp {tham số:cột}
 // chỉ đổi khoá cho đúng route này.
+// Trang nào được cache ở biên do App\Http\Middleware\PublicPageCache quyết định
+// theo TÊN route — cố tình để một chỗ thay vì rải ra đây, vì nhầm một trang có nội
+// dung riêng từng người vào danh sách là người này thấy dữ liệu của người khác.
 Route::get('/', [ReadController::class, 'home'])->name('public.home');
 Route::get('/browse', [ReadController::class, 'browse'])->name('public.browse');
-Route::get('/search', [ReadController::class, 'search'])->name('public.search');
 Route::get('/genre/{category:slug}', [ReadController::class, 'category'])->name('public.category');
 Route::get('/story/{story:slug}', [ReadController::class, 'story'])->name('public.story');
+Route::get('/about', [ReadController::class, 'about'])->name('public.about');
+Route::view('/privacy', 'public.privacy')->name('public.privacy');
+Route::view('/terms', 'public.terms')->name('public.terms');
+Route::get('/search', [ReadController::class, 'search'])->name('public.search');
 Route::get('/story/{story:slug}/chapter/{number}', [ReadController::class, 'chapter'])
     ->whereNumber('number')
     ->name('public.chapter');
@@ -36,9 +42,6 @@ Route::post('/story/{story:slug}/chapter/{number}/react', [ReactionController::c
 Route::get('/og/{story:slug}.jpg', [ReadController::class, 'socialCard'])->name('public.og');
 Route::get('/sitemap.xml', [ReadController::class, 'sitemap'])->name('public.sitemap');
 
-Route::get('/about', [ReadController::class, 'about'])->name('public.about');
-Route::view('/privacy', 'public.privacy')->name('public.privacy');
-Route::view('/terms', 'public.terms')->name('public.terms');
 
 // app-ads.txt cho AdMob: xác thực app là của mình, chống gian lận mạo danh kho
 // quảng cáo. Google thu thập file này tại domain khai trong store listing.

@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Console\Commands\DeriveCovers;
 use App\Support\PublicFileUrl;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Support\Facades\Storage;
 
 class Story extends Model
 {
@@ -58,6 +60,36 @@ class Story extends Model
             'completed' => 'Completed',
             default => $this->status,
         });
+    }
+
+    /**
+     * Bộ ảnh bìa WebP đã thu nhỏ, dạng srcset. Trả null nếu chưa sinh bản nào.
+     *
+     * CHỈ dùng cho bản web. `thumbnail_url` ở dưới vẫn trả ảnh gốc và vẫn là thứ
+     * app di động đọc — đừng gộp hai cái làm một.
+     *
+     * Sinh bằng `php artisan covers:derive`.
+     */
+    public function coverSrcset(): ?string
+    {
+        $source = (string) $this->thumbnail;
+
+        if ($source === '') {
+            return null;
+        }
+
+        $disk = Storage::disk('public');
+        $parts = [];
+
+        foreach ([320, 640] as $width) {
+            $path = DeriveCovers::derivedPath($source, $width);
+
+            if ($disk->exists($path)) {
+                $parts[] = $disk->url($path).'?v='.$disk->lastModified($path).' '.$width.'w';
+            }
+        }
+
+        return $parts === [] ? null : implode(', ', $parts);
     }
 
     protected function thumbnailUrl(): Attribute

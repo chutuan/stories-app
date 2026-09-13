@@ -8,7 +8,13 @@
 --}}
 <a class="scard" href="{{ route('public.story', $story) }}">
   @if ($story->thumbnail_url)
-    <img src="{{ $story->thumbnail_url }}" alt="Cover art for {{ $story->title }}" loading="lazy" width="300" height="450">
+    {{-- `sizes` bám theo breakpoint của .grid trong layout: 5 cột >1400px,
+         4 cột mặc định, 3 cột <1000px, 2 cột <600px. --}}
+    @include('public.partials.cover', [
+        'story' => $story,
+        'sizes' => '(max-width:600px) 45vw, (max-width:1000px) 30vw, (max-width:1400px) 23vw, 250px',
+        'w' => 300, 'h' => 450,
+    ])
   @else
     <span class="noart">{{ $story->title }}</span>
   @endif

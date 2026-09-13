@@ -38,7 +38,8 @@
 
   <div class="hero">
     @if ($story->thumbnail_url)
-      <img src="{{ $story->thumbnail_url }}" alt="Cover art for {{ $story->title }}" width="180" height="270">
+      {{-- Không lazy: ảnh này ở ngay đầu trang, lazy chỉ làm nó hiện chậm hơn. --}}
+      @include('public.partials.cover', ['story' => $story, 'sizes' => '180px', 'w' => 180, 'h' => 270, 'lazy' => false])
     @else
       <span class="noart">{{ $story->title }}</span>
     @endif
