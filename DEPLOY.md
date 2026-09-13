@@ -869,3 +869,28 @@ Chuẩn bị trước:
 - Vào chương có audio, bấm phát: chứng minh nginx phục vụ được `/storage/audio/...`
   qua HTTPS kèm Range request.
 - Bấm quảng cáo có thưởng một lần để chắc SDK AdMob đã khởi tạo (chỉ làm với ID TEST).
+
+## Cloudflare: khôi phục IP thật của người đọc
+
+Khi bản ghi A bật proxy (mây vàng), mọi request tới origin đều đến từ máy biên của
+Cloudflare. Không xử lý thì `$remote_addr` là IP của Cloudflare, và hậu quả không
+chỉ là log vô dụng: `limit_req` sẽ nhốt chung mọi người đọc đi qua cùng một POP vào
+một hạn mức, còn kẻ scrape đổi POP là thoát; mọi thống kê theo IP cũng sai (ba lần
+tải trang của cùng một người qua ba POP bị đếm thành ba người).
+
+```bash
+sudo bash /var/www/stories/deploy/cloudflare-real-ip.sh
+```
+
+Script sinh `/etc/nginx/cloudflare-real-ip.conf` (được `deploy/nginx.conf` include ở
+đầu file) rồi tự kiểm cấu hình và nạp lại nginx. Cloudflare có đổi dải nên đã đặt
+cron chạy lại hàng tuần:
+
+```
+17 4 * * 1 /usr/local/bin/cloudflare-real-ip.sh >/var/log/cloudflare-real-ip.log 2>&1
+```
+
+**Không bao giờ** thay danh sách dải bằng `0.0.0.0/0`: `real_ip_header` chỉ được tin
+khi request đến TỪ dải trong `set_real_ip_from`, nên mở toang là cho bất kỳ ai gõ
+thẳng IP gốc tự khai mình là IP nào cũng được, và mọi luật chặn theo IP mất hiệu lực.
+Đã kiểm: gõ thẳng `147.182.221.253` kèm `CF-Connecting-IP` bịa thì nginx bỏ qua.
