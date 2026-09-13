@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\StoryCardResource;
 use App\Http\Resources\StoryResource;
 use App\Models\Story;
+use App\Support\ViewCounter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -75,6 +76,8 @@ class StoryController extends Controller
         ])
             ->loadCount('chapters')
             ->loadMax('chapters', 'number');
+
+        ViewCounter::record(request(), $story, null, ViewCounter::SOURCE_APP);
 
         return new StoryResource($story);
     }

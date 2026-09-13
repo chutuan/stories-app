@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Story;
+use App\Support\ViewCounter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -26,7 +27,10 @@ class StoryController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        return view('admin.stories.index', compact('stories'));
+        // Một truy vấn gộp cho cả trang thay vì mỗi dòng một truy vấn.
+        $views = ViewCounter::summaryFor($stories->pluck('id')->all());
+
+        return view('admin.stories.index', compact('stories', 'views'));
     }
 
     public function create(): View

@@ -32,9 +32,28 @@
   <ul>
     <li>IP address, device/browser user agent and the time of the request, written to standard
       server logs and kept for a limited period for security and troubleshooting</li>
-    <li>An anonymous, aggregate view counter on each story — a total number, not tied to any person
-      or device</li>
+    <li>Reading counts for each story and chapter, recorded separately for the mobile app and for
+      the website. So that opening the same page three times in one afternoon is not counted as
+      three readers, we store a one-way fingerprint derived from your IP address, your browser or
+      device user agent, and the current date, all passed through a keyed hash. <strong>Your IP
+      address itself is never stored in that table</strong>, the fingerprint cannot be reversed
+      back into it, and because the date is part of the input the fingerprint changes every day —
+      so it cannot be used to follow you from one day to the next, or to build any profile of
+      you.</li>
   </ul>
+
+  <h2>Rating a chapter</h2>
+  <p>At the end of every chapter on the website there is a one-tap satisfaction scale. If you use
+    it, we store the score, which chapter it was for, and an identifier for you — so that tapping
+    again changes your existing rating instead of adding a second one.</p>
+  <p>That identifier is a random string generated in your browser and kept in a cookie named
+    <code>sid</code> for two years. It is not linked to any account, name, email or IP address, and
+    it is not shared with anyone. Before the value is written to our database it is passed through
+    a keyed one-way hash, so the stored rating cannot be traced back to the cookie in your browser
+    even by us. Clearing your cookies ends the connection permanently — you would simply be able to
+    rate those chapters again.</p>
+  <p>Rating is entirely optional. Nothing on the site is withheld if you never tap it, and the
+    mobile app has no rating feature at all.</p>
 
   <h2>Advertising</h2>
   <p>Stories shows banner ads and optional rewarded video ads through

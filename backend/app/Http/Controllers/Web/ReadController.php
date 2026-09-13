@@ -10,6 +10,7 @@ use App\Models\Chapter;
 use App\Models\Story;
 use App\Services\SocialCardGenerator;
 use App\Support\StructuredData;
+use App\Support\ViewCounter;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -192,6 +193,8 @@ class ReadController extends Controller
         $story->load(['categories', 'chapters' => fn ($q) => $q->orderBy('number')]);
         $story->loadCount('reactions')->loadAvg('reactions', 'score');
 
+        ViewCounter::record(request(), $story, null, ViewCounter::SOURCE_WEB);
+
         return view('public.story', [
             'story' => $story,
             'jsonLd' => [
@@ -223,6 +226,8 @@ class ReadController extends Controller
             ->firstOrFail();
 
         $chapter->setRelation('story', $story);
+
+        ViewCounter::record(request(), $story, $chapter, ViewCounter::SOURCE_WEB);
 
         // Chương liền kề: lấy `number` gần nhất hai phía thay vì number±1, vì kho
         // có thể khuyết chương (đăng dở, hoặc chương bị gỡ) và number+1 khi đó

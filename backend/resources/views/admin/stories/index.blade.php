@@ -25,6 +25,7 @@
                     <th>Trạng thái</th>
                     <th class="text-center">Chương</th>
                     <th class="text-center" style="width:120px;">Phản hồi</th>
+                    <th class="text-center" style="width:150px;">Lượt xem</th>
                     <th class="text-center">Nổi bật</th>
                     <th class="text-end">Thao tác</th>
                 </tr>
@@ -61,6 +62,22 @@
                                 <div class="small text-muted">{{ $story->reactions_count }} phiếu</div>
                             @endif
                         </td>
+                        <td class="text-center">
+                            @php $v = $views[$story->id] ?? null; @endphp
+                            @if (! $v || $v['total'] === 0)
+                                <span class="text-muted">—</span>
+                            @else
+                                <div class="fw-semibold">{{ number_format($v['total']) }}</div>
+                                <div class="small text-muted text-nowrap">
+                                    {{-- Tách nguồn: app di động và trình duyệt là hai nhóm
+                                         người đọc khác nhau, gộp lại thì không biết nên đầu
+                                         tư vào đâu. --}}
+                                    App {{ number_format($v['app']) }}
+                                    · Web {{ number_format($v['web_mobile'] + $v['web_desktop']) }}
+                                </div>
+                                <div class="small text-muted">{{ number_format($v['unique']) }} người</div>
+                            @endif
+                        </td>
                         <td class="text-center">{!! $story->is_featured ? '⭐' : '—' !!}</td>
                         <td class="text-end text-nowrap">
                             <a href="{{ route('admin.stories.chapters.index', $story) }}" class="btn btn-sm btn-outline-primary">Chương</a>
@@ -72,7 +89,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="8" class="text-center text-muted py-4">Chưa có truyện nào.</td></tr>
+                    <tr><td colspan="9" class="text-center text-muted py-4">Chưa có truyện nào.</td></tr>
                 @endforelse
             </tbody>
         </table>
