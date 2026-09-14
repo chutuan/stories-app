@@ -5,6 +5,11 @@
 User-agent: *
 Disallow: /admin
 Disallow: /search
+# File giọng đọc: 79 file, 617MB, sinh bằng OpenAI TTS nên tốn tiền thật. Không
+# trang nào trên web nhúng chúng, nên đưa vào chỉ mục chỉ tổ để người ta tải
+# thẳng từ trang kết quả tìm kiếm. Host api đã chặn từ trước, host này thì CHƯA —
+# đó là một lỗ thật, không phải phòng xa.
+Disallow: /storage/audio/
 
 # Khai tường minh, dù chúng vẫn đi theo "User-agent: *" ở trên. Không có hai mục
 # này thì lần sau ai siết robots.txt sẽ vô tình chặn luôn quảng cáo — mà quảng cáo

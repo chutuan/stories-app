@@ -319,3 +319,32 @@ môi trường đúng thông tin sau:
 | Cổng | `443` (HTTPS) |
 | Chiều | chỉ đi ra (outbound) |
 | Dùng để | đăng truyện qua REST API của chính dự án |
+
+## Đừng dùng `urllib` — Cloudflare chặn nó
+
+Từ khi bật proxy Cloudflare (12/09/2026), **mọi request có User-Agent
+`Python-urllib/*` đều bị chặn ở biên với HTTP 403 và `error code: 1010`** trước cả
+khi tới server. Điều này áp cho toàn bộ `/api/ingest/*`, nên script nào dùng
+`urllib.request` sẽ hỏng hoàn toàn dù token đúng.
+
+Đã kiểm ngày 14/09/2026, chỉ riêng `urllib` bị chặn:
+
+| User-Agent | Kết quả |
+|---|---|
+| `Python-urllib/3.14` | **403** |
+| `python-requests/2.31.0` | 200 |
+| `curl/8.7.1` | 200 |
+| `Wget/1.21` | 200 |
+| `node-fetch/3.3` | 200 |
+
+Nên dùng `requests` hoặc `curl`. Đừng giả User-Agent trình duyệt để lách — đó là
+đi vòng qua lớp bảo vệ của chính site này, và `requests` vốn đã chạy được.
+
+```python
+import requests
+r = requests.post(
+    "https://api.tunastory.com/api/ingest/stories",
+    headers={"Authorization": f"Bearer {token}"},
+    json=payload, timeout=60,
+)
+```

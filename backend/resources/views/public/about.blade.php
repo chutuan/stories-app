@@ -24,8 +24,12 @@
   <ul>
     <li><strong>Complete stories, not teasers.</strong> Each serial runs 3–10 chapters and
       reaches an actual ending. Nothing is cut off to make you pay.</li>
+    {{-- Trước đây câu này viết "you can listen from the reading screen" trong mục
+         mô tả CHÍNH TRANG WEB, nơi không có lấy một thẻ <audio> nào. Đúng cho app,
+         sai cho web. Với site đang xin AdSense thì mô tả sai là thứ không nên để. --}}
     <li><strong>Narrated audio on {{ $audioCount }} of them.</strong> Where a story has audio,
-      every chapter has it, and you can listen from the reading screen.</li>
+      every chapter has it. Listening is in the mobile app for now — on the web these stories
+      are text.</li>
     <li><strong>A reader built for phones.</strong> Most people arrive on a phone, so the
       reading column, type size and line spacing are tuned for that first.</li>
   </ul>
