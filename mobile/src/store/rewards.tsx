@@ -70,7 +70,16 @@ export const AD_TASK_LIMIT = AD_TASKS.length;
 export const AD_MAX_COINS = AD_TASKS.reduce((sum, n) => sum + n, 0);
 
 /** Xu điểm danh theo thứ: CN, T2, T3, T4, T5, T6, T7 (cuối tuần nhiều hơn). */
-export const CHECKIN_COINS: readonly number[] = [30, 10, 10, 15, 15, 20, 30] as const;
+/**
+ * Điểm danh theo thứ trong tuần, chỉ số theo Date.getDay() (0 = Chủ nhật).
+ *
+ * THỨ HAI VÀ THỨ BA TRƯỚC ĐÂY LÀ 10, và đó là một ngõ cụt thật: cộng với mốc đọc
+ * 10 phút (+15) chỉ ra 25 xu, trong khi một chương giá 30. Nghĩa là hai ngày mỗi
+ * tuần, người không xem được quảng cáo KHÔNG mở nổi chương nào — kể cả khi làm
+ * đúng từng bước trong ghi chú đã gửi Apple. Sàn 15 bảo đảm mọi ngày trong tuần
+ * đều có một đường không-quảng-cáo dẫn tới ít nhất một chương.
+ */
+export const CHECKIN_COINS: readonly number[] = [30, 15, 15, 15, 15, 20, 30] as const;
 
 /** Nhãn thứ trong tuần, thứ tự khớp `Date.getDay()` (0 = CN). */
 export const WEEKDAY_LABELS: readonly string[] = [

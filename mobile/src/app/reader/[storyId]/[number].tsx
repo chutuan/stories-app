@@ -209,13 +209,24 @@ function ReaderScreen() {
     setWatchingAd(true);
     try {
       const { rewarded, unavailable } = await showRewarded();
-      if (!rewarded) {
-        notify(
-          unavailable
-            ? 'Ads are not available right now. Please try again later.'
-            : 'You need to watch the whole ad to earn coins.',
-          false,
-        );
+
+      // KHÔNG CHIẾU ĐƯỢC QUẢNG CÁO THÌ VẪN CẤP XU.
+      //
+      // Đây là thứ làm Apple từ chối bản 1.0(3): khi AdMob không có hàng để trả,
+      // đường duy nhất kiếm xu bị bịt và người dùng không mở nổi chương nào. Tài
+      // khoản AdMob mới, quảng cáo KHÔNG cá nhân hoá, thiết bị trong trung tâm dữ
+      // liệu — no-fill là chuyện bình thường, và đó không phải lỗi của người đọc.
+      //
+      // Phân biệt rất rõ hai trường hợp, vì chúng khác nhau về đạo lý:
+      //   unavailable = true  -> CHÚNG TA không chiếu được  -> vẫn cấp xu, và nói thật
+      //   rewarded = false    -> NGƯỜI DÙNG đóng giữa chừng -> không cấp
+      //
+      // Vẫn đi qua recordAdWatch() nên vẫn bị trần 4 lượt/ngày; không thể tắt mạng
+      // để cày xu vô hạn. Xu vốn miễn phí và không mua bán được, nên cái giá của
+      // việc rộng tay ở đây gần như bằng không, còn cái giá của việc chặt tay là
+      // một vòng duyệt App Store.
+      if (!rewarded && !unavailable) {
+        notify('You need to watch the whole ad to earn coins.', false);
         return;
       }
       // Xu thưởng chỉ được cộng qua recordAdWatch — đó là nơi DUY NHẤT đếm lượt
@@ -224,7 +235,12 @@ function ReaderScreen() {
       // "đã nhận 0/150" vì bộ đếm không hề nhúc nhích.
       const got = recordAdWatch();
       if (got > 0) {
-        notify(`You got +${formatCoins(got)}!`, true);
+        notify(
+          unavailable
+            ? `No ad was available — we added +${formatCoins(got)} anyway.`
+            : `You got +${formatCoins(got)}!`,
+          true,
+        );
       } else {
         notify("You've used all ad rewards for today. Come back tomorrow.", false);
       }
@@ -274,11 +290,15 @@ function ReaderScreen() {
                 'more coin',
                 'more coins',
               )}. No ad rewards left today — check in or keep reading to earn more.`
-            : `You need ${plural(
+            : // PHẢI nêu cả đường miễn phí, không chỉ quảng cáo. Bản cũ chỉ nhắc
+              // "Watch an ad" cho tới khi hết sạch lượt quảng cáo — nên khi AdMob
+              // không có hàng, app dẫn người dùng vào đúng cánh cửa đang đóng và
+              // không hề chỉ cửa nào khác. Đó là thứ Apple gặp.
+              `You need ${plural(
                 missingCoins,
                 'more coin',
                 'more coins',
-              )}. Watch an ad to get +${formatCoins(nextAdCoins)}.`,
+              )}. Watch an ad for +${formatCoins(nextAdCoins)}, or earn coins free by checking in and reading.`,
           ok: false,
         }
       : null;
@@ -533,6 +553,20 @@ function ReaderScreen() {
                   </Text>
                 </>
               )}
+            </Pressable>
+
+            {/* Lối sang tab Phần thưởng. Màn khoá trước đây là ngõ cụt điều hướng:
+                xu kiếm được bằng điểm danh và mốc thời gian đọc đều phải BẤM TAY để
+                nhận ở một tab khác, mà từ đây không có đường nào tới đó. Người dùng
+                ngồi đủ 10 phút cũng không biết mình đã đủ điều kiện. */}
+            <Pressable
+              onPress={() => router.push('/rewards' as Href)}
+              accessibilityRole="button"
+              accessibilityLabel="Open rewards to earn coins for free"
+              style={({ pressed }) => [styles.freeCoinsBtn, pressed && styles.pressed]}
+            >
+              <Ionicons name="gift-outline" size={16} color={Palette.accentDeep} />
+              <Text style={styles.freeCoinsBtnText}>Earn coins for free</Text>
             </Pressable>
 
             <View style={styles.walletHint}>
@@ -991,6 +1025,26 @@ const styles = StyleSheet.create({
     color: Palette.coinDeep,
     fontSize: FontSize.body,
     fontWeight: FontWeight.black,
+  },
+  // Nút phụ, cố tình nhạt hơn hai nút chính ở trên: đây là lối thoát, không phải
+  // hành động được mời gọi.
+  freeCoinsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.xs,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: Radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Palette.border,
+    backgroundColor: Palette.surface,
+    marginTop: Spacing.sm,
+  },
+  freeCoinsBtnText: {
+    color: Palette.accentDeep,
+    fontSize: FontSize.body,
+    fontWeight: FontWeight.semibold,
   },
   walletHint: {
     flexDirection: 'row',

@@ -311,18 +311,34 @@ function RewardsContent() {
     setWatchingAd(true);
     try {
       const { rewarded, unavailable } = await showRewarded();
-      if (!rewarded) {
-        notify(
-          unavailable
-            ? 'Ads are not available right now. Please try again later.'
-            : 'You need to watch the whole ad to earn coins.',
-          false,
-        );
+
+      // KHÔNG CHIẾU ĐƯỢC QUẢNG CÁO THÌ VẪN CẤP XU.
+      //
+      // Đây là thứ làm Apple từ chối bản 1.0(3): khi AdMob không có hàng để trả,
+      // đường duy nhất kiếm xu bị bịt và người dùng không mở nổi chương nào. Tài
+      // khoản AdMob mới, quảng cáo KHÔNG cá nhân hoá, thiết bị trong trung tâm dữ
+      // liệu — no-fill là chuyện bình thường, và đó không phải lỗi của người đọc.
+      //
+      // Phân biệt rất rõ hai trường hợp, vì chúng khác nhau về đạo lý:
+      //   unavailable = true  -> CHÚNG TA không chiếu được  -> vẫn cấp xu, và nói thật
+      //   rewarded = false    -> NGƯỜI DÙNG đóng giữa chừng -> không cấp
+      //
+      // Vẫn đi qua recordAdWatch() nên vẫn bị trần 4 lượt/ngày; không thể tắt mạng
+      // để cày xu vô hạn. Xu vốn miễn phí và không mua bán được, nên cái giá của
+      // việc rộng tay ở đây gần như bằng không, còn cái giá của việc chặt tay là
+      // một vòng duyệt App Store.
+      if (!rewarded && !unavailable) {
+        notify('You need to watch the whole ad to earn coins.', false);
         return;
       }
       const got = recordAdWatch();
       if (got > 0) {
-        notify(`Got +${formatCoins(got)} from the ad!`, true);
+        notify(
+          unavailable
+            ? `No ad was available — we added +${formatCoins(got)} anyway.`
+            : `Got +${formatCoins(got)} from the ad!`,
+          true,
+        );
       } else {
         notify("You've earned all ad coins for today.", false);
       }
