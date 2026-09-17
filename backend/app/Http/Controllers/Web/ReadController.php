@@ -335,6 +335,19 @@ class ReadController extends Controller
                 'lastmod' => $story->updated_at?->toAtomString(),
                 'priority' => '0.9',
                 'freq' => 'weekly',
+                // Khai ảnh bìa để Google biết ảnh nào thuộc trang nào.
+                //
+                // Chỉ có tác dụng từ 13/09/2026, khi robots.txt của api mở
+                // /storage/stories/ cho bot ảnh — trước đó host đó Disallow trọn
+                // gói nên Googlebot-Image không lấy được ảnh nào.
+                //
+                // Ảnh nằm trên api.tunastory.com còn sitemap ở tunastory.com. Khai
+                // chéo tên miền là hợp lệ khi robots.txt của host chứa ảnh cho
+                // phép — đúng trường hợp này.
+                //
+                // CHỈ <image:loc>. Google đã bỏ dùng image:title và image:caption
+                // từ 2022, thêm vào chỉ làm file to ra chứ không đổi được gì.
+                'image' => $story->thumbnail_url,
             ];
 
             foreach ($story->chapters as $chapter) {
