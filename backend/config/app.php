@@ -82,6 +82,18 @@ return [
     'support_email' => env('SUPPORT_EMAIL', 'chutuan020693@gmail.com'),
 
     /*
+     | Ai đứng tên xuất bản site — hiện trên trang /contact.
+     |
+     | Người soát AdSense và người đọc gửi khiếu nại đều hỏi cùng một câu: đứng sau
+     | trang này là ai. Tên để mặc định 'Stories'; PHẦN ĐỊA ĐIỂM BỎ TRỐNG THÌ KHỐI
+     | ĐÓ KHÔNG IN RA — thà thiếu một dòng còn hơn khai một địa chỉ không đúng, vì
+     | khai gian thông tin website là lỗi chính sách nặng hơn hẳn việc không khai.
+     */
+    'publisher_name' => env('PUBLISHER_NAME', 'Stories'),
+
+    'publisher_location' => env('PUBLISHER_LOCATION'),
+
+    /*
     | Publisher ID của AdMob (dạng pub-XXXXXXXXXXXXXXXX), dùng để phục vụ
     | /app-ads.txt. Để trống -> route trả 404.
     */

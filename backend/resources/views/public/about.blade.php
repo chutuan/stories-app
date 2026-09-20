@@ -41,8 +41,10 @@
     real people. Cover art is AI-generated; where a story is narrated, the voice is synthesised
     speech reading our own text.</p>
   <p>Nothing here is scraped, spun or copied from another site. Every story was written for
-    this site and belongs to us. The longer version of this is in the
-    <a href="{{ route('public.terms') }}">Terms of Service</a>.</p>
+    this site and belongs to us. The full version — what we check before a chapter goes out,
+    what we refuse to publish, and how corrections work — is in our
+    <a href="{{ route('public.editorial') }}">editorial standards</a>; the legal wording is in
+    the <a href="{{ route('public.terms') }}">Terms of Service</a>.</p>
 
   <h2>How the site pays for itself</h2>
   <p>Advertising, and nothing else. There is no subscription, no paywall and nothing to buy.
@@ -58,7 +60,9 @@
   <h2>Contact</h2>
   <p>Questions, corrections, takedown requests or content suggestions — one address, and a
     real person reads it:
-    <a href="mailto:{{ config('app.support_email') }}">{{ config('app.support_email') }}</a>.</p>
+    <a href="mailto:{{ config('app.support_email') }}">{{ config('app.support_email') }}</a>.
+    What to include so we can answer quickly is on the
+    <a href="{{ route('public.contact') }}">contact page</a>.</p>
 
   <div class="card">
     <h2 style="margin-top:0">Start reading</h2>

@@ -27,6 +27,11 @@ Route::get('/browse', [ReadController::class, 'browse'])->name('public.browse');
 Route::get('/genre/{category:slug}', [ReadController::class, 'category'])->name('public.category');
 Route::get('/story/{story:slug}', [ReadController::class, 'story'])->name('public.story');
 Route::get('/about', [ReadController::class, 'about'])->name('public.about');
+Route::get('/contact', [ReadController::class, 'contact'])->name('public.contact');
+// Trang chuẩn biên tập: nói rõ truyện được đặt hàng, viết, soát và sửa thế nào.
+// Đây là trang mà dòng khai minh bạch ở chân mọi trang trỏ tới, nên đừng đổi
+// đường dẫn mà không sửa partials/disclosure.blade.php.
+Route::get('/editorial', [ReadController::class, 'editorial'])->name('public.editorial');
 Route::view('/privacy', 'public.privacy')->name('public.privacy');
 Route::view('/terms', 'public.terms')->name('public.terms');
 Route::get('/search', [ReadController::class, 'search'])->name('public.search');

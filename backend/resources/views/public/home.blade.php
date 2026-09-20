@@ -81,6 +81,8 @@
       page themes — plus narrated audio for selected stories, and a library that remembers where
       you stopped. No account needed.</p>
     <p class="meta">Questions or content requests:
-      <a href="mailto:{{ config('app.support_email') }}">{{ config('app.support_email') }}</a></p>
+      <a href="mailto:{{ config('app.support_email') }}">{{ config('app.support_email') }}</a>
+      · <a href="{{ route('public.contact') }}">Contact</a>
+      · <a href="{{ route('public.editorial') }}">Editorial standards</a></p>
   </div>
 @endsection

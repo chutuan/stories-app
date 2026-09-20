@@ -57,7 +57,9 @@
     domain establish who published first.</p>
 
   <h2>How these stories are made</h2>
-  <p>We think you should know how the thing you are reading was produced, so here it is plainly:</p>
+  <p>We think you should know how the thing you are reading was produced, so here it is plainly.
+    The working version of this — what we check before publishing and what we will not publish —
+    is in our <a href="{{ route('public.editorial') }}">editorial standards</a>.</p>
   <ul>
     <li><strong>The writing.</strong> Stories are drafted with the help of AI writing tools to a
       brief we set, then read and approved by us before publication. They are not scraped,
@@ -81,5 +83,6 @@
     app, to the extent permitted by law.</p>
 
   <h2>Contact</h2>
-  <p><a href="mailto:{{ config('app.support_email') }}">{{ config('app.support_email') }}</a></p>
+  <p><a href="mailto:{{ config('app.support_email') }}">{{ config('app.support_email') }}</a>
+    — see the <a href="{{ route('public.contact') }}">contact page</a>.</p>
 @endsection

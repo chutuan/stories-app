@@ -15,5 +15,5 @@
   Stories on this site are written for us with the help of AI writing tools and
   reviewed before publication. Author names are house pen names, not real people.
   Cover art is AI-generated and narration is synthesised speech.
-  <a href="{{ route('public.terms') }}">More about how these are made</a>.
+  <a href="{{ route('public.editorial') }}">More about how these are made</a>.
 </p>

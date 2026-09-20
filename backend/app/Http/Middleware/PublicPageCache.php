@@ -59,6 +59,8 @@ class PublicPageCache
         'public.category',
         'public.story',
         'public.about',
+        'public.contact',
+        'public.editorial',
         'public.privacy',
         'public.terms',
         'public.sitemap',

@@ -55,15 +55,28 @@ class StructuredData
         ]);
     }
 
-    public static function organization(string $home, string $logo, ?string $email): string
-    {
-        return self::encode([
+    /**
+     * Nhà xuất bản.
+     *
+     * `publishingPrinciples` trỏ tới trang chuẩn biên tập. Đây là trường schema.org
+     * dành riêng cho "quy tắc biên tập công bố ở đâu"; Google dùng nó trong nhóm
+     * tín hiệu về độ tin cậy của nhà xuất bản. Bỏ trống thì không in ra — khai một
+     * URL không tồn tại còn tệ hơn là không khai.
+     */
+    public static function organization(
+        string $home,
+        string $logo,
+        ?string $email,
+        ?string $publishingPrinciples = null,
+    ): string {
+        return self::encode(array_filter([
             '@type' => 'Organization',
             'name' => 'Stories',
             'url' => $home,
             'logo' => $logo,
             'email' => $email,
-        ]);
+            'publishingPrinciples' => $publishingPrinciples,
+        ]));
     }
 
     /**
@@ -134,6 +147,49 @@ class StructuredData
         return self::encode([
             '@type' => 'AboutPage',
             'name' => 'About Stories',
+            'url' => $url,
+            'inLanguage' => 'en',
+            'isPartOf' => ['@type' => 'WebSite', 'name' => 'Stories', 'url' => $home],
+            'about' => ['@type' => 'Organization', 'name' => 'Stories', 'url' => $home],
+        ]);
+    }
+
+    /**
+     * Trang liên hệ.
+     *
+     * ContactPage là loại riêng trong schema.org, không phải WebPage chung: nó nói
+     * với Google "đây là trang liên hệ chính thức của tổ chức này", điều mà người
+     * soát AdSense cũng đi tìm bằng mắt.
+     */
+    public static function contactPage(string $url, string $home, ?string $email): string
+    {
+        return self::encode([
+            '@type' => 'ContactPage',
+            'name' => 'Contact Stories',
+            'url' => $url,
+            'inLanguage' => 'en',
+            'isPartOf' => ['@type' => 'WebSite', 'name' => 'Stories', 'url' => $home],
+            'about' => array_filter([
+                '@type' => 'Organization',
+                'name' => 'Stories',
+                'url' => $home,
+                'email' => $email,
+            ]),
+        ]);
+    }
+
+    /**
+     * Trang chuẩn biên tập.
+     *
+     * Khai bằng `publishingPrinciples` trên Organization (xem organization() bên
+     * trên) chứ không chỉ là một trang rời: đó là trường schema.org dành đúng cho
+     * "quy tắc biên tập của nhà xuất bản này nằm ở đâu".
+     */
+    public static function editorialPage(string $url, string $home): string
+    {
+        return self::encode([
+            '@type' => 'WebPage',
+            'name' => 'Editorial standards',
             'url' => $url,
             'inLanguage' => 'en',
             'isPartOf' => ['@type' => 'WebSite', 'name' => 'Stories', 'url' => $home],

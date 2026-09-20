@@ -391,10 +391,14 @@
   <a class="logo" href="{{ route('public.home') }}">Sto<span>ries</span></a>
   <nav>
     <a href="{{ route('public.browse') }}">Browse</a>
-    {{-- About và Privacy đều có ở footer nên trên màn hẹp ẩn đi, nhường chỗ cho
-         ô tìm kiếm — header phải giữ được một hàng. --}}
+    {{-- Hai link này ẩn trên màn hẹp, nhường chỗ cho ô tìm kiếm — header phải giữ
+         được một hàng. Cả hai (và Privacy, Terms, Editorial standards) đều có mặt
+         ở footer trên MỌI trang, nên không link nào bị chôn.
+         Chỗ thứ hai dành cho Contact chứ không phải Privacy: người soát AdSense và
+         người gửi khiếu nại bản quyền đều tìm chữ "Contact" trong điều hướng
+         trước, còn Privacy thì quen tìm ở chân trang. --}}
     <a class="wide-only" href="{{ route('public.about') }}">About</a>
-    <a class="wide-only" href="{{ route('public.privacy') }}">Privacy</a>
+    <a class="wide-only" href="{{ route('public.contact') }}">Contact</a>
     <form class="searchbox" action="{{ route('public.search') }}" method="get" role="search">
       <input type="search" name="q" value="{{ request('q') }}" placeholder="Search stories" aria-label="Search stories">
       <button type="submit" aria-label="Search"><span class="wide-only">Search</span><span class="narrow-only" aria-hidden="true">→</span></button>
@@ -406,6 +410,8 @@
   <a href="{{ route('public.home') }}">Home</a>
   <a href="{{ route('public.browse') }}">Browse</a>
   <a href="{{ route('public.about') }}">About</a>
+  <a href="{{ route('public.editorial') }}">Editorial standards</a>
+  <a href="{{ route('public.contact') }}">Contact</a>
   <a href="{{ route('public.privacy') }}">Privacy Policy</a>
   <a href="{{ route('public.terms') }}">Terms of Service</a>
   <a href="mailto:{{ config('app.support_email') }}">{{ config('app.support_email') }}</a>

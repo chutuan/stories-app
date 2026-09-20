@@ -60,6 +60,7 @@ class ReadController extends Controller
                     route('public.home'),
                     asset('icons/icon-512.png'),
                     config('app.support_email'),
+                    route('public.editorial'),
                 ),
             ],
         ]);
@@ -123,6 +124,53 @@ class ReadController extends Controller
                 StructuredData::breadcrumbs([
                     ['name' => 'Home', 'url' => route('public.home')],
                     ['name' => 'About'],
+                ]),
+            ],
+        ]);
+    }
+
+    /**
+     * Trang liên hệ.
+     *
+     * Tách hẳn thành một trang thay vì để địa chỉ email rải rác trong About và
+     * Terms: người soát AdSense đi tìm ĐÚNG một trang tên "Contact" trong điều
+     * hướng, và người muốn gửi khiếu nại bản quyền cũng vậy. Không có form —
+     * form đòi chống spam và một hòm thư phải trực; một địa chỉ thật thì không.
+     */
+    public function contact(): View
+    {
+        return view('public.contact', [
+            'jsonLd' => [
+                StructuredData::contactPage(
+                    route('public.contact'),
+                    route('public.home'),
+                    config('app.support_email'),
+                ),
+                StructuredData::breadcrumbs([
+                    ['name' => 'Home', 'url' => route('public.home')],
+                    ['name' => 'Contact'],
+                ]),
+            ],
+        ]);
+    }
+
+    /**
+     * Chuẩn biên tập.
+     *
+     * Nội dung trang này phải KHỚP VỚI THỰC TẾ, không phải khớp với điều dễ nghe:
+     * nó khai cách truyện được đặt hàng, viết bằng công cụ AI, soát trước khi đăng,
+     * và cả chỗ đặt quảng cáo trong chương (một ô, sau tối thiểu 400 từ, chương
+     * dưới 600 từ thì không có — xem public/chapter.blade.php). Sửa ngưỡng ở đó
+     * mà quên sửa ở đây là biến trang này thành lời khai sai.
+     */
+    public function editorial(): View
+    {
+        return view('public.editorial', [
+            'jsonLd' => [
+                StructuredData::editorialPage(route('public.editorial'), route('public.home')),
+                StructuredData::breadcrumbs([
+                    ['name' => 'Home', 'url' => route('public.home')],
+                    ['name' => 'Editorial standards'],
                 ]),
             ],
         ]);
@@ -315,6 +363,8 @@ class ReadController extends Controller
             ['loc' => route('public.home'), 'priority' => '1.0', 'freq' => 'daily'],
             ['loc' => route('public.browse'), 'priority' => '0.8', 'freq' => 'daily'],
             ['loc' => route('public.about'), 'priority' => '0.5', 'freq' => 'monthly'],
+            ['loc' => route('public.editorial'), 'priority' => '0.5', 'freq' => 'monthly'],
+            ['loc' => route('public.contact'), 'priority' => '0.4', 'freq' => 'monthly'],
             ['loc' => route('public.privacy'), 'priority' => '0.3', 'freq' => 'yearly'],
             ['loc' => route('public.terms'), 'priority' => '0.3', 'freq' => 'yearly'],
         ];
