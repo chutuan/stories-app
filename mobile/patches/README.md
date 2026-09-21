@@ -1,30 +1,22 @@
 # Vá node_modules
 
-Các bản vá ở đây **chưa tự áp dụng** — chưa cài `patch-package`, vì thêm
-dependency ngay trước lúc nộp App Store là rủi ro không cần thiết. Sau khi
-`npm install`, áp tay:
+**Hiện không có bản vá nào.** Thư mục giữ lại để chỗ đặt sẵn khi cần.
+
+Các bản vá ở đây **không tự áp dụng** — chưa cài `patch-package`, vì thêm
+dependency ngay trước lúc nộp App Store là rủi ro không cần thiết. Nếu sau này
+thêm patch, áp tay sau khi `npm install`:
 
 ```bash
 cd mobile && git apply patches/*.patch
 ```
 
-## expo-modules-jsi — `abs()` nhập nhằng khi build bằng Xcode tại máy
+## Đã gỡ: expo-modules-jsi — `abs()` nhập nhằng khi build bằng Xcode tại máy
 
-**Chỉ cần khi build tại máy.** EAS Build dùng Xcode khác nên không dính; bỏ qua
-bản vá này thì `eas build` vẫn chạy bình thường.
+Bản vá `expo-modules-jsi+57.0.3.patch` đổi `abs(milliseconds)` thành
+`milliseconds.magnitude` trong `JavaScriptCodable+Date.swift`, vì Xcode 26.3
+biên dịch `ExpoModulesJSI` với `-cxx-interoperability-mode=default` khiến lời
+gọi `abs` không chọn được nạp chồng nào và cả archive dừng lại.
 
-Xcode 26.3 (Swift 6.2.4) biên dịch `ExpoModulesJSI` với
-`-cxx-interoperability-mode=default`. Cờ đó kéo các nạp chồng `abs` của C++ vào
-tầm nhìn, nên `abs(milliseconds)` trong `JavaScriptCodable+Date.swift` không còn
-chọn được nạp chồng nào:
-
-```
-error: type of expression is ambiguous without a type annotation
-  guard milliseconds.isFinite, abs(milliseconds) <= maxJavaScriptDateMilliseconds else {
-```
-
-Toàn bộ archive dừng ở đây. `Double.magnitude` là thuộc tính sẵn có của kiểu,
-không qua phép phân giải nạp chồng nào, nên tránh hẳn xung đột mà giữ nguyên
-ngữ nghĩa (`abs` của một `Double` chính là `magnitude` của nó).
-
-Gỡ bản vá khi Expo phát hành bản đã sửa ở thượng nguồn.
+Thượng nguồn đã sửa đúng như vậy từ `expo-modules-jsi@57.1.0` (kéo về cùng đợt
+nâng `expo@57.0.24`), nên bản vá thành thừa và `git apply` sẽ fail vì không còn
+khớp ngữ cảnh. Xem `git log` nếu cần nội dung cũ.

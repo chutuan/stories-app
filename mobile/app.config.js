@@ -72,6 +72,26 @@ module.exports = {
           android: {
             kotlinVersion: '2.3.0',
           },
+          ios: {
+            // Adopt UIScene lifecycle. Bản 1.0.0 (4) bị Apple đánh trượt 2.1(a) vì
+            // crash ngay lúc mở app trên iOS/iPadOS 27: UIKit trap tại
+            // __UIApplicationEvaluateRuntimeIssueForNoSceneLifecycleAdoption
+            // (EXC_BREAKPOINT, main thread) — app đóng bằng Xcode 27 mà không adopt
+            // scene lifecycle thì iOS 27 KHÔNG cho chạy, không phải cảnh báo nữa.
+            //
+            // Cờ này bắt expo-build-properties sửa AppDelegate thành
+            // `ExpoAppDelegate, ExpoReactNativeFactoryProvider`, bỏ đoạn tự tạo
+            // UIWindow, và chèn UIApplicationSceneManifest trỏ tới
+            // EXExpoAppSceneDelegate. ĐÒI expo >= 57.0.23 (bản đầu tiên ship
+            // ExpoAppSceneDelegate) — thấp hơn thì prebuild throw, nên đừng hạ
+            // "expo" trong package.json xuống dưới mức đó.
+            //
+            // Plugin chỉ vá được AppDelegate MẶC ĐỊNH của template SDK 57. Nếu sau
+            // này eject và sửa tay AppDelegate.swift, plugin từ chối ghi đè và phải
+            // tự adopt scene. Lên SDK 58 thì template tự có, cờ này thành no-op và
+            // prebuild sẽ nhắc gỡ.
+            enableSceneSupport: true,
+          },
         },
       ],
       [
