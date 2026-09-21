@@ -7,7 +7,7 @@ bản dưới đây mới là bản dán.
 
 Cả hai đều trả lời đủ sáu mục Apple hỏi và đã điền sẵn link video.
 
-## Ô Reply — dán bản này (3.998 ký tự)
+## Ô Reply — dán bản này (3.995 ký tự)
 
 ```text
 Answers to all six items below, plus a screen recording made on a real iPhone.
@@ -32,7 +32,7 @@ No credentials needed — there is no account system. Just launch the app.
    a) Daily check-in: +15 coins, Rewards tab.
    b) Reading milestones: +15 after 10 minutes, then +25, +40, +60. Check-in plus the 10-minute milestone gives 30 coins — one chapter unlocked WITHOUT any ad.
    c) Rewarded video: +90 coins, watched to the end.
-   PLEASE NOTE: ads may not display during review. Our AdMob account still lists this app as "review required", which Google only completes once an app is live on the App Store, so fill is currently zero. The app handles that correctly, showing "Ads are not available right now". Paths (a), (b) and the two free stories work regardless, so every feature stays reachable.
+   PLEASE NOTE: ads may not display during review. Our AdMob account still lists this app as "review required", which Google only completes once an app is live on the App Store, so fill is currently zero. We grant the coins anyway: "No ad was available — we added +90 anyway." Paths (a), (b) and the two free stories work regardless, so every feature stays reachable.
 
 4. EXTERNAL SERVICES
 Two only, at runtime:
@@ -48,7 +48,7 @@ None. Identical everywhere: no geographic gating, no region-specific content, pr
 Not a financial, medical, gambling, health, dating or government service; no regulated advice. No third-party protected material, so no licences apply.
 ```
 
-## Ô App Review Information → Notes — dán bản này (3.983 ký tự)
+## Ô App Review Information → Notes — dán bản này (3.980 ký tự)
 
 ```text
 NO ACCOUNT, NO PURCHASES, NO TRACKING
@@ -72,7 +72,7 @@ No credentials needed — there is no account system. Just launch the app.
    a) Daily check-in: +15 coins, Rewards tab.
    b) Reading milestones: +15 after 10 minutes, then +25, +40, +60. Check-in plus the 10-minute milestone gives 30 coins — one chapter unlocked WITHOUT any ad.
    c) Rewarded video: +90 coins, watched to the end.
-   PLEASE NOTE: ads may not display during review. Our AdMob account still lists this app as "review required", which Google only completes once an app is live on the App Store, so fill is currently zero. The app handles that correctly, showing "Ads are not available right now". Paths (a), (b) and the two free stories work regardless, so every feature stays reachable.
+   PLEASE NOTE: ads may not display during review. Our AdMob account still lists this app as "review required", which Google only completes once an app is live on the App Store, so fill is currently zero. We grant the coins anyway: "No ad was available — we added +90 anyway." Paths (a), (b) and the two free stories work regardless, so every feature stays reachable.
 
 4. EXTERNAL SERVICES
 Two only, at runtime:

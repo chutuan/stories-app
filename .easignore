@@ -20,3 +20,10 @@ backend/
 # sẽ không được áp, build ra binary theo cấu hình cũ mà không báo lỗi gì.
 mobile/ios/
 mobile/android/
+
+# File .env của máy dev. Đã bị .gitignore, NHƯNG .easignore được ưu tiên hơn
+# .gitignore nên không ghi ở đây thì nó vẫn được tải lên EAS. Đã kiểm: biến trong
+# mục `env` của eas.json vẫn thắng .env, nên đây là phòng xa chứ không phải đang
+# lỗi — cái tránh được là một .env có giá trị SAI cho khoá mà eas.json không đặt,
+# loại đó sẽ lặng lẽ chui vào bản phát hành.
+mobile/.env
