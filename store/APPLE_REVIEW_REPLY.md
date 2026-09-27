@@ -102,9 +102,8 @@ có tài khoản, không có mua trong ứng dụng, và không theo dõi ngư�
 >    account still lists this app with the approval status "review required", and the
 >    store-listing field is still empty because the app is not yet on the App Store.
 >    Google completes that approval only after an app is published, so ad fill is
->    currently zero; bản 1.0(4) trở đi app CẤP XU LUÔN khi không có hàng và nói rõ
->    "No ad was available — we added +90 anyway."
->    instead of failing silently. This affects only the rewarded-video route to coins.
+>    currently zero. When no ad can be shown we grant the coins anyway and say so:
+>    "No ad was available — we added +90 anyway." The app never fails silently. This affects only the rewarded-video route to coins.
 >    Every feature remains reachable without it: the two completely free stories above,
 >    the daily check-in, and the reading-time milestones. We did not want to submit a
 >    recording of a feature that Google has not yet enabled for us, so the attached video
