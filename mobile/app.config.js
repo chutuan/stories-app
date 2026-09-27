@@ -32,6 +32,12 @@ module.exports = {
     userInterfaceStyle: 'light',
     ios: {
       bundleIdentifier: 'com.chutuan.stories',
+      // Team ký app. KHÔNG phải bí mật — nó nằm sẵn trong mọi bản app đã ký.
+      // Phải khai ở đây vì `expo prebuild --clean` sinh lại project mà KHÔNG giữ
+      // DEVELOPMENT_TEAM đặt tay trong Xcode, và archive lúc đó hỏng với
+      // "Signing for Stories requires a development team" (đã dính 27/09/2026).
+      // EAS tự quản lý chứng chỉ nên dòng này không ảnh hưởng build trên EAS.
+      appleTeamId: '22W729ZRX2',
       supportsTablet: false,
       infoPlist: {
         // Tuân thủ xuất khẩu mã hoá: app chỉ dùng HTTPS/TLS tiêu chuẩn, thuộc diện
