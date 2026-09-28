@@ -37,6 +37,7 @@ import {
   useReaderPrefs,
   type ReaderTheme,
 } from '@/store/reader-prefs';
+import { useAppConfig } from '@/store/config';
 import { AD_TASK_LIMIT, useRewards } from '@/store/rewards';
 import { COIN_PER_CHAPTER, useWallet } from '@/store/wallet';
 
@@ -107,7 +108,20 @@ function ReaderScreen() {
   const { coins, spendCoins, isUnlocked, unlock } = useWallet();
   // Sổ cái quảng cáo dùng CHUNG với tab Phần thưởng: mọi lượt xem đều phải đếm
   // ở đây, nếu không hạn mức mỗi ngày sẽ vô hiệu và xu trở thành vô hạn.
-  const { adsWatched, nextAdCoins, recordAdWatch, ready: rewardsReady } = useRewards();
+  const {
+    adsWatched,
+    nextAdCoins,
+    recordAdWatch,
+    recordAdFallback,
+    ready: rewardsReady,
+  } = useRewards();
+  const { ad_fallback: adFallback } = useAppConfig();
+  // Số dư lúc quảng cáo ĐÓNG mới là số dư đúng để tính phần thiếu, không phải số
+  // dư lúc bấm nút — nên đọc qua ref sau `await`, không đọc biến trong closure.
+  const coinsRef = useRef(coins);
+  useEffect(() => {
+    coinsRef.current = coins;
+  }, [coins]);
   const {
     fontSize,
     lineHeight,
@@ -210,22 +224,43 @@ function ReaderScreen() {
     try {
       const { rewarded, unavailable } = await showRewarded();
 
-      // KHÔNG CHIẾU ĐƯỢC QUẢNG CÁO THÌ VẪN CẤP XU.
+      // KHÔNG CHIẾU ĐƯỢC QUẢNG CÁO (no-fill, chặn quảng cáo, lỗi mạng tới Google).
       //
-      // Đây là thứ làm Apple từ chối bản 1.0(3): khi AdMob không có hàng để trả,
-      // đường duy nhất kiếm xu bị bịt và người dùng không mở nổi chương nào. Tài
-      // khoản AdMob mới, quảng cáo KHÔNG cá nhân hoá, thiết bị trong trung tâm dữ
-      // liệu — no-fill là chuyện bình thường, và đó không phải lỗi của người đọc.
+      // Bản 1.0(3) bị Apple từ chối theo Guideline 2.1(a) vì người mới cài không có
+      // xu và AdMob không trả quảng cáo -> không mở nổi chương nào. Bản 1.0(4)–(7)
+      // sửa bằng cách cấp +90 mỗi lần không có quảng cáo, nhưng thế thì ai chặn
+      // quảng cáo cũng bấm 4 lần/ngày lấy 360 xu mà không xem gì.
       //
-      // Phân biệt rất rõ hai trường hợp, vì chúng khác nhau về đạo lý:
-      //   unavailable = true  -> CHÚNG TA không chiếu được  -> vẫn cấp xu, và nói thật
-      //   rewarded = false    -> NGƯỜI DÙNG đóng giữa chừng -> không cấp
-      //
-      // Vẫn đi qua recordAdWatch() nên vẫn bị trần 4 lượt/ngày; không thể tắt mạng
-      // để cày xu vô hạn. Xu vốn miễn phí và không mua bán được, nên cái giá của
-      // việc rộng tay ở đây gần như bằng không, còn cái giá của việc chặt tay là
-      // một vòng duyệt App Store.
-      if (!rewarded && !unavailable) {
+      // Giờ chỉ cấp bù khi người đọc THỰC SỰ KẸT: đang đứng ở chương khoá và số dư
+      // không đủ mở nó. Cấp vừa đủ một chương, tối đa `daily_limit` lần/ngày, bật/tắt
+      // từ trang admin. Áp dụng như nhau cho mọi người — không có "chế độ duyệt".
+      // Cấp bù không tính là một lượt xem quảng cáo nên không ăn vào 4 lượt/ngày.
+      if (unavailable) {
+        const shortfall = Math.max(0, COIN_PER_CHAPTER - coinsRef.current);
+        if (shortfall === 0) {
+          notify(
+            `No ad is available right now. You already have enough coins to unlock this chapter.`,
+            false,
+          );
+          return;
+        }
+        const granted = adFallback.enabled
+          ? recordAdFallback(shortfall, adFallback.daily_limit)
+          : 0;
+        if (granted > 0) {
+          notify(
+            `No ad was available — we added +${formatCoins(granted)} so you can unlock this chapter.`,
+            true,
+          );
+        } else {
+          notify(
+            'No ad is available right now. Check in or keep reading on the Rewards tab to earn coins, or try again later.',
+            false,
+          );
+        }
+        return;
+      }
+      if (!rewarded) {
         notify('You need to watch the whole ad to earn coins.', false);
         return;
       }
@@ -235,12 +270,7 @@ function ReaderScreen() {
       // "đã nhận 0/150" vì bộ đếm không hề nhúc nhích.
       const got = recordAdWatch();
       if (got > 0) {
-        notify(
-          unavailable
-            ? `No ad was available — we added +${formatCoins(got)} anyway.`
-            : `You got +${formatCoins(got)}!`,
-          true,
-        );
+        notify(`You got +${formatCoins(got)}!`, true);
       } else {
         notify("You've used all ad rewards for today. Come back tomorrow.", false);
       }
@@ -249,7 +279,7 @@ function ReaderScreen() {
     } finally {
       setWatchingAd(false);
     }
-  }, [watchingAd, adsDone, recordAdWatch, notify]);
+  }, [watchingAd, adsDone, recordAdWatch, recordAdFallback, adFallback, notify]);
 
   const goTo = useCallback(
     (target: number | null) => {
