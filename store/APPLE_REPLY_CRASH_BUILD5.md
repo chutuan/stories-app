@@ -12,11 +12,14 @@ Thiết bị Apple dùng: iPad Air 11-inch (M3) iPadOS 27.0 và iPhone 17 Pro Ma
    trên máy thật. Chỉ gửi thư khi đã tận mắt thấy app mở được trên máy thật.
 3. Chọn build 5 cho bản nộp, dán bản dưới vào ô Reply.
 
-ĐÃ SỬA 28/09/2026: bản trước viết "tested on a physical device running iOS 27" và "confirmed
-that iOS 27 no longer raises…" — cả hai SAI. Simulator dùng để kiểm chạy iOS 26.3 (máy chỉ cài
-runtime đó; SDK 27.0 là SDK để build, không phải hệ điều hành simulator), và máy thật của Tuấn
-chạy iOS 26.7. Thư giờ chỉ nói đúng những gì đã làm, KHÔNG nhắc số phiên bản iOS nào chưa thử.
-Nếu sau này thử được trên iOS 27 thì mới thêm câu đó vào.
+ĐÃ SỬA 28/09/2026 (lần 2): thư giờ dựa trên phép thử THẬT trên iOS 27.0 — đã tải runtime
+simulator iOS 27.0 (24A434) và thử trên đúng hai model Apple dùng. Bản đối chứng (build 5 bị gỡ
+riêng scene manifest) chết lúc mở trên CẢ HAI máy với đúng assertion trong crash log của Apple;
+build 5 nguyên vẹn chạy được trên cả hai. Thư ghi rõ là SIMULATOR, không nói máy thật chạy iOS 27.
+
+**CẦN TUẤN XÁC NHẬN TRƯỚC KHI GỬI:** câu cuối đoạn "HOW WE VERIFIED IT" nói đã cài **build 5**
+lên iPhone 17 Pro Max thật (iOS 26.7) và mở được. Nếu bản bạn cài KHÔNG phải build 5 (ví dụ
+build 4, hoặc chạy thẳng từ Xcode bằng bản Debug) thì xoá câu đó.
 
 ## Ô Reply
 
@@ -30,7 +33,8 @@ WHAT WE CHANGED (build 5)
 The app now adopts the UIScene life cycle. Info.plist declares UIApplicationSceneManifest, and the window is created by a UIWindowSceneDelegate when the scene connects instead of in application(_:didFinishLaunchingWithOptions:). Deep links and universal links are delivered through the scene delegate.
 
 HOW WE VERIFIED IT
-Build 4 caused UIKit to raise the scene-adoption runtime issue ("UIScene lifecycle will soon be required") at launch; build 5 no longer raises it, which confirms the scene life cycle is now adopted. We also installed build 5 from TestFlight on an iPhone 17 Pro Max and confirmed that it opens normally and that a locked chapter can be unlocked with the included coins.
+We tested on the iOS 27.0 Simulator using the same two models as your review, iPhone 17 Pro Max and iPad Air 11-inch (M3). As a control, we removed only the scene manifest from build 5: on both devices it terminated at launch with the same assertion as your logs ("UIScene life cycle is required for apps built with this SDK"). Build 5 as submitted launches normally on both. On the iPhone we also opened a locked chapter through a deep link and unlocked it with the included coins; the balance fell from 90 to 60.
+We also installed build 5 on a physical iPhone 17 Pro Max and confirmed that it opens normally.
 
 WHAT TO TEST
 Build 5 also contains the fixes from our previous reply, which you were unable to see because build 4 did not open:
