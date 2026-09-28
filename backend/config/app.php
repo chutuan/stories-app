@@ -120,7 +120,7 @@ return [
     /*
     | Ngày cập nhật văn bản pháp lý, hiện trên trang Privacy và Terms.
     */
-    'legal_updated' => env('LEGAL_UPDATED', '9 September 2026'),
+    'legal_updated' => env('LEGAL_UPDATED', '28 September 2026'),
 
     /*
     |--------------------------------------------------------------------------

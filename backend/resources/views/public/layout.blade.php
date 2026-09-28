@@ -93,8 +93,15 @@
 
      Chỉ nhúng khi ADMOB_PUBLISHER_ID có giá trị, cùng lý do với route /ads.txt:
      máy dev không nên gọi ra Google, và thẻ script mang client rỗng thì AdSense
-     báo lỗi thay vì im lặng bỏ qua. --}}
-@if (filled(config('app.admob_publisher_id')))
+     báo lỗi thay vì im lặng bỏ qua.
+
+     KHÔNG nhúng trên /privacy, /terms, /contact: app iOS mở ba trang này trong
+     trình duyệt trong app (About links, build 7). Apple coi web view phục vụ chức
+     năng của app như chính app, nên quảng cáo cá nhân hoá hay GA4 ở đây sẽ trái
+     với lời khai "không tracking, quảng cáo không cá nhân hoá" và câu "analytics
+     never present in the app" trong Privacy Policy. Áp dụng cho cả khối GA4 dưới. --}}
+@php($legalPage = request()->routeIs('public.privacy', 'public.terms', 'public.contact'))
+@if (filled(config('app.admob_publisher_id')) && ! $legalPage)
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-{{ config('app.admob_publisher_id') }}"
      crossorigin="anonymous"></script>
 @endif
@@ -103,7 +110,7 @@
      gửi Apple khai đúng như vậy; đừng đem thẻ này sang app. Cùng quy tắc với
      AdSense: thiếu ID thì không in gì, để máy dev không bơm dữ liệu giả vào báo
      cáo và mỗi lần chạy test không bị tính thành một phiên truy cập. --}}
-@if (filled(config('app.ga_measurement_id')))
+@if (filled(config('app.ga_measurement_id')) && ! $legalPage)
 <script async src="https://www.googletagmanager.com/gtag/js?id={{ config('app.ga_measurement_id') }}"></script>
 <script>
   window.dataLayer = window.dataLayer || [];

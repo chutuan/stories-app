@@ -15,8 +15,9 @@
   <h2>Coins</h2>
   <p>Coins are a virtual item used inside the app to unlock chapters. Please note:</p>
   <ul>
-    <li>Coins <strong>cannot be bought with money</strong> — you earn them by checking in and by
-      watching rewarded ads.</li>
+    <li>Coins <strong>cannot be bought with money</strong>. A new install starts with 90 coins, and
+      you earn more by checking in each day, by reaching reading-time milestones and by watching
+      optional rewarded ads. If no ad is available, you still receive the coins.</li>
     <li>Coins have <strong>no monetary value</strong>, cannot be exchanged for cash, and cannot be
       transferred to another person or device.</li>
     <li>Coins and unlocked chapters are stored on your device. If you uninstall the app, change
