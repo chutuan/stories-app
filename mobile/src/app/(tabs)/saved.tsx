@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AboutLinks } from '@/components/about-links';
 import { EmptyState } from '@/components/empty-state';
 import { StoryCardSkeleton, StoryCardView } from '@/components/story-card';
 import {
@@ -99,6 +100,10 @@ export default function SavedScreen() {
             actionLabel="Discover stories"
             onAction={() => router.navigate('/')}
           />
+          {/* Link quyền riêng tư / điều khoản / liên hệ — Guideline 5.1.1(i). */}
+          <View style={styles.aboutWrap}>
+            <AboutLinks />
+          </View>
         </View>
       ) : (
         <FlatList
@@ -118,6 +123,7 @@ export default function SavedScreen() {
             />
           }
           renderItem={({ item }) => <StoryCardView story={item} width={cardWidth} />}
+          ListFooterComponent={<AboutLinks />}
         />
       )}
     </View>
@@ -125,6 +131,10 @@ export default function SavedScreen() {
 }
 
 const styles = StyleSheet.create({
+  aboutWrap: {
+    alignSelf: 'stretch',
+    paddingHorizontal: Spacing.screen,
+  },
   screen: {
     flex: 1,
     backgroundColor: Palette.bg,

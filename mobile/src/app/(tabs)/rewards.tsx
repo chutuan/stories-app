@@ -25,6 +25,7 @@ import {
   Spacing,
   Typography,
 } from '@/constants/theme';
+import { AboutLinks } from '@/components/about-links';
 import { showRewarded } from '@/lib/ads';
 import { formatCoins } from '@/lib/format';
 import {
@@ -589,6 +590,9 @@ function RewardsContent() {
           Check in every day to keep your streak. Saturday and Sunday give bigger rewards.
         </Text>
       </View>
+
+      {/* Link quyền riêng tư / điều khoản / liên hệ — Guideline 5.1.1(i). */}
+      <AboutLinks />
     </ScrollView>
   );
 }
