@@ -12,8 +12,11 @@ Thiết bị Apple dùng: iPad Air 11-inch (M3) iPadOS 27.0 và iPhone 17 Pro Ma
    trên máy thật. Chỉ gửi thư khi đã tận mắt thấy app mở được trên máy thật.
 3. Chọn build 5 cho bản nộp, dán bản dưới vào ô Reply.
 
-Câu "tested on a physical device" trong thư là KHẲNG ĐỊNH. Nếu chưa làm bước 2 thì xoá câu
-đó đi, đừng gửi một điều chưa làm.
+ĐÃ SỬA 28/09/2026: bản trước viết "tested on a physical device running iOS 27" và "confirmed
+that iOS 27 no longer raises…" — cả hai SAI. Simulator dùng để kiểm chạy iOS 26.3 (máy chỉ cài
+runtime đó; SDK 27.0 là SDK để build, không phải hệ điều hành simulator), và máy thật của Tuấn
+chạy iOS 26.7. Thư giờ chỉ nói đúng những gì đã làm, KHÔNG nhắc số phiên bản iOS nào chưa thử.
+Nếu sau này thử được trên iOS 27 thì mới thêm câu đó vào.
 
 ## Ô Reply
 
@@ -27,7 +30,7 @@ WHAT WE CHANGED (build 5)
 The app now adopts the UIScene life cycle. Info.plist declares UIApplicationSceneManifest, and the window is created by a UIWindowSceneDelegate when the scene connects instead of in application(_:didFinishLaunchingWithOptions:). Deep links and universal links are delivered through the scene delegate.
 
 HOW WE VERIFIED IT
-We confirmed that iOS 27 no longer raises the scene-adoption runtime issue for build 5, and we tested build 5 on a physical device running iOS 27: the app opens normally, and a locked chapter can be unlocked with the included coins.
+Build 4 caused UIKit to raise the scene-adoption runtime issue ("UIScene lifecycle will soon be required") at launch; build 5 no longer raises it, which confirms the scene life cycle is now adopted. We also installed build 5 from TestFlight on an iPhone 17 Pro Max and confirmed that it opens normally and that a locked chapter can be unlocked with the included coins.
 
 WHAT TO TEST
 Build 5 also contains the fixes from our previous reply, which you were unable to see because build 4 did not open:
