@@ -85,6 +85,20 @@ export interface HomeData {
   newest: StoryCard[];
 }
 
+/**
+ * Cấu hình chỉnh từ trang admin (GET /api/config). Là chính sách CHUNG cho mọi
+ * người dùng — xem backend/app/Support/AppSettings.php để biết vì sao không có
+ * khoá nào kiểu "chế độ Apple review".
+ */
+export interface AppConfig {
+  ad_fallback: {
+    /** Không có quảng cáo thưởng mà người đọc thiếu xu ở màn khoá: có cấp bù không. */
+    enabled: boolean;
+    /** Số lần cấp bù tối đa mỗi ngày trên máy này. */
+    daily_limit: number;
+  };
+}
+
 export interface Paginated<T> {
   data: T[];
   current_page: number;
@@ -163,6 +177,10 @@ export function getStories(params: StoriesParams = {}): Promise<Paginated<StoryC
 
 export function getStory(id: number | string): Promise<Story> {
   return request<Story>(`/stories/${id}`);
+}
+
+export function getConfig(): Promise<AppConfig> {
+  return request<AppConfig>('/config');
 }
 
 export function getChapter(storyId: number | string, number: number | string): Promise<Chapter> {

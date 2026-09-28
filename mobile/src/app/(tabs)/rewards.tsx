@@ -313,33 +313,24 @@ function RewardsContent() {
     try {
       const { rewarded, unavailable } = await showRewarded();
 
-      // KHÔNG CHIẾU ĐƯỢC QUẢNG CÁO THÌ VẪN CẤP XU.
+      // KHÔNG CHIẾU ĐƯỢC QUẢNG CÁO -> KHÔNG CẤP XU Ở ĐÂY.
       //
-      // Đây là thứ làm Apple từ chối bản 1.0(3): khi AdMob không có hàng để trả,
-      // đường duy nhất kiếm xu bị bịt và người dùng không mở nổi chương nào. Tài
-      // khoản AdMob mới, quảng cáo KHÔNG cá nhân hoá, thiết bị trong trung tâm dữ
-      // liệu — no-fill là chuyện bình thường, và đó không phải lỗi của người đọc.
-      //
-      // Phân biệt rất rõ hai trường hợp, vì chúng khác nhau về đạo lý:
-      //   unavailable = true  -> CHÚNG TA không chiếu được  -> vẫn cấp xu, và nói thật
-      //   rewarded = false    -> NGƯỜI DÙNG đóng giữa chừng -> không cấp
-      //
-      // Vẫn đi qua recordAdWatch() nên vẫn bị trần 4 lượt/ngày; không thể tắt mạng
-      // để cày xu vô hạn. Xu vốn miễn phí và không mua bán được, nên cái giá của
-      // việc rộng tay ở đây gần như bằng không, còn cái giá của việc chặt tay là
-      // một vòng duyệt App Store.
-      if (!rewarded && !unavailable) {
+      // Bản 1.0(4)–(7) cấp +90 cả khi không có quảng cáo, để không ai bị kẹt (lỗi
+      // Guideline 2.1(a) của bản 1.0(3)). Nhưng ở tab này không ai đang kẹt cả, và
+      // thế là ai chặn quảng cáo cũng bấm 4 lần/ngày lấy 360 xu. Việc chống kẹt giờ
+      // nằm ở màn chương bị khoá: thiếu xu mà không có quảng cáo thì cấp bù vừa đủ
+      // một chương (xem handleWatchAd trong reader và store/config).
+      if (unavailable) {
+        notify('No ad is available right now. Please try again later.', false);
+        return;
+      }
+      if (!rewarded) {
         notify('You need to watch the whole ad to earn coins.', false);
         return;
       }
       const got = recordAdWatch();
       if (got > 0) {
-        notify(
-          unavailable
-            ? `No ad was available — we added +${formatCoins(got)} anyway.`
-            : `Got +${formatCoins(got)} from the ad!`,
-          true,
-        );
+        notify(`Got +${formatCoins(got)} from the ad!`, true);
       } else {
         notify("You've earned all ad coins for today.", false);
       }

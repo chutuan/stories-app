@@ -149,6 +149,11 @@ interface RewardsState {
   adsWatched: number;
   /** tổng xu đã nhận từ quảng cáo trong ngày */
   adsCoins: number;
+  /**
+   * số lần đã cấp bù trong ngày vì không chiếu được quảng cáo (xem recordAdFallback).
+   * Đếm RIÊNG với adsWatched: cấp bù không phải là một lượt xem quảng cáo.
+   */
+  fallbackGrants: number;
 }
 
 function emptyState(now: Date): RewardsState {
@@ -160,6 +165,7 @@ function emptyState(now: Date): RewardsState {
     readingClaimed: [],
     adsWatched: 0,
     adsCoins: 0,
+    fallbackGrants: 0,
   };
 }
 
@@ -179,6 +185,7 @@ function rollOver(state: RewardsState, day: string, week: string): RewardsState 
       readingClaimed: [],
       adsWatched: 0,
       adsCoins: 0,
+      fallbackGrants: 0,
     };
   }
   if (next.week !== week) {
@@ -215,6 +222,11 @@ function parseState(raw: string | null, now: Date): RewardsState | null {
       adsCoins:
         typeof data.adsCoins === 'number' && Number.isFinite(data.adsCoins)
           ? Math.max(0, data.adsCoins)
+          : 0,
+      // Bản lưu từ build cũ không có trường này -> 0, không cần tăng STATE_VERSION.
+      fallbackGrants:
+        typeof data.fallbackGrants === 'number' && Number.isFinite(data.fallbackGrants)
+          ? Math.max(0, Math.floor(data.fallbackGrants))
           : 0,
     };
   } catch {
@@ -265,6 +277,14 @@ export interface RewardsContextValue {
   nextAdCoins: number;
   /** Ghi nhận 1 lượt xem quảng cáo hợp lệ; trả về số xu vừa cộng. */
   recordAdWatch: () => number;
+  /** số lần đã cấp bù hôm nay vì không có quảng cáo */
+  fallbackGrants: number;
+  /**
+   * Cấp bù `coins` xu vì không chiếu được quảng cáo, nếu hôm nay chưa quá
+   * `dailyLimit` lần. Trả về số xu đã cộng (0 = hết lượt hoặc chưa sẵn sàng).
+   * Nơi gọi tự quyết định CÓ NÊN cấp không (đang thiếu xu, cấu hình đang bật).
+   */
+  recordAdFallback: (coins: number, dailyLimit: number) => number;
 }
 
 const RewardsContext = createContext<RewardsContextValue | null>(null);
@@ -419,15 +439,44 @@ export function RewardsProvider({ children }: { children: React.ReactNode }) {
       return 0;
     }
     const coins = AD_TASKS[current.adsWatched] ?? COIN_PER_REWARD;
-    setState({
+    const next = {
       ...current,
       adsWatched: current.adsWatched + 1,
       adsCoins: current.adsCoins + coins,
-    });
+    };
+    // Ghi luôn vào ref thay vì chờ effect đồng bộ sau lần render kế: nếu lượt sau
+    // tới trước khi effect chạy (quảng cáo lỗi trả về gần như tức thì, người dùng
+    // bấm dồn) thì nó sẽ đọc số lượt CŨ -> được cộng xu mà bộ đếm không tăng.
+    stateRef.current = next;
+    setState(next);
     setDayStamp(day);
     addCoins(coins);
     return coins;
   }, [addCoins]);
+
+  const recordAdFallback = useCallback(
+    (coins: number, dailyLimit: number): number => {
+      if (!readyRef.current || coins <= 0) return 0;
+      const now = new Date();
+      const day = dayKey(now);
+      const week = weekStartKey(now);
+      const current = rollOver(stateRef.current, day, week);
+      if (current.fallbackGrants >= dailyLimit) {
+        setState(current);
+        setDayStamp(day);
+        return 0;
+      }
+      const next = { ...current, fallbackGrants: current.fallbackGrants + 1 };
+      // Ghi luôn vào ref: hai lần bấm sát nhau không được cùng đọc số cũ rồi cùng
+      // vượt qua hạn mức trước khi effect kịp đồng bộ.
+      stateRef.current = next;
+      setState(next);
+      setDayStamp(day);
+      addCoins(coins);
+      return coins;
+    },
+    [addCoins],
+  );
 
   // --- Giá trị dẫn xuất ---
   const readingMinutes = useMemo(() => Math.floor(state.readingSeconds / 60), [state.readingSeconds]);
@@ -490,6 +539,8 @@ export function RewardsProvider({ children }: { children: React.ReactNode }) {
       adsCoins: state.adsCoins,
       nextAdCoins: state.adsWatched < AD_TASK_LIMIT ? (AD_TASKS[state.adsWatched] ?? 0) : 0,
       recordAdWatch,
+      fallbackGrants: state.fallbackGrants,
+      recordAdFallback,
     }),
     [
       ready,
@@ -507,6 +558,8 @@ export function RewardsProvider({ children }: { children: React.ReactNode }) {
       readingCoins,
       claimReading,
       recordAdWatch,
+      state.fallbackGrants,
+      recordAdFallback,
     ],
   );
 

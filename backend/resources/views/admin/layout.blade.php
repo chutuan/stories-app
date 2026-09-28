@@ -35,6 +35,9 @@
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('admin.categories.*') ? 'active' : '' }}" href="{{ route('admin.categories.index') }}">Thể loại</a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('admin.settings.*') ? 'active' : '' }}" href="{{ route('admin.settings.index') }}">Cấu hình</a>
+                </li>
             </ul>
             <hr class="text-secondary">
             <form method="POST" action="{{ route('admin.logout') }}">
