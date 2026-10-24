@@ -11,3 +11,6 @@
 
 # File cá nhân, không thuộc project (bỏ dòng này nếu muốn commit)
 hoi-thoai-thanh-tra-banh-mi.txt
+
+# Dữ liệu nhập từ nguồn ngoài (bản xuất Blogbio, ảnh) — lớn, không đưa vào git
+/imports/
