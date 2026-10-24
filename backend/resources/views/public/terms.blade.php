@@ -17,7 +17,8 @@
   <ul>
     <li>Coins <strong>cannot be bought with money</strong>. A new install starts with 90 coins, and
       you earn more by checking in each day, by reaching reading-time milestones and by watching
-      optional rewarded ads. If no ad is available, you still receive the coins.</li>
+      optional rewarded ads. If no ad can be shown while you are short of coins on a locked chapter,
+      the app may top up your balance so you can unlock it, a limited number of times a day.</li>
     <li>Coins have <strong>no monetary value</strong>, cannot be exchanged for cash, and cannot be
       transferred to another person or device.</li>
     <li>Coins and unlocked chapters are stored on your device. If you uninstall the app, change

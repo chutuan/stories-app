@@ -25,7 +25,7 @@ module.exports = {
     // Phiên bản hiển thị cho người dùng. Tăng thủ công khi phát hành bản mới.
     // ios.buildNumber / android.versionCode KHÔNG khai ở đây: EAS tự quản lý
     // và tự tăng (cli.appVersionSource = "remote" + autoIncrement trong eas.json).
-    version: '1.0.0',
+    version: '1.0.1',
     orientation: 'portrait',
     icon: './assets/images/icon.png',
     scheme: 'stories',

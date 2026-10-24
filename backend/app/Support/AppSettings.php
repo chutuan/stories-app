@@ -6,6 +6,7 @@ namespace App\Support;
 
 use App\Models\Setting;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Throwable;
 
 /**
@@ -43,18 +44,27 @@ final class AppSettings
     /** @return array<string, bool|int> toàn bộ khoá, đã ép kiểu và điền mặc định */
     public static function all(): array
     {
-        // Không dùng Cache::rememberForever: nó lưu cả kết quả của nhánh lỗi, và khi
-        // đó một lần DB chập chờn sẽ khoá app vào giá trị mặc định cho tới lần lưu kế.
+        // Cache có hạn 10 phút thay vì vĩnh viễn: nếu lỡ có một giá trị cũ lọt vào
+        // cache (hai request đua nhau quanh lúc admin bấm Lưu), nó tự hết hạn thay vì
+        // kẹt tới lần lưu kế tiếp. Không dùng Cache::remember vì nó cache cả kết quả
+        // của nhánh DB lỗi.
         $stored = Cache::get(self::CACHE_KEY);
         if (! is_array($stored)) {
             try {
                 $stored = Setting::query()->pluck('value', 'key')->all();
-                Cache::forever(self::CACHE_KEY, $stored);
             } catch (Throwable) {
                 // Bảng chưa tạo (chưa chạy migrate) hoặc DB tạm lỗi: dùng mặc định
                 // cho lần này, không cache.
-                $stored = [];
+                $stored = null;
             }
+            if ($stored !== null) {
+                try {
+                    Cache::put(self::CACHE_KEY, $stored, now()->addMinutes(10));
+                } catch (Throwable) {
+                    // Cache lỗi thì vẫn dùng giá trị vừa đọc từ DB.
+                }
+            }
+            $stored ??= [];
         }
 
         $values = [];
@@ -73,15 +83,21 @@ final class AppSettings
     /** @param array<string, mixed> $values chỉ ghi các khoá có trong DEFINITIONS */
     public static function update(array $values): void
     {
-        foreach ($values as $key => $value) {
-            if (! array_key_exists($key, self::DEFINITIONS)) {
-                continue;
-            }
-            [$type] = self::DEFINITIONS[$key];
-            $stored = $type === 'bool' ? ($value ? '1' : '0') : (string) (int) $value;
-            Setting::query()->updateOrCreate(['key' => $key], ['value' => $stored]);
+        try {
+            // Một lần Lưu ghi nhiều khoá: hoặc ghi hết, hoặc không ghi gì.
+            DB::transaction(static function () use ($values): void {
+                foreach ($values as $key => $value) {
+                    if (! array_key_exists($key, self::DEFINITIONS)) {
+                        continue;
+                    }
+                    [$type] = self::DEFINITIONS[$key];
+                    $stored = $type === 'bool' ? ($value ? '1' : '0') : (string) (int) $value;
+                    Setting::query()->updateOrCreate(['key' => $key], ['value' => $stored]);
+                }
+            });
+        } finally {
+            Cache::forget(self::CACHE_KEY);
         }
-        Cache::forget(self::CACHE_KEY);
     }
 
     /**

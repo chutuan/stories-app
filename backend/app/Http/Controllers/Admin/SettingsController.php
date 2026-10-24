@@ -12,7 +12,7 @@ use Illuminate\View\View;
 
 /**
  * Trang Cấu hình: chỉnh chính sách của app di động mà không cần build lại.
- * App đọc qua GET /api/config lúc mở và khi quay lại app (tối đa 10 phút/lần).
+ * App (từ bản 1.0.1) đọc qua GET /api/config lúc mở, và khi quay lại app sau hơn 10 phút.
  */
 class SettingsController extends Controller
 {
@@ -40,6 +40,6 @@ class SettingsController extends Controller
         ]);
 
         return redirect()->route('admin.settings.index')
-            ->with('status', 'Đã lưu cấu hình. App sẽ nhận trong vòng 10 phút, hoặc ngay khi mở lại.');
+            ->with('status', 'Đã lưu cấu hình. App (từ bản 1.0.1) nhận ở lần mở kế tiếp, hoặc khi quay lại app sau hơn 10 phút.');
     }
 }

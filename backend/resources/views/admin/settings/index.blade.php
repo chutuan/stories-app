@@ -13,6 +13,10 @@
             Người đọc bấm <strong>Watch ad · +90 coins</strong> nhưng AdMob không trả quảng cáo
             (hết hàng, chặn quảng cáo, lỗi mạng tới Google).
         </p>
+        <div class="alert alert-info small">
+            Chỉ có tác dụng với app từ bản <strong>1.0.1 (build 8)</strong> trở đi. Bản 1.0 (build 7) không
+            đọc cấu hình này: không có quảng cáo thì vẫn cấp +90 xu, tối đa 4 lần/ngày.
+        </div>
 
         <div class="form-check form-switch mb-2">
             <input type="hidden" name="ad_fallback_enabled" value="0">
@@ -38,14 +42,19 @@
             Lượt xem quảng cáo thật vẫn +90 xu, 4 lượt/ngày như cũ.</div>
 
         <div class="alert alert-warning small mt-4 mb-0">
-            Đây là chính sách chung cho <strong>mọi người dùng, kể cả Apple</strong>. Đừng bật/tắt theo lịch
-            duyệt của Apple: app chạy khác đi trong lúc duyệt là vi phạm Guideline 2.3.1. Nếu tắt hẳn, sửa
-            luôn câu về quảng cáo trong Description trên App Store cho khớp.
+            <p class="mb-2">Đây là chính sách chung cho <strong>mọi người dùng, kể cả Apple</strong>.
+                Chốt giá trị TRƯỚC khi nộp bản mới và giữ nguyên tới khi bản đó phát hành. Review Notes
+                gửi Apple ghi số lần hiện tại; đổi số này thì ghi lại ở lần nộp kế tiếp.</p>
+            <p class="mb-1">Không bao giờ (Guideline 2.3.1, 2.1(a), 3.2.2):</p>
+            <ul class="mb-0">
+                <li>bật/tắt hay đổi số theo lịch duyệt của Apple — rộng tay lúc duyệt rồi siết lại ngay sau đó;</li>
+                <li>tắt cấp bù khi chưa chắc AdMob có đủ quảng cáo — người mới cài sẽ kẹt, đúng lỗi bản 1.0(3).</li>
+            </ul>
         </div>
     </div>
     <div class="card-footer bg-white">
         <button type="submit" class="btn btn-primary">Lưu</button>
-        <span class="small text-muted ms-2">App nhận cấu hình mới khi mở lại, hoặc trong vòng 10 phút.</span>
+        <span class="small text-muted ms-2">App đọc cấu hình mỗi lần mở app, và khi quay lại app sau hơn 10 phút.</span>
     </div>
 </form>
 @endsection
