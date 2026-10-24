@@ -1,4 +1,4 @@
-# Metadata cho phiên bản 1.0.1 (build 8)
+# Metadata cho phiên bản 1.0.1 (build 9 trên ASC)
 
 Soạn 24/10/2026 sau đợt soát 9 agent. Mọi độ dài đã kiểm bằng máy. Bản 1.0 (build 7) phát hành
 20/10/2026. Khác biệt duy nhất người dùng thấy: không chiếu được quảng cáo thì chỉ cấp bù ở màn chương
@@ -10,8 +10,9 @@ khoá khi đang thiếu xu (vừa đủ 30), tối đa N lần/ngày theo /admin
    `curl https://api.tunastory.com/api/config` → `{"ad_fallback":{"enabled":true,"daily_limit":2}}`.
 2. **/admin/settings: bật cấp bù, 2 lần/ngày** — Notes ghi "currently 2". Giữ nguyên từ lúc nộp tới khi
    phát hành, và đừng siết lại ngay sau khi được duyệt (Guideline 2.3.1).
-3. Upload build 8 qua Organizer, **bỏ tick "Manage Version and Build Number"**.
-4. ASC → **+ Version** → `1.0.1` → chọn **build 8**.
+3. ~~Upload~~ — xong 24/10 13:58. Ô "Manage Version and Build Number" vẫn tick nên Xcode tự đổi
+   build 8 thành **9** khi upload (cùng bản đã soát, chỉ khác số). Lần build sau phải ≥ 10.
+4. ASC → **+ Version** → `1.0.1` → chọn **build 9** (`1.0.1 (9)`).
 5. **Marketing URL = `https://tunastory.com`** (trang phiên bản 1.0.1). AdMob tìm app-ads.txt theo trường
    này; bản 1.0 để trống nên AdMob chưa xác minh được. Không dùng `www.`.
 6. Dán Description, What's New, Notes bên dưới. Promotional Text và Keywords giữ nguyên (vẫn đúng).
