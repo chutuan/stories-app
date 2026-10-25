@@ -127,6 +127,16 @@ export interface StoriesParams {
 
 // ---- Fetch helper ----
 
+/** Lỗi HTTP từ API; giữ mã trạng thái để phân biệt "không còn nữa" (404) với lỗi mạng. */
+export class ApiError extends Error {
+  status: number;
+
+  constructor(status: number, path: string) {
+    super(`API ${status}: ${path}`);
+    this.status = status;
+  }
+}
+
 async function request<T>(path: string, params?: Record<string, string | number | undefined>): Promise<T> {
   // Tự build query string bằng encodeURIComponent thay vì URL.searchParams,
   // vì URL của React Native (không có polyfill) có searchParams không đáng tin.
@@ -144,7 +154,7 @@ async function request<T>(path: string, params?: Record<string, string | number 
     headers: { Accept: 'application/json' },
   });
   if (!res.ok) {
-    throw new Error(`API ${res.status}: ${path}`);
+    throw new ApiError(res.status, path);
   }
   return (await res.json()) as T;
 }

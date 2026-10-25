@@ -52,6 +52,7 @@ import {
 } from '@/constants/theme';
 import { API_URL } from '@/lib/api';
 import { formatCoins } from '@/lib/format';
+import { useHistory } from '@/store/history';
 import { COIN_PER_CHAPTER, useWallet } from '@/store/wallet';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
@@ -185,6 +186,7 @@ export default function AudioPlayerScreen() {
    * commit, xem thông điệp commit "Tắt tạm gói đăng ký".
    */
   const { isUnlocked } = useWallet();
+  const { record: recordHistory } = useHistory();
   /**
    * Modal của React Native phủ TOÀN BỘ cửa sổ app, không nằm trong ngăn xếp
    * điều hướng. Nếu màn này vẫn còn mount bên dưới một màn khác (deep link đẩy
@@ -252,6 +254,20 @@ export default function AudioPlayerScreen() {
   const locked = chapter ? !chapter.is_free && !isUnlocked(storyId, chapterNumber) : false;
   const audioUrl = chapter && !locked ? chapter.audio_url : null;
   const hasAudio = audioUrl != null;
+
+  // Lịch sử đọc: nghe một chương cũng tính là đã đọc tới đó. Chỉ ghi khi chương mở được
+  // và có audio (màn khoá / chương chưa có audio thì người dùng chưa nghe gì).
+  useEffect(() => {
+    if (!chapter || locked || !hasAudio) return;
+    recordHistory({
+      storyId: chapter.story.id,
+      title: chapter.story.title,
+      thumbnailUrl: story?.thumbnail_url ?? null,
+      chapter: chapter.number,
+      chapterTitle: chapter.title,
+      chaptersCount: story?.chapters_count ?? null,
+    });
+  }, [chapter, locked, hasAudio, story, recordHistory]);
 
   /* ---- PLAYER (expo-audio) ----
      Đổi `source` là hook tự tạo player mới và giải phóng player cũ;

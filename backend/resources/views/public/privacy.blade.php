@@ -20,6 +20,7 @@
     <li>Your coin balance</li>
     <li>Which chapters you have unlocked</li>
     <li>Stories you saved to your library</li>
+    <li>Your reading history — the stories you opened, the last chapter you read and when</li>
     <li>Reading preferences — font size, line spacing, brightness and page theme</li>
     <li>Daily check-in and rewarded-ad progress</li>
   </ul>

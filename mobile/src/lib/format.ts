@@ -88,3 +88,37 @@ export function plural(n: number, one: string, many: string): string {
 export function formatCoins(n: number): string {
   return plural(n, 'coin', 'coins');
 }
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/**
+ * Thời điểm tương đối, ngắn gọn cho danh sách lịch sử đọc.
+ *
+ *   timeAgo(now - 20s)  -> 'just now'
+ *   timeAgo(now - 5min) -> '5m ago'
+ *   timeAgo(now - 3h)   -> '3h ago'
+ *   hôm qua             -> 'yesterday'
+ *   trong 7 ngày        -> '4d ago'
+ *   xa hơn              -> 'Oct 3' (cùng năm) hoặc 'Oct 3, 2025'
+ *
+ * Tự dựng chuỗi thay vì Intl.RelativeTimeFormat vì Hermes trên một số bản không có
+ * đủ Intl, và nhãn ngắn "5m ago" vừa một dòng phụ hơn "5 minutes ago".
+ */
+export function timeAgo(ms: number, now: number = Date.now()): string {
+  const s = Math.max(0, Math.round((now - ms) / 1000));
+  if (s < 60) return 'just now';
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  const d = new Date(ms);
+  const today = new Date(now);
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  if (ms >= startOfToday) return `${h}h ago`;
+  const startOfThatDay = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  // Đếm theo ngày lịch: quanh DST hai nửa đêm cách nhau 23h/25h nên làm tròn, không trừ cứng 24h.
+  const days = Math.round((startOfToday - startOfThatDay) / 86_400_000);
+  if (days === 1) return 'yesterday';
+  if (days < 7) return `${days}d ago`;
+  const label = `${MONTHS[d.getMonth()]} ${d.getDate()}`;
+  return d.getFullYear() === today.getFullYear() ? label : `${label}, ${d.getFullYear()}`;
+}

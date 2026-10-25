@@ -30,7 +30,7 @@ import {
   Spacing,
 } from '@/constants/theme';
 import { BannerAd, showRewarded } from '@/lib/ads';
-import { API_URL, getStory, type Chapter } from '@/lib/api';
+import { API_URL, ApiError, getStory, type Chapter } from '@/lib/api';
 import { formatCoins, plural } from '@/lib/format';
 import {
   ReaderPrefsProvider,
@@ -38,14 +38,15 @@ import {
   type ReaderTheme,
 } from '@/store/reader-prefs';
 import { useAppConfig } from '@/store/config';
+import { useHistory } from '@/store/history';
 import { AD_TASK_LIMIT, useRewards } from '@/store/rewards';
 import { COIN_PER_CHAPTER, useWallet } from '@/store/wallet';
 
 /**
- * Tổng số chương theo truyện — chỉ gọi API 1 lần cho mỗi truyện trong 1 phiên,
- * dùng cho chỉ báo "Chương x/y" ở thanh dưới. Không có cũng không sao.
+ * Thông tin truyện — chỉ gọi API 1 lần cho mỗi truyện trong 1 phiên. Dùng cho chỉ báo
+ * "Chương x/y" ở thanh dưới và cho bìa trong lịch sử đọc. Không có cũng không sao.
  */
-const totalChaptersCache = new Map<string, number>();
+const storyMetaCache = new Map<string, { chaptersCount: number; thumbnailUrl: string | null }>();
 
 /**
  * Chương kèm `audio_url` (backend đã trả field này; `null` khi chưa có MP3).
@@ -64,7 +65,7 @@ async function fetchChapter(
     headers: { Accept: 'application/json' },
   });
   if (!res.ok) {
-    throw new Error(`API ${res.status}: /stories/${storyId}/chapters/${number}`);
+    throw new ApiError(res.status, `/stories/${storyId}/chapters/${number}`);
   }
   return (await res.json()) as ChapterWithAudio;
 }
@@ -116,6 +117,7 @@ function ReaderScreen() {
     ready: rewardsReady,
   } = useRewards();
   const { ad_fallback: adFallback } = useAppConfig();
+  const { record: recordHistory, remove: removeHistory } = useHistory();
   // Số dư lúc quảng cáo ĐÓNG mới là số dư đúng để tính phần thiếu, không phải số
   // dư lúc bấm nút — nên đọc qua ref sau `await`, không đọc biến trong closure.
   const coinsRef = useRef(coins);
@@ -133,8 +135,11 @@ function ReaderScreen() {
 
   /** Chương đã tải kèm số chương của nó — đổi chương là tự về trạng thái đang tải. */
   const [loaded, setLoaded] = useState<ChapterWithAudio | null>(null);
-  /** Số chương tải lỗi; so với chapterNumber để biết lỗi có còn hiệu lực không. */
-  const [failedNumber, setFailedNumber] = useState<number | null>(null);
+  /**
+   * Chương tải lỗi; so `number` với chapterNumber để biết lỗi có còn hiệu lực không.
+   * `gone`: API trả 404 — chương/truyện đã bị gỡ, thử lại cũng vô ích.
+   */
+  const [failure, setFailure] = useState<{ number: number; gone: boolean } | null>(null);
   /** Tăng lên mỗi lần bấm "Thử lại" để chạy lại effect tải chương. */
   const [retryCount, setRetryCount] = useState(0);
   /** Thông báo xu, gắn số chương để không "dính" sang chương kế tiếp. */
@@ -143,9 +148,8 @@ function ReaderScreen() {
   );
   const [watchingAd, setWatchingAd] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [totalChapters, setTotalChapters] = useState<number | null>(
-    () => totalChaptersCache.get(String(storyId)) ?? null,
-  );
+  const [storyMeta, setStoryMeta] = useState(() => storyMetaCache.get(String(storyId)) ?? null);
+  const totalChapters = storyMeta?.chaptersCount ?? null;
 
   const scrollRef = useRef<ScrollView>(null);
 
@@ -155,8 +159,10 @@ function ReaderScreen() {
       .then((data) => {
         if (alive) setLoaded(data);
       })
-      .catch(() => {
-        if (alive) setFailedNumber(chapterNumber);
+      .catch((e) => {
+        if (alive) {
+          setFailure({ number: chapterNumber, gone: e instanceof ApiError && e.status === 404 });
+        }
       });
     return () => {
       alive = false;
@@ -164,31 +170,47 @@ function ReaderScreen() {
   }, [storyId, chapterNumber, retryCount]);
 
   const chapter = loaded && loaded.number === chapterNumber ? loaded : null;
-  const failed = failedNumber === chapterNumber;
+  const failed = failure?.number === chapterNumber;
+  const gone = failed && failure.gone;
   // Chờ cả tùy chọn đọc để nội dung không nhảy cỡ chữ ngay sau khi hiện.
   const loading = (!chapter && !failed) || !prefsReady;
 
   const retry = useCallback(() => {
-    setFailedNumber(null);
+    setFailure(null);
     setRetryCount((n) => n + 1);
   }, []);
+
+  // Mở từ deep link thì màn đọc là route duy nhất: back() không có chỗ để lùi về.
+  const goBack = useCallback(() => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/');
+  }, [router]);
 
   // Tổng số chương (không chặn màn hình, lỗi thì bỏ qua)
   useEffect(() => {
     const key = String(storyId);
-    // Đã có trong cache thì state đã được khởi tạo sẵn, không cần gọi lại API.
-    if (totalChaptersCache.has(key)) return;
+    // Đã có trong cache thì state đã được khởi tạo sẵn, không cần gọi lại API — trừ khi
+    // chương vừa trả 404: hỏi lại xem cả truyện còn không (truyện có thể vừa bị gỡ).
+    if (storyMetaCache.has(key) && !gone) return;
     let alive = true;
     getStory(key)
       .then((story) => {
-        totalChaptersCache.set(key, story.chapters_count);
-        if (alive) setTotalChapters(story.chapters_count);
+        const meta = { chaptersCount: story.chapters_count, thumbnailUrl: story.thumbnail_url };
+        storyMetaCache.set(key, meta);
+        if (alive) setStoryMeta(meta);
       })
-      .catch(() => {});
+      .catch((e) => {
+        // Truyện đã bị gỡ khỏi server: bỏ khỏi lịch sử để History không dẫn vào màn lỗi.
+        if (e instanceof ApiError && e.status === 404) {
+          storyMetaCache.delete(key);
+          if (alive) setStoryMeta(null);
+          removeHistory(Number(key));
+        }
+      });
     return () => {
       alive = false;
     };
-  }, [storyId]);
+  }, [storyId, gone, removeHistory]);
 
   // Đổi chương thì đưa nội dung về đầu trang
   useEffect(() => {
@@ -197,6 +219,20 @@ function ReaderScreen() {
 
   const unlockedLocal = isUnlocked(storyId, chapterNumber);
   const canRead = chapter ? chapter.is_free || unlockedLocal : false;
+
+  // Lịch sử đọc: chỉ ghi khi chương ĐỌC ĐƯỢC đã hiện ra (không ghi màn khoá). Chạy lại
+  // khi bìa/số chương tải xong để điền vào dòng lịch sử; ghi lặp cùng chương chỉ cập nhật.
+  useEffect(() => {
+    if (!chapter || !canRead) return;
+    recordHistory({
+      storyId: chapter.story.id,
+      title: chapter.story.title,
+      thumbnailUrl: storyMeta?.thumbnailUrl ?? null,
+      chapter: chapter.number,
+      chapterTitle: chapter.title,
+      chaptersCount: storyMeta?.chaptersCount ?? null,
+    });
+  }, [chapter, canRead, storyMeta, recordHistory]);
 
   const notify = useCallback(
     (text: string, ok: boolean) => {
@@ -352,7 +388,7 @@ function ReaderScreen() {
       {/* Header: quay lại · tên truyện · ví xu · Aa · nghe */}
       <View style={styles.header}>
         <Pressable
-          onPress={() => router.back()}
+          onPress={goBack}
           hitSlop={8}
           accessibilityRole="button"
           accessibilityLabel="Back"
@@ -413,14 +449,33 @@ function ReaderScreen() {
         <ReaderSkeleton rt={rt} />
       ) : !chapter ? (
         <View style={styles.center}>
-          <EmptyState
-            danger
-            icon="cloud-offline-outline"
-            title="Couldn't load this chapter"
-            description="Check your connection and try again."
-            actionLabel="Retry"
-            onAction={retry}
-          />
+          {gone && storyMeta ? (
+            // Truyện còn, chỉ chương này mất (bị gỡ hoặc đánh số lại): mở trang truyện để chọn chương.
+            <EmptyState
+              icon="document-text-outline"
+              title="This chapter is no longer available"
+              description="Open the story to see the chapters you can read."
+              actionLabel="Open story"
+              onAction={() => router.replace(`/story/${storyId}`)}
+            />
+          ) : gone ? (
+            <EmptyState
+              icon="document-text-outline"
+              title="This story is no longer available"
+              description="It may have been removed from Stories."
+              actionLabel="Go back"
+              onAction={goBack}
+            />
+          ) : (
+            <EmptyState
+              danger
+              icon="cloud-offline-outline"
+              title="Couldn't load this chapter"
+              description="Check your connection and try again."
+              actionLabel="Retry"
+              onAction={retry}
+            />
+          )}
         </View>
       ) : canRead ? (
         <ScrollView
