@@ -118,6 +118,13 @@ return [
     'ga_measurement_id' => env('GA_MEASUREMENT_ID'),
 
     /*
+    | App iOS trên App Store. ID công khai, không phải bí mật. Route /app chuyển tới
+    | trang App Store của ID này; mã QR ở chân trang trỏ tới /app chứ không trỏ thẳng
+    | App Store, để đổi đích (link khác, thêm Android) không phải in lại mã.
+    */
+    'ios_app_id' => env('IOS_APP_ID', '6810302346'),
+
+    /*
     | Ngày cập nhật văn bản pháp lý, hiện trên trang Privacy và Terms.
     */
     'legal_updated' => env('LEGAL_UPDATED', '24 October 2026'),

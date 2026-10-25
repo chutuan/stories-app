@@ -101,6 +101,11 @@
      với lời khai "không tracking, quảng cáo không cá nhân hoá" và câu "analytics
      never present in the app" trong Privacy Policy. Áp dụng cho cả khối GA4 dưới. --}}
 @php($legalPage = request()->routeIs('public.privacy', 'public.terms', 'public.contact'))
+{{-- Smart App Banner: Safari trên iPhone tự hiện thanh "Get/Open" của app ở đầu trang.
+     Không gắn trên ba trang pháp lý: app mở chúng trong trình duyệt trong app. --}}
+@unless ($legalPage)
+<meta name="apple-itunes-app" content="app-id={{ config('app.ios_app_id') }}">
+@endunless
 @if (filled(config('app.admob_publisher_id')) && ! $legalPage)
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-{{ config('app.admob_publisher_id') }}"
      crossorigin="anonymous"></script>
@@ -150,6 +155,20 @@
   .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:22px 24px;margin:22px 0}
   footer{border-top:1px solid var(--border);padding:26px 0;color:var(--muted);font-size:14px}
   footer a{color:var(--muted);margin-right:16px}
+  /* Khối tải app ở chân trang. Mã QR chỉ có ích trên máy tính (quét bằng điện thoại);
+     trên điện thoại/máy cảm ứng chỉ hiện link. Nền trắng + đệm = vùng lề yên tĩnh của
+     mã QR, để vẫn quét được khi nền trang tối. */
+  .app-promo{display:flex;align-items:center;gap:14px;margin:0 0 18px}
+  .app-promo .qr{flex:none;line-height:0;margin:0}
+  .app-promo .qr img{width:88px;height:88px;padding:6px;background:#fff;border:1px solid var(--border);border-radius:10px}
+  .app-promo strong{display:block;color:var(--text);font-size:15px;margin-bottom:2px}
+  .app-promo a{margin-right:0}
+  @media (max-width:600px), (hover:none) and (pointer:coarse){
+    .app-promo .qr, .app-promo .qr-hint{display:none}
+    /* Mất câu dẫn "Scan…, or" thì link đứng đầu câu: viết hoa chữ đầu. */
+    .app-promo div > a{display:inline-block}
+    .app-promo div > a::first-letter{text-transform:uppercase}
+  }
   .disclosure{margin:14px 0 0;font-size:13px;line-height:1.6;color:var(--muted);max-width:70ch}
   .disclosure a{color:var(--muted);text-decoration:underline;margin:0}
   /* Trên trang truyện và trang đọc, dòng khai đứng riêng trong khung nhạt */
@@ -414,6 +433,19 @@
 </div></header>
 <main><div class="wrap{{ $isWide ? ' wide' : '' }}">@yield('content')</div></main>
 <footer><div class="wrap{{ $isWide ? ' wide' : '' }}">
+  @unless ($legalPage)
+  <div class="app-promo">
+    <a class="qr" href="{{ route('public.app') }}" aria-label="Download Stories on the App Store">
+      <img src="{{ asset('images/app-qr.svg') }}" width="88" height="88" loading="lazy"
+           alt="QR code to download the Stories app for iPhone">
+    </a>
+    <div>
+      <strong>Read Stories on iPhone</strong>
+      <span class="qr-hint">Scan with your phone's camera, or</span>
+      <a href="{{ route('public.app') }}">download it on the App Store</a>
+    </div>
+  </div>
+  @endunless
   <a href="{{ route('public.home') }}">Home</a>
   <a href="{{ route('public.browse') }}">Browse</a>
   <a href="{{ route('public.about') }}">About</a>

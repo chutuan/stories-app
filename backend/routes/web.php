@@ -52,6 +52,11 @@ Route::get('/sitemap.xml', [ReadController::class, 'sitemap'])->name('public.sit
 // app-ads.txt cho AdMob: xác thực app là của mình, chống gian lận mạo danh kho
 // quảng cáo. Google thu thập file này tại domain khai trong store listing.
 // Chưa cấu hình ADMOB_PUBLISHER_ID -> trả 404 thay vì file rỗng gây hiểu nhầm.
+// /app: đích của mã QR ở chân trang (public/images/app-qr.svg, tạo bằng
+// tools/qr/make_qr_svg.swift). 302 chứ không 301 để còn đổi được đích về sau.
+Route::get('/app', fn () => redirect()->away('https://apps.apple.com/app/id'.config('app.ios_app_id'), 302))
+    ->name('public.app');
+
 Route::get('/app-ads.txt', function () {
     $pub = config('app.admob_publisher_id');
     abort_if(blank($pub), 404);
