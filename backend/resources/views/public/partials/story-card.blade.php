@@ -8,11 +8,11 @@
 --}}
 <a class="scard" href="{{ route('public.story', $story) }}">
   @if ($story->thumbnail_url)
-    {{-- `sizes` bám theo breakpoint của .grid trong layout: 5 cột >1400px,
+    {{-- `sizes` bám theo breakpoint của .grid trong layout: 6 cột >1400px,
          4 cột mặc định, 3 cột <1000px, 2 cột <600px. --}}
     @include('public.partials.cover', [
         'story' => $story,
-        'sizes' => '(max-width:600px) 45vw, (max-width:1000px) 30vw, (max-width:1400px) 23vw, 250px',
+        'sizes' => '(max-width:600px) 45vw, (max-width:1000px) 30vw, (max-width:1400px) 23vw, 200px',
         'w' => 300, 'h' => 450,
     ])
   @else

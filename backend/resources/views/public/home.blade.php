@@ -66,10 +66,10 @@
 
   @include('public.partials.ad')
 
-  @if ($newest->isNotEmpty())
-    <h2>Newest stories</h2>
+  @if ($popular->isNotEmpty())
+    <h2>Most read</h2>
     <ul class="grid">
-      @foreach ($newest as $story)
+      @foreach ($popular as $story)
         <li>@include('public.partials.story-card', ['story' => $story])</li>
       @endforeach
     </ul>

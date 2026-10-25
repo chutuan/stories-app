@@ -186,10 +186,17 @@
   /* <picture> mặc định là inline nên sẽ chen một khoảng trắng dưới ảnh và làm
      lệch lưới; cho nó block để bố cục y hệt như khi còn dùng <img> trần. */
   .scard picture,.hero picture{display:block}
-  .scard img,.scard .noart{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:12px;
+  .scard img,.scard .noart{width:100%;height:auto;aspect-ratio:2/3;object-fit:cover;border-radius:12px;
                            border:1px solid var(--border);background:#EFE7E0;display:block}
+  /* height:auto là BẮT BUỘC: thẻ <img> mang width=300 height=450 (để trình duyệt giữ chỗ
+     trước khi ảnh tải). Chỉ ghi width:100% thì height=450 vẫn thắng aspect-ratio, ảnh bị
+     kéo cao thành ~9:16 và mỗi thẻ cao gần 600px — đúng lỗi trang chủ ngày 25/10/2026. */
   .scard .noart{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;text-align:center;padding:10px}
-  .scard h3{font-size:16px;line-height:1.33;margin:11px 0 3px;font-weight:650}
+  .scard h3{font-size:15px;line-height:1.35;margin:10px 0 4px;font-weight:650;
+           display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
+           min-height:calc(1.35em * 3)}
+  /* Tên truyện dài tới ~200 ký tự (kiểu câu mở đầu). Cắt ở 3 dòng và GIỮ CHỖ đủ 3 dòng
+     để dòng "N chapters · tác giả" thẳng hàng giữa các thẻ; tên đầy đủ ở trang truyện. */
   .scard .meta{color:var(--muted);font-size:13px;margin:0}
   /* Bìa nhích lên khi rê chuột — tín hiệu bấm được, và làm lưới bớt tĩnh */
   .scard img,.scard .noart{transition:transform .18s ease,box-shadow .18s ease}
@@ -198,7 +205,7 @@
 
   /* --- chi tiết truyện --- */
   .hero{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap}
-  .hero img,.hero .noart{width:180px;aspect-ratio:2/3;object-fit:cover;border-radius:14px;
+  .hero img,.hero .noart{width:180px;height:auto;aspect-ratio:2/3;object-fit:cover;border-radius:14px;
                          border:1px solid var(--border);background:#EFE7E0;flex:none}
   .hero .noart{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px}
   .hero-body{flex:1;min-width:240px}
@@ -319,10 +326,11 @@
         border:1px solid var(--border);text-decoration:none;font-size:14px;background:var(--surface)}
   .pagination .cur{background:var(--accent-deep);border-color:var(--accent-deep);color:#fff}
   .empty{text-align:center;color:var(--muted);padding:44px 0}
-  /* Màn hình rất rộng: thêm cột thứ năm thay vì kéo giãn ảnh quá khổ */
+  /* Màn hình rất rộng: 6 cột. Số cột ở mọi khổ (6/4/3/2) đều chia hết 12 truyện của
+     trang chủ và 24 truyện mỗi trang Browse — 5 cột từng để lại 2 thẻ lẻ ở hàng cuối. */
   @media (min-width:1400px){
     .wrap.wide{max-width:1320px}
-    .grid{grid-template-columns:repeat(5,1fr)}
+    .grid{grid-template-columns:repeat(6,1fr);gap:28px 20px}
   }
 
   /* Tablet dọc và cửa sổ hẹp: ba cột */

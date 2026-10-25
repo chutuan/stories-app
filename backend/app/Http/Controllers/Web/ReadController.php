@@ -49,10 +49,22 @@ class ReadController extends Controller
             ->latest('updated_at')
             ->first();
 
+        $updated = $this->cards()->orderByDesc('updated_at')->limit(12)->get();
+
         return view('public.home', [
             'featured' => $featured,
-            'updated' => $this->cards()->orderByDesc('updated_at')->limit(12)->get(),
-            'newest' => $this->cards()->orderByDesc('created_at')->limit(12)->get(),
+            'updated' => $updated,
+            // "Most read" thay cho "Newest": sau đợt nạp 249 truyện 25/10/2026, truyện mới
+            // nhất cũng chính là truyện vừa cập nhật, nên hai hàng lặp y hệt nhau. Loại các
+            // truyện đã có ở hàng trên để trang chủ không hiện một bìa hai lần.
+            'popular' => $this->cards()
+                ->whereNotIn('id', $updated->pluck('id'))
+                // KHÔNG viết whereKeyNot($featured?->id): khi không có truyện nổi bật nó thành
+                // `id <> NULL`, điều kiện luôn sai trong SQL, và cả hàng Most read biến mất.
+                ->when($featured, fn ($q) => $q->whereKeyNot($featured->id))
+                ->orderByDesc('views')
+                ->limit(12)
+                ->get(),
             'categories' => Category::query()->orderBy('name')->get(),
             'jsonLd' => [
                 StructuredData::website(route('public.home'), route('public.search')),
