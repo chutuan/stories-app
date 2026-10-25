@@ -466,5 +466,9 @@
   <div style="margin-top:10px">&copy; {{ date('Y') }} Stories</div>
 </div></footer>
 @include('public.partials.protect')
+{{-- Mời tải app trên iPhone/iPad. Không gắn trên ba trang pháp lý (app mở chúng bên trong app). --}}
+@unless ($legalPage)
+  @include('public.partials.app-prompt')
+@endunless
 </body>
 </html>
