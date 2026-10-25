@@ -31,10 +31,21 @@ python3 tools/blogbio-sync/dedupe_report.py imports/storypulse6/export.json impo
   (`series-nav`). Đã đối chiếu 24/10/2026: admin có 1.709 bài = **1.296 đã đăng** (đúng bằng số
   URL trong sitemap) + bản nháp. Bản nháp và "story bible" của series chỉ có trong admin.
 
-## Nạp vào Stories (chưa làm)
+## Nạp vào Stories (đã làm 25/10/2026: 249 truyện, 1.245 chương)
 
-Chờ Apple duyệt xong bản 1.0.1. Khi nạp: sao lưu DB trước, chỉ nạp truyện đã được duyệt trong
-báo cáo trùng, nạp ở trạng thái ẩn, và lưu mã gốc (slug Blogbio) để nạp lại không tạo bản trùng.
+```bash
+python3 tools/blogbio-sync/build_bundle.py imports/storypulse6 --meta imports/storypulse6/meta.json --out imports/storypulse6/bundle.json
+python3 tools/blogbio-sync/prepare_covers.py imports/storypulse6      # bìa 600x800 JPEG như bìa Stories
+# trên server: sao lưu DB -> stories:import bundle.json --dry -> stories:import --no-jobs
+#              -> chép bìa vào storage/app/public/stories/<slug>.jpg + gán thumbnail -> covers:derive
+```
+
+- `build_bundle.py` chỉ lấy truyện **GIỮ** trong `review.csv` (bỏ BỎ / CẦN QUYẾT / TẠM GIỮ), đổi HTML ->
+  chữ thuần, bóc "PART N: …" thành tiêu đề chương, dọn rác (quảng cáo, khung Report, ```, #, **).
+  status luôn `completed` (routine Cowork chỉ viết tiếp truyện `ongoing`), không đặt bìa/audio.
+- `meta.json` (thể loại + tóm tắt + cờ nội dung nhạy cảm) do agent đọc phần mở đầu từng truyện tạo ra.
+- `import_map.json`: id series Blogbio -> slug trên Stories. Nạp lại cùng slug = cập nhật, không tạo bản trùng.
+- Truyện nạp vào lấy slug theo tên đã bỏ đuôi; KHÔNG ghi đè truyện cũ (đã kiểm 0 slug trùng trước khi nạp).
 
 ## Kiểm "cùng một truyện viết lại" (máy không tự bắt được)
 
