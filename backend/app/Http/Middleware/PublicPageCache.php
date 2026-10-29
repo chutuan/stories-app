@@ -64,6 +64,9 @@ class PublicPageCache
         'public.privacy',
         'public.terms',
         'public.sitemap',
+        // Script nhúng ở trang khác: mỗi lượt xem trang bên đó là một lần tải, nên
+        // phải để Cloudflare trả thay origin.
+        'public.embed.app-prompt',
     ];
 
     public function handle(Request $request, Closure $next): Response

@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\StoryController;
 use App\Http\Controllers\Web\ReactionController;
 use App\Http\Controllers\Web\ReadController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 // Trang công khai — domain gốc phục vụ người dùng cuối và các trang bắt buộc
@@ -54,8 +55,32 @@ Route::get('/sitemap.xml', [ReadController::class, 'sitemap'])->name('public.sit
 // Chưa cấu hình ADMOB_PUBLISHER_ID -> trả 404 thay vì file rỗng gây hiểu nhầm.
 // /app: đích của mã QR ở chân trang (public/images/app-qr.svg, tạo bằng
 // tools/qr/make_qr_svg.swift). 302 chứ không 301 để còn đổi được đích về sau.
-Route::get('/app', fn () => redirect()->away('https://apps.apple.com/app/id'.config('app.ios_app_id'), 302))
-    ->name('public.app');
+//
+// ?src=<nhãn> do script nhúng ở trang khác gắn vào (xem /embed/app-prompt.js). Có
+// IOS_PROVIDER_TOKEN thì chuyển thành link chiến dịch của App Store (pt + ct), để App
+// Store Connect > App Analytics đếm được lượt tải theo từng trang; chưa có thì bỏ qua.
+Route::get('/app', function (Request $request) {
+    $id = config('app.ios_app_id');
+    $pt = config('app.ios_provider_token');
+    // ct của Apple: tối đa 40 ký tự. Lọc ký tự để không ai nhét được gì lạ vào URL.
+    // ?src[]=x cho ra mảng: không phải chuỗi thì coi như không có.
+    $src = $request->query('src');
+    $ct = is_string($src) ? substr((string) preg_replace('/[^A-Za-z0-9._-]/', '', $src), 0, 40) : '';
+
+    // Đúng dạng link mà trình tạo chiến dịch của App Store Connect sinh ra.
+    return redirect()->away(filled($pt) && $ct !== ''
+        ? "https://apps.apple.com/app/apple-store/id{$id}?".http_build_query(['pt' => $pt, 'ct' => $ct, 'mt' => 8])
+        : "https://apps.apple.com/app/id{$id}", 302);
+})->name('public.app');
+
+// Script mời tải app để DÁN VÀO TRANG WEB KHÁC (chỉ hiện trên iPhone/iPad):
+//   <script src="https://tunastory.com/embed/app-prompt.js" async></script>
+// Nguồn ở resources/embed/ chứ không ở public/: để trong public/ thì nginx trả thẳng
+// file, không qua PublicPageCache, và Cloudflare không có Cache-Control để theo.
+Route::get('/embed/app-prompt.js', fn () => response()->file(
+    resource_path('embed/app-prompt.js'),
+    ['Content-Type' => 'application/javascript; charset=UTF-8'],
+))->name('public.embed.app-prompt');
 
 Route::get('/app-ads.txt', function () {
     $pub = config('app.admob_publisher_id');

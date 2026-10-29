@@ -104,9 +104,24 @@
 
   root.addEventListener('click', function (e) {
     if (e.target.closest('[data-ap-close]')) { close(7); }
-    else if (e.target.closest('.ap-get')) { snooze(30); }
+    // Link vẫn mở App Store; đóng luôn hộp để quay lại Safari không gặp lại nó.
+    else if (e.target.closest('.ap-get')) { close(30); }
   });
 
-  setTimeout(open, 8000);
+  // Đang gõ ô tìm kiếm thì không bật hộp lên giữa chừng (cướp focus, tắt bàn phím):
+  // chờ rời ô rồi 3 giây sau thử lại.
+  function typing() {
+    var a = document.activeElement;
+    return !!a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
+  }
+  function trigger() {
+    if (typing()) {
+      document.addEventListener('focusout', function () { setTimeout(trigger, 3000); }, { once: true });
+      return;
+    }
+    open();
+  }
+
+  setTimeout(trigger, 8000);
 })();
 </script>

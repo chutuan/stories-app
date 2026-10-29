@@ -17,6 +17,40 @@ class AppDownloadTest extends TestCase
             ->assertRedirect('https://apps.apple.com/app/id6810302346');
     }
 
+    public function test_app_co_src_nhung_chua_co_provider_token_thi_bo_qua_src(): void
+    {
+        config(['app.ios_provider_token' => null]);
+
+        $this->get('/app?src=blog.example.com')->assertStatus(302)
+            ->assertRedirect('https://apps.apple.com/app/id6810302346');
+    }
+
+    public function test_app_co_src_va_provider_token_thi_thanh_link_chien_dich(): void
+    {
+        config(['app.ios_provider_token' => '123456']);
+
+        $this->get('/app?src=blog.example.com')->assertStatus(302)
+            ->assertRedirect('https://apps.apple.com/app/apple-store/id6810302346?pt=123456&ct=blog.example.com&mt=8');
+        // Ký tự lạ bị lọc, dài quá 40 ký tự bị cắt; src dạng mảng coi như không có.
+        $this->get('/app?src='.urlencode('<x>"&a=b'.str_repeat('z', 60)))
+            ->assertRedirect('https://apps.apple.com/app/apple-store/id6810302346?pt=123456&ct=xab'.str_repeat('z', 37).'&mt=8');
+        $this->get('/app?src[]=x')->assertRedirect('https://apps.apple.com/app/id6810302346');
+        $this->get('/app')->assertRedirect('https://apps.apple.com/app/id6810302346');
+    }
+
+    public function test_script_nhung_tra_javascript_cache_duoc_o_bien_va_khong_co_cookie(): void
+    {
+        $response = $this->get('/embed/app-prompt.js')->assertOk();
+
+        $this->assertStringStartsWith('application/javascript', (string) $response->headers->get('Content-Type'));
+        $this->assertStringContainsString('public', (string) $response->headers->get('Cache-Control'));
+        $this->assertStringContainsString('s-maxage=', (string) $response->headers->get('Cache-Control'));
+        $this->assertEmpty($response->headers->getCookies(), 'Cloudflare không cache response có Set-Cookie');
+        $body = file_get_contents(resource_path('embed/app-prompt.js'));
+        $this->assertStringContainsString('iPhone|iPad|iPod', $body);
+        $this->assertStringContainsString("'/app'", $body);
+    }
+
     public function test_trang_thuong_co_ma_qr_va_smart_banner(): void
     {
         $this->get('/about')->assertOk()

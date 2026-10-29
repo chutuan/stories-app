@@ -125,6 +125,13 @@ return [
     'ios_app_id' => env('IOS_APP_ID', '6810302346'),
 
     /*
+    | Provider token của tài khoản App Store Connect (số trong link chiến dịch do
+    | App Analytics > Campaigns sinh ra, tham số `pt`). Không bí mật. Có thì /app?src=
+    | thành link chiến dịch để đếm lượt tải theo trang nhúng; để trống thì bỏ qua src.
+    */
+    'ios_provider_token' => env('IOS_PROVIDER_TOKEN'),
+
+    /*
     | Ngày cập nhật văn bản pháp lý, hiện trên trang Privacy và Terms.
     */
     'legal_updated' => env('LEGAL_UPDATED', '25 October 2026'),
