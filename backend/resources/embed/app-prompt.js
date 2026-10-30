@@ -13,7 +13,8 @@
  *   - chỉ iPhone/iPad/iPod; máy khác thì script thoát ngay, không thêm gì vào trang;
  *   - vào từ máy tìm kiếm thì không hiện ở trang đó;
  *   - là bottom sheet hiện sau vài giây, không che kín màn hình ngay khi vào;
- *   - đóng thì 7 ngày sau mới hiện lại, bấm tải thì 30 ngày (nhớ theo từng trang nhúng).
+ *   - đóng hay bấm tải thì 1 ngày sau mới hiện lại (nhớ theo từng trang nhúng);
+ *     không bấm gì mà rời trang thì chưa tính, trang sau vẫn có thể hiện.
  *
  * Giao diện nằm trong Shadow DOM: CSS của trang nhúng không làm vỡ hộp mời, và CSS của
  * hộp mời không lọt ra làm hỏng trang nhúng. Không gọi mạng gì ngoài ảnh icon.
@@ -154,7 +155,7 @@
     var html = document.documentElement;
     var prevOverflow = html.style.overflow;
 
-    function onKey(e) { if (e.key === 'Escape') close(7); }
+    function onKey(e) { if (e.key === 'Escape') close(1); }
     function close(days) {
       snooze(days);
       root.classList.remove('open');
@@ -166,10 +167,10 @@
 
     root.addEventListener('click', function (e) {
       var t = e.target;
-      if (t.closest('[data-close]')) close(7);
+      if (t.closest('[data-close]')) close(1);
       // Không chặn link: App Store vẫn mở. Đóng luôn hộp để quay lại Safari không gặp lại nó
       // (thẻ chứa chỉ bị gỡ sau 260ms, sau khi trình duyệt đã đi theo link).
-      else if (t.closest('.get')) close(30);
+      else if (t.closest('.get')) close(1);
     });
 
     html.style.overflow = 'hidden';

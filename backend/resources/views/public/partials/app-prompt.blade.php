@@ -6,7 +6,8 @@
   và lời mời cài app là ví dụ chính họ nêu. Nên:
     - vào từ máy tìm kiếm thì KHÔNG hiện ở trang đó, đợi trang kế tiếp;
     - các trường hợp khác hiện sau 8 giây, khi người đọc đã thấy nội dung;
-    - đóng thì 7 ngày sau mới hiện lại, bấm tải thì 30 ngày;
+    - đóng hay bấm tải thì 1 ngày sau mới hiện lại; không bấm gì mà rời trang
+      thì chưa tính, trang sau vẫn có thể hiện;
     - không gắn trên Privacy/Terms/Contact (layout lo phần này): app mở ba trang đó bên trong app.
   Safari trên iPhone còn tự hiện Smart App Banner (thẻ meta apple-itunes-app trong layout),
   thứ đó không bị Google phạt; modal này là lời mời thứ hai, rõ hơn.
@@ -88,7 +89,7 @@
     setTimeout(function () { root.hidden = true; }, 260);
     if (lastFocus && lastFocus.focus) lastFocus.focus();
   }
-  function onKey(e) { if (e.key === 'Escape') close(7); }
+  function onKey(e) { if (e.key === 'Escape') close(1); }
 
   function open() {
     lastFocus = document.activeElement;
@@ -103,9 +104,9 @@
   }
 
   root.addEventListener('click', function (e) {
-    if (e.target.closest('[data-ap-close]')) { close(7); }
+    if (e.target.closest('[data-ap-close]')) { close(1); }
     // Link vẫn mở App Store; đóng luôn hộp để quay lại Safari không gặp lại nó.
-    else if (e.target.closest('.ap-get')) { close(30); }
+    else if (e.target.closest('.ap-get')) { close(1); }
   });
 
   // Đang gõ ô tìm kiếm thì không bật hộp lên giữa chừng (cướp focus, tắt bàn phím):
