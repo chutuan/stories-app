@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import type { Href } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -29,7 +29,7 @@ import {
   Shadow,
   Spacing,
 } from '@/constants/theme';
-import { BannerAd, showRewarded } from '@/lib/ads';
+import { BannerAd, InlineAd, showRewarded } from '@/lib/ads';
 import { API_URL, ApiError, getStory, type Chapter } from '@/lib/api';
 import { formatCoins, plural } from '@/lib/format';
 import {
@@ -47,6 +47,9 @@ import { COIN_PER_CHAPTER, useWallet } from '@/store/wallet';
  * "Chương x/y" ở thanh dưới và cho bìa trong lịch sử đọc. Không có cũng không sao.
  */
 const storyMetaCache = new Map<string, { chaptersCount: number; thumbnailUrl: string | null }>();
+
+/** Ô giữa chương phải ra khỏi màn hình thêm chừng này (pt) thì banner trên mới gắn lại. */
+const MID_AD_SLACK = 80;
 
 /**
  * Chương kèm `audio_url` (backend đã trả field này; `null` khi chưa có MP3).
@@ -152,6 +155,36 @@ function ReaderScreen() {
   const totalChapters = storyMeta?.chaptersCount ?? null;
 
   const scrollRef = useRef<ScrollView>(null);
+
+  /**
+   * Banner trên cùng được gỡ khi ô quảng cáo giữa chương lọt vào màn hình: hai quảng cáo
+   * trong cùng một khung nhìn là kiểu AdMob không khuyến khích. Gắn số chương như `message`
+   * để sang chương mới thì banner tự hiện lại. Gỡ hẳn (unmount), KHÔNG ẩn bằng opacity —
+   * banner bị ẩn vẫn tính lượt hiển thị, đó mới là vi phạm chính sách.
+   */
+  const [midAdOnScreen, setMidAdOnScreen] = useState<number | null>(null);
+  const topBannerHidden = midAdOnScreen === chapterNumber;
+  /** Chiều cao banner lúc còn hiện. Giữ đúng khoảng này khi gỡ và khi gắn lại (banner mới
+   *  tải chậm), để header không nhảy lên xuống dưới ngón tay — lỗi bấm nhầm đã từng gặp. */
+  const [bannerHeight, setBannerHeight] = useState(0);
+  const scrollY = useRef(0);
+  const viewportH = useRef(0);
+  /** Vị trí ô giữa chương trong nội dung cuộn; `chapter` để không dùng nhầm số đo chương trước. */
+  const midAdBox = useRef<{ chapter: number; y: number; h: number } | null>(null);
+
+  const syncTopBanner = useCallback(() => {
+    const box = midAdBox.current;
+    let onScreen = false;
+    if (box && box.chapter === chapterNumber && box.h > 0 && viewportH.current > 0) {
+      // Đã gỡ thì phải cuộn ô giữa ra xa thêm một đoạn mới gắn lại: không có độ trễ này,
+      // cuộn lắc quanh mép sẽ gỡ/gắn liên tục, mỗi lần gắn là một lượt xin quảng cáo mới.
+      const slack = topBannerHidden ? MID_AD_SLACK : 0;
+      onScreen =
+        box.y - slack < scrollY.current + viewportH.current &&
+        box.y + box.h + slack > scrollY.current;
+    }
+    setMidAdOnScreen(onScreen ? chapterNumber : null);
+  }, [chapterNumber, topBannerHidden]);
 
   useEffect(() => {
     let alive = true;
@@ -340,6 +373,22 @@ function ReaderScreen() {
     [chapter, canRead],
   );
 
+  // Ô quảng cáo giữa chương: sau đoạn đầu tiên mà số từ đã đọc vượt 40% chương.
+  // Chương dưới 600 từ thì không chèn giữa (chỉ còn ô cuối chương) — quảng cáo sau
+  // vài câu mở đầu là cắt ngang mạch đọc, và AdMob/AdSense đều phạt kiểu chèn đó.
+  // Không bao giờ đặt sau đoạn cuối: chỗ đó đã có ô cuối chương.
+  const midAdAfter = useMemo(() => {
+    const counts = paragraphs.map((p) => p.split(/\s+/).filter(Boolean).length);
+    const total = counts.reduce((a, b) => a + b, 0);
+    if (total < 600) return -1;
+    let acc = 0;
+    for (let i = 0; i < counts.length - 1; i++) {
+      acc += counts[i];
+      if (acc >= total * 0.4) return i;
+    }
+    return -1;
+  }, [paragraphs]);
+
   const storyTitle = chapter?.story.title ?? null;
   const missingCoins = Math.max(0, COIN_PER_CHAPTER - coins);
   const notEnough = missingCoins > 0;
@@ -382,7 +431,14 @@ function ReaderScreen() {
 
       {/* Banner AdMob — BẮT BUỘC nằm trên cùng màn hình */}
       <View style={[styles.adSlot, { paddingTop: insets.top }]}>
-        <BannerAd />
+        <View
+          style={{ minHeight: bannerHeight }}
+          onLayout={
+            topBannerHidden ? undefined : (e) => setBannerHeight(e.nativeEvent.layout.height)
+          }
+        >
+          {topBannerHidden ? null : <BannerAd />}
+        </View>
       </View>
 
       {/* Header: quay lại · tên truyện · ví xu · Aa · nghe */}
@@ -483,6 +539,16 @@ function ReaderScreen() {
           style={[styles.flex, { backgroundColor: rt.bg }]}
           contentContainerStyle={styles.readerContent}
           showsVerticalScrollIndicator={false}
+          scrollEventThrottle={32}
+          onLayout={(e) => {
+            viewportH.current = e.nativeEvent.layout.height;
+            syncTopBanner();
+          }}
+          onScroll={(e) => {
+            scrollY.current = e.nativeEvent.contentOffset.y;
+            viewportH.current = e.nativeEvent.layoutMeasurement.height;
+            syncTopBanner();
+          }}
         >
           {/* Đầu chương */}
           <View style={styles.chapterHead}>
@@ -517,9 +583,23 @@ function ReaderScreen() {
 
           {/* Nội dung */}
           {paragraphs.map((text, i) => (
-            <Text key={i} style={[styles.paragraph, bodyTextStyle]} selectable>
-              {text}
-            </Text>
+            <Fragment key={i}>
+              <Text style={[styles.paragraph, bodyTextStyle]} selectable>
+                {text}
+              </Text>
+              {/* key theo số chương: sang chương mới thì ô được dựng lại và xin quảng cáo mới */}
+              {i === midAdAfter ? (
+                <InlineAd
+                  key={`mid-${chapterNumber}`}
+                  labelColor={rt.faint}
+                  onFrame={({ y, height }) => {
+                    // Ô không có hàng thì báo cao 0 — banner trên được ở lại.
+                    midAdBox.current = { chapter: chapterNumber, y, h: height };
+                    syncTopBanner();
+                  }}
+                />
+              ) : null}
+            </Fragment>
           ))}
 
           {/* Kết chương */}
@@ -530,6 +610,8 @@ function ReaderScreen() {
             </Text>
             <View style={[styles.endLine, { backgroundColor: rt.border }]} />
           </View>
+
+          <InlineAd key={`end-${chapterNumber}`} labelColor={rt.faint} />
         </ScrollView>
       ) : (
         /* ---------------- MÀN KHÓA ---------------- */

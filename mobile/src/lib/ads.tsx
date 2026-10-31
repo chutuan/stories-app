@@ -1,4 +1,12 @@
-import { Platform, StyleSheet, Text, TurboModuleRegistry, View } from 'react-native';
+import { useState } from 'react';
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  TurboModuleRegistry,
+  View,
+  type LayoutChangeEvent,
+} from 'react-native';
 
 import { FontSize, FontWeight, Palette, Radius, Spacing } from '@/constants/theme';
 
@@ -36,6 +44,19 @@ const BANNER_UNIT_ID =
   process.env.EXPO_PUBLIC_ADMOB_BANNER_ID ||
   BANNER_TEST_ID;
 
+/**
+ * Banner 300×250 chen trong nội dung chương (InlineAd). Unit RIÊNG, không dùng chung
+ * với banner đầu màn đọc: hai vị trí có tỉ lệ hiển thị/nhấp rất khác nhau, gộp một
+ * unit thì báo cáo AdMob không còn tách được vị trí nào đang ra tiền.
+ */
+const INLINE_UNIT_ID =
+  Platform.select({
+    ios: process.env.EXPO_PUBLIC_ADMOB_INLINE_ID_IOS,
+    android: process.env.EXPO_PUBLIC_ADMOB_INLINE_ID_ANDROID,
+  }) ||
+  process.env.EXPO_PUBLIC_ADMOB_INLINE_ID ||
+  BANNER_TEST_ID;
+
 const REWARDED_UNIT_ID =
   Platform.select({
     ios: process.env.EXPO_PUBLIC_ADMOB_REWARDED_ID_IOS,
@@ -52,7 +73,12 @@ type AdsModule = {
     initialize: () => Promise<unknown>;
     setRequestConfiguration?: (config: Record<string, unknown>) => Promise<unknown>;
   };
-  BannerAd: React.ComponentType<{ unitId: string; size: string; requestOptions?: AdRequestOptions }>;
+  BannerAd: React.ComponentType<{
+    unitId: string;
+    size: string;
+    requestOptions?: AdRequestOptions;
+    onAdFailedToLoad?: (error: unknown) => void;
+  }>;
   BannerAdSize: Record<string, string>;
   RewardedAd: {
     createForAdRequest: (unitId: string, options?: AdRequestOptions) => RewardedAdInstance;
@@ -145,6 +171,77 @@ export function BannerAd() {
   return (
     <View style={styles.placeholder}>
       <Text style={styles.placeholderText}>Advertisement</Text>
+    </View>
+  );
+}
+
+/** Kích thước cố định của ô trong nội dung (MEDIUM_RECTANGLE). */
+const INLINE_W = 300;
+const INLINE_H = 250;
+
+/**
+ * Ô quảng cáo 300×250 chen trong nội dung chương: một ô khoảng 40% chương (chương
+ * đủ dài) và một ô sau dòng "End of Chapter" — xem màn đọc.
+ *
+ * GIỮ CHỖ ĐỦ 250pt ngay từ đầu, không để ô nở ra khi quảng cáo về: chữ bên dưới mà
+ * nhảy xuống đúng lúc người đọc chạm màn hình là bấm nhầm vào quảng cáo — AdMob tính
+ * là click không hợp lệ, và banner đầu màn đọc đã từng gây đúng chuyện đó.
+ *
+ * Không có hàng (no fill / lỗi) thì thu gọn hẳn thay vì để một khoảng trống giữa
+ * truyện. Quảng cáo được yêu cầu ngay khi mở chương nên lỗi về sau vài giây, lúc
+ * đó ô còn nằm dưới màn hình — thu gọn không xô dòng chữ người đọc đang nhìn.
+ *
+ * Nhãn "Advertisement" phía trên để quảng cáo không lẫn với nội dung truyện.
+ *
+ * `onFrame`: khung của ô (nhãn + quảng cáo, KHÔNG tính lề) trong nội dung cuộn, để màn
+ * đọc biết khi nào ô đang trên màn hình. Thu gọn vì không có hàng thì báo cao 0.
+ */
+export interface InlineFrame {
+  y: number;
+  height: number;
+}
+
+export function InlineAd({
+  labelColor,
+  onFrame,
+}: {
+  labelColor?: string;
+  onFrame?: (frame: InlineFrame) => void;
+}) {
+  const [failed, setFailed] = useState(false);
+  const onLayout = onFrame
+    ? (e: LayoutChangeEvent) => onFrame({ y: e.nativeEvent.layout.y, height: e.nativeEvent.layout.height })
+    : undefined;
+
+  if (!adsModule || !nativeAvailable) {
+    // Expo Go / build thiếu native: chỉ bản dev hiện ô giữ chỗ để còn thấy vị trí.
+    if (!__DEV__) return null;
+    return (
+      <View style={styles.inline} onLayout={onLayout}>
+        <View style={[styles.inlineBox, styles.placeholder, styles.inlinePlaceholder]}>
+          <Text style={styles.placeholderText}>Advertisement 300×250</Text>
+        </View>
+      </View>
+    );
+  }
+  if (failed) return null;
+
+  const RealBanner = adsModule.BannerAd;
+  const size = adsModule.BannerAdSize.MEDIUM_RECTANGLE ?? '300x250';
+  return (
+    <View style={styles.inline} onLayout={onLayout}>
+      <Text style={[styles.inlineLabel, labelColor ? { color: labelColor } : null]}>ADVERTISEMENT</Text>
+      <View style={styles.inlineBox}>
+        <RealBanner
+          unitId={INLINE_UNIT_ID}
+          size={size}
+          requestOptions={NON_PERSONALIZED}
+          onAdFailedToLoad={() => {
+            setFailed(true);
+            onFrame?.({ y: 0, height: 0 });
+          }}
+        />
+      </View>
     </View>
   );
 }
@@ -300,6 +397,29 @@ const styles = StyleSheet.create({
     marginVertical: Spacing.xs,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: Palette.border,
+  },
+  inline: {
+    alignItems: 'center',
+    // Cách chữ truyện một khoảng rõ ở cả hai phía: ô quảng cáo không được trông như
+    // một phần của đoạn văn, và ngón tay cuộn qua chữ không chạm nhầm vào nó.
+    marginVertical: Spacing.xl,
+  },
+  inlineLabel: {
+    color: Palette.faint,
+    fontSize: FontSize.caption,
+    fontWeight: FontWeight.semibold,
+    letterSpacing: 1.2,
+    marginBottom: Spacing.xs,
+  },
+  inlineBox: {
+    width: INLINE_W,
+    height: INLINE_H,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inlinePlaceholder: {
+    marginHorizontal: 0,
+    marginVertical: 0,
   },
   placeholderText: {
     color: Palette.faint,

@@ -75,12 +75,15 @@
         // đều khác nhau, unit ID của bên này KHÔNG chạy cho bên kia.
         "EXPO_PUBLIC_ADMOB_IOS_APP_ID": "ca-app-pub-9892355907152840~9913447750",
         "EXPO_PUBLIC_ADMOB_BANNER_ID_IOS": "ca-app-pub-9892355907152840/3899537894",
-        "EXPO_PUBLIC_ADMOB_REWARDED_ID_IOS": "ca-app-pub-9892355907152840/3713659468"
+        "EXPO_PUBLIC_ADMOB_REWARDED_ID_IOS": "ca-app-pub-9892355907152840/3713659468",
+        // Banner 300×250 chen trong nội dung chương (InlineAd), tạo 31/10/2026.
+        "EXPO_PUBLIC_ADMOB_INLINE_ID_IOS": "ca-app-pub-9892355907152840/8991062919"
 
         // CÒN THIẾU — chỉ cần khi phát hành Android (iOS đã đủ):
         //   "EXPO_PUBLIC_ADMOB_ANDROID_APP_ID":      "ca-app-pub-XXXX~XXXX"
         //   "EXPO_PUBLIC_ADMOB_BANNER_ID_ANDROID":   "ca-app-pub-XXXX/XXXX"
         //   "EXPO_PUBLIC_ADMOB_REWARDED_ID_ANDROID": "ca-app-pub-XXXX/XXXX"
+        //   "EXPO_PUBLIC_ADMOB_INLINE_ID_ANDROID":   "ca-app-pub-XXXX/XXXX"
       }
     }
   },

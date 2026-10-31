@@ -23,6 +23,19 @@ export function BannerAd() {
   );
 }
 
+export interface InlineFrame {
+  y: number;
+  height: number;
+}
+
+/** Ô quảng cáo trong nội dung chương — bản web không có quảng cáo, không chiếm chỗ. */
+export function InlineAd(_props: {
+  labelColor?: string;
+  onFrame?: (frame: InlineFrame) => void;
+}) {
+  return null;
+}
+
 export interface RewardedResult {
   rewarded: boolean;
 }
