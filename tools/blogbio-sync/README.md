@@ -31,6 +31,23 @@ python3 tools/blogbio-sync/dedupe_report.py imports/storypulse6/export.json impo
   (`series-nav`). Đã đối chiếu 24/10/2026: admin có 1.709 bài = **1.296 đã đăng** (đúng bằng số
   URL trong sitemap) + bản nháp. Bản nháp và "story bible" của series chỉ có trong admin.
 
+## Khi phía công khai bị chặn (từ 31/10/2026)
+
+Cả Blogbio (`*.cfx.bz`, `*.cafex.biz`) bật Cloudflare challenge với mọi client không phải trình
+duyệt → `sync_public.py` nhận 403. Không lách (không giả User-Agent, không tự giải ô kiểm). Làm qua
+**Chrome thật của Tuấn** (extension Claude in Chrome), nơi Tuấn đã đăng nhập admin:
+
+1. Trong tab của site, chạy JS lấy danh sách `GET /admin/api/v1/posts?per_page=100&page=N` (tối đa
+   100/trang), lọc `status == published`, rồi lấy chi tiết từng bài `GET /admin/api/v1/posts/{id}`
+   (nội dung ở `description`, có `prev_chapter`/`next_chapter`, `series`).
+2. Gói thành `{site, exported_at, posts: [...]}` và tải xuống (Blob + `<a download>`) vào ~/Downloads
+   — hỏi Tuấn trước khi tải.
+3. `from_admin_export.py <file> --dest imports/<site>` tạo đúng bộ file như `sync_public.py`, rồi chạy
+   tiếp `download_images.py` / `dedupe_report.py` như thường (ảnh ở blog.igallery.blog không bị chặn).
+
+Nguồn thứ hai: **mundodehistorias.cafex.biz** → `imports/mundodehistorias/`. Lần 31/10/2026: 8.616 bài
+nhưng chỉ 681 đã đăng (~151 truyện); 7.935 bản nháp chưa kéo (Tuấn chọn chỉ lấy bài đã đăng).
+
 ## Nạp vào Stories (đã làm 25/10/2026: 249 truyện, 1.245 chương)
 
 ```bash

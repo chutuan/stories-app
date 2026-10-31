@@ -42,7 +42,8 @@ def main():
             ch, cw = h, round(h * W / H)
             oy, ox = 0, round((w - cw) / 2)
         tmp = out + '.tmp.png'
-        subprocess.run(['sips', '-c', str(ch), str(cw), '--cropOffset', str(oy), str(ox),
+        # -s format png: sips giữ nguyên định dạng gốc khi ghi, mà nó đọc được WebP nhưng không ghi được.
+        subprocess.run(['sips', '-c', str(ch), str(cw), '--cropOffset', str(oy), str(ox), '-s', 'format', 'png',
                         f'{src}/{v["cover_file"]}', '--out', tmp], capture_output=True, check=True)
         subprocess.run(['sips', '-z', str(H), str(W), '-s', 'format', 'jpeg', '-s', 'formatOptions', '82',
                         tmp, '--out', out], capture_output=True, check=True)

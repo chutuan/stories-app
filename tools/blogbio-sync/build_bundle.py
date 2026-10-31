@@ -29,6 +29,7 @@ SMALL = {'a', 'an', 'the', 'and', 'but', 'or', 'nor', 'for', 'so', 'yet', 'of', 
 
 
 def clean_title(t):
+    t = re.sub(r'^(?:chapter|part)\s*1\b\s*[:.\-–—]?\s*', '', t.strip(), flags=re.I)   # "Chapter 1 - ..."
     t = re.sub(r'\s*[-–—]?\s*\b(?:([a-zA-Z])\1{2,})\b\s*$', '', t.strip())
     t = re.sub(r'\s*\.\.+\s*$', '…', t)
     return t.strip()
@@ -74,7 +75,41 @@ def to_text(content_html):
         t = clean_para(t)
         if t:
             paras.append(t)
-    return paras
+    return drop_site_junk(paras)
+
+
+def is_caps(p):
+    return len(p) >= 25 and re.search(r'[A-Z]', p) and not re.search(r'[a-z]', p)
+
+
+def drop_site_junk(paras):
+    """Bỏ rác của theme lọt vào thân bài (mundodehistorias, 31/10/2026):
+    - dòng "Advertisement" / "Promoted Content" đứng riêng;
+    - khối "May you like" + tên các bài liên quan (VIẾT HOA) ngay sau nó;
+    - câu trích nổi bật: đoạn VIẾT HOA lặp lại nguyên một câu đã có trong chương.
+    Đoạn VIẾT HOA không lặp (tít báo, tin nhắn, biển hiệu trong truyện) thì giữ."""
+    out, skip_caps = [], 0
+    for p in paras:
+        if re.fullmatch(r'(?i)advertisement|promoted content', p):
+            continue
+        if re.fullmatch(r'(?i)may you like\W*', p):
+            skip_caps = 3
+            continue
+        if skip_caps and is_caps(p):
+            skip_caps -= 1
+            continue
+        skip_caps = 0
+        out.append(p)
+    norm = lambda s: re.sub(r'\s+', ' ', re.sub(r'[^a-z0-9\s]', '', s.lower())).strip()
+    result = []
+    for i, p in enumerate(out):
+        if is_caps(p):
+            key = norm(p)
+            rest = norm(' '.join(q for j, q in enumerate(out) if j != i and not is_caps(q)))
+            if key and key in rest:
+                continue
+        result.append(p)
+    return result
 
 
 def clean_para(t):
@@ -85,18 +120,51 @@ def clean_para(t):
         return '* * *'
     t = re.sub(r'^#{1,6}\s*', '', t)                       # "# PART 3 — ..." -> "PART 3 — ..."
     t = re.sub(r'\*\*(.+?)\*\*', r'\1', t)                 # **đậm** -> đậm
+    t = re.sub(r'^\*\*|\*\*$', '', t)                      # ** mở ở đoạn này, đóng ở đoạn khác
     t = re.sub(r'\s*`{3,}\w*\s*$', '', t)                  # ``` dính cuối đoạn
     return t.strip()
 
 
+NUM = (r'\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen'
+       r'|sixteen|seventeen|eighteen|nineteen|twenty|[ivx]{1,5}')
+# "PART 3: …", "Chapter 2 — …", "Part One: …", "Part 2:" — có khi kèm một câu dài làm tiêu đề.
+HEADING = re.compile(r'^(?:part|chapter)\s+(' + NUM + r')\s*(?:[:.\-–—]\s*(.*))?$', re.I | re.S)
+HEADING_MAX = 220
+
+
+def split_headings(paras):
+    """Một bài có thể chứa nhiều chương: truyện dồn cả vào một bài với các dòng "Chapter 2: …",
+    hay "PART 6: …" lọt vào cuối bài PART 5. Cắt tại mỗi dòng tiêu đề như vậy (kể cả khi nó
+    dính đầu một đoạn qua <br>). Phần trước tiêu đề đầu tiên mà quá ngắn (thường chỉ là tên
+    truyện viết hoa lặp lại) thì bỏ."""
+    flat = []
+    for p in paras:
+        first, _, rest = p.partition('\n')
+        if rest and HEADING.match(first.strip()):
+            flat += [first.strip(), rest.strip()]
+        else:
+            flat.append(p)
+    parts, cur = [], []
+    for p in flat:
+        if len(p) <= HEADING_MAX and HEADING.match(p) and (cur or parts):
+            parts.append(cur)
+            cur = [p]
+        else:
+            cur.append(p)
+    parts.append(cur)
+    if len(parts) > 1 and len('\n'.join(parts[0])) < 300 and not HEADING.match(parts[0][0]):
+        parts = parts[1:]
+    return [x for x in parts if x]
+
+
 def chapter_from(paras, n):
     head = paras[0] if paras else ''
-    m = re.match(r'^(?:part|chapter)\s*(\d+)\s*[:.\-–—]\s*(.+)$', head, re.I)
-    if m:
+    m = HEADING.match(head) if len(head) <= HEADING_MAX else None
+    if m and (m.group(2) or '').strip():
         name = m.group(2).strip()
         title = title_case(name) if name.isupper() else name
         return title[:250], paras[1:]
-    if re.match(r'^(?:part|chapter)\s*\d+\s*$', head, re.I):
+    if m:
         return f'Part {n}', paras[1:]
     return f'Part {n}', paras
 
@@ -130,12 +198,22 @@ def main():
             k += 1
         used.add(slug)
         chapters = []
-        for n, ps in enumerate(s['chapters'], 1):
-            ch_title, paras = chapter_from(to_text(posts[ps]['content_html']), n)
-            content = '\n\n'.join(paras)
-            if len(content) < 500:
-                problems.append(f'{slug} chương {n}: chỉ {len(content)} ký tự')
-            chapters.append({'number': n, 'title': ch_title, 'content': content})
+        for ps in s['chapters']:
+            parts = split_headings(to_text(posts[ps]['content_html']))
+            for i, part in enumerate(parts):
+                n = len(chapters) + 1
+                ch_title, paras = chapter_from(part, n)
+                if n == 1 and len(parts) > 1 and paras is part:   # đoạn mở đầu trước "Chapter 1:"
+                    ch_title = 'Prologue'
+                paras = list(paras)
+                while paras and paras[-1] == '* * *':             # ngắt cảnh thừa ở mép chương
+                    paras.pop()
+                while paras and paras[0] == '* * *':
+                    paras.pop(0)
+                content = '\n\n'.join(paras)
+                if len(content) < 500:
+                    problems.append(f'{slug} chương {n}: chỉ {len(content)} ký tự')
+                chapters.append({'number': n, 'title': ch_title, 'content': content})
         story = {'title': title[:255], 'slug': slug, 'author': 'Tuan', 'status': 'completed'}
         if sid in meta:
             story['categories'] = meta[sid]['categories']
