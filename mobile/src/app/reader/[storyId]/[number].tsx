@@ -5,6 +5,7 @@ import type { Href } from 'expo-router';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  PixelRatio,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -1010,6 +1011,12 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.serif,
     fontWeight: FontWeight.regular,
     marginBottom: Spacing.lg,
+    // Nửa pixel đệm dưới — KHÔNG bỏ. lineHeight là số nguyên nên chiều cao chữ luôn
+    // khớp lưới pixel, và Yoga làm tròn khung bằng float: ở y lớn (giữa chương dài)
+    // khung hụt ~0.0002pt. Lúc vẽ, TextKit thấy dòng cuối "không lọt" khung nên dồn
+    // nó lên dòng trên rồi cắt mất ở mép phải -> dòng cuối trống mà vẫn giữ chỗ.
+    // Chiều cao lẻ nửa pixel buộc Yoga làm tròn LÊN, khung luôn dư ít nhất nửa pixel.
+    paddingBottom: 0.5 / PixelRatio.get(),
   },
   endMark: {
     flexDirection: 'row',
