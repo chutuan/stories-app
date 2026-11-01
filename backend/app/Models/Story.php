@@ -81,7 +81,7 @@ class Story extends Model
         $disk = Storage::disk('public');
         $parts = [];
 
-        foreach ([320, 640] as $width) {
+        foreach ([320, 480, 640] as $width) {
             $path = DeriveCovers::derivedPath($source, $width);
 
             if ($disk->exists($path)) {
@@ -113,6 +113,22 @@ class Story extends Model
         return $disk->exists($path)
             ? $disk->url($path).'?v='.$disk->lastModified($path)
             : $this->thumbnail_url;
+    }
+
+    /**
+     * Ảnh cho nền mờ (blur 40px) ở đầu trang chủ và trang truyện: bản WebP 32w, chưa
+     * tới 1 KB. Đừng đổi sang bản to hơn — ảnh to là Chrome lại lấy tấm nền làm LCP
+     * (xem DeriveCovers::WIDTHS). Chưa sinh thì dùng bản 320w.
+     */
+    public function coverBlurUrl(): ?string
+    {
+        $source = (string) $this->thumbnail;
+        $disk = Storage::disk('public');
+        $path = DeriveCovers::derivedPath($source, 32);
+
+        return $source !== '' && $disk->exists($path)
+            ? $disk->url($path).'?v='.$disk->lastModified($path)
+            : $this->coverSmallUrl();
     }
 
     protected function thumbnailUrl(): Attribute

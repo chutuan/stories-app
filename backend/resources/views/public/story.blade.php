@@ -34,7 +34,7 @@
 
 @section('hero')
   <section class="story-hero">
-    @if ($bg = $story->coverSmallUrl())
+    @if ($bg = $story->coverBlurUrl())
       <span class="spot-bg" style="background-image:url('{{ $bg }}')" aria-hidden="true"></span>
     @endif
     <div class="wrap wide">

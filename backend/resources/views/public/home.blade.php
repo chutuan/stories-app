@@ -13,9 +13,10 @@
 @foreach ($jsonLd as $block)
 <script type="application/ld+json">{!! $block !!}</script>
 @endforeach
-@if ($featured && ($bg = $featured->coverSmallUrl()))
+@if ($featured && ($bg = $featured->coverBlurUrl()))
 {{-- Ảnh nền mờ của dải nổi bật nằm trong CSS nên trình duyệt chỉ thấy nó khi đã dựng
-     xong cây CSS; preload để nó về cùng lúc với ảnh bìa. --}}
+     xong cây CSS; preload để nó về cùng lúc với ảnh bìa. Bản 32w chưa tới 1 KB nên
+     không giành băng thông của ảnh bìa (ảnh bìa mới là thứ cần về sớm). --}}
 <link rel="preload" as="image" href="{{ $bg }}">
 @endif
 @endpush
@@ -27,7 +28,7 @@
   <div class="home-top{{ $featured ? '' : ' solo' }}">
     @if ($featured)
       <section class="spotlight" aria-labelledby="spot-title">
-        @if ($bg = $featured->coverSmallUrl())
+        @if ($bg = $featured->coverBlurUrl())
           <span class="spot-bg" style="background-image:url('{{ $bg }}')" aria-hidden="true"></span>
         @endif
         <div class="spot-inner">

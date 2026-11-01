@@ -26,10 +26,21 @@ class DeriveCovers extends Command
 {
     protected $signature = 'covers:derive {--force : làm lại cả những bản đã có}';
 
-    protected $description = 'Sinh ảnh bìa WebP 2:3 cho web (320w và 640w)';
+    protected $description = 'Sinh ảnh bìa WebP 2:3 cho web (32w nền mờ, 320w, 480w, 640w)';
 
-    /** Bề rộng cần: 320 cho lưới ở 1x, 640 cho màn Retina và ảnh lớn trang truyện. */
-    private const WIDTHS = [320, 640];
+    /**
+     * Bề rộng => chất lượng WebP.
+     *
+     * 320 cho lưới ở 1x, 480 cho điện thoại DPR 1.75–2.6 (ô lưới ~185 CSS px: thiếu bản
+     * này thì trình duyệt nhảy thẳng lên 640), 640 cho iPhone DPR 3 và ảnh lớn trang truyện.
+     * Chất lượng 75 thay vì 82: nhẹ hơn ~25%, trên ảnh bìa không phân biệt được bằng mắt.
+     *
+     * 32 là ảnh nền sau lớp blur(40px) ở đầu trang chủ/trang truyện: làm mờ 40px thì
+     * bản 32px nhìn y hệt bản 320px, mà chỉ nặng chưa tới 1 KB. Nhỏ tới mức đó Chrome
+     * coi là ảnh "ít nội dung" (< 0,05 bit/điểm ảnh) và KHÔNG lấy nó làm LCP nữa — trước
+     * đây chính tấm nền mờ này là LCP của trang chủ (PageSpeed 01/11/2026: 5,7 giây).
+     */
+    private const WIDTHS = [32 => 50, 320 => 75, 480 => 75, 640 => 75];
 
     public function handle(): int
     {
@@ -61,7 +72,7 @@ class DeriveCovers extends Command
                 continue;
             }
 
-            foreach (self::WIDTHS as $width) {
+            foreach (self::WIDTHS as $width => $quality) {
                 $target = self::derivedPath($src, $width);
 
                 if (! $this->option('force') && $disk->exists($target)
@@ -87,7 +98,7 @@ class DeriveCovers extends Command
                 );
 
                 ob_start();
-                imagewebp($canvas, null, 82);
+                imagewebp($canvas, null, $quality);
                 $binary = (string) ob_get_clean();
                 imagedestroy($canvas);
 

@@ -113,22 +113,51 @@
 @unless ($legalPage)
 <meta name="apple-itunes-app" content="app-id={{ config('app.ios_app_id') }}">
 @endunless
-@if (filled(config('app.admob_publisher_id')) && ! $legalPage)
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-{{ config('app.admob_publisher_id') }}"
-     crossorigin="anonymous"></script>
+@php
+    $adsOn = filled(config('app.admob_publisher_id')) && ! $legalPage;
+    $gaOn = filled(config('app.ga_measurement_id')) && ! $legalPage;
+@endphp
+@if ($adsOn)
+{{-- Script AdSense không còn nằm sẵn trong HTML (nạp sau sự kiện load, xem dưới),
+     nên khai tài khoản bằng thẻ meta để AdSense vẫn xác minh được site. --}}
+<meta name="google-adsense-account" content="ca-{{ config('app.admob_publisher_id') }}">
 @endif
 
 {{-- Google Analytics 4 — chỉ cho WEBSITE. App không có SDK phân tích nào, và thư
      gửi Apple khai đúng như vậy; đừng đem thẻ này sang app. Cùng quy tắc với
      AdSense: thiếu ID thì không in gì, để máy dev không bơm dữ liệu giả vào báo
      cáo và mỗi lần chạy test không bị tính thành một phiên truy cập. --}}
-@if (filled(config('app.ga_measurement_id')) && ! $legalPage)
-<script async src="https://www.googletagmanager.com/gtag/js?id={{ config('app.ga_measurement_id') }}"></script>
+@if ($gaOn)
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
   gtag('config', '{{ config('app.ga_measurement_id') }}');
+</script>
+@endif
+{{-- adsbygoogle.js + gtag.js (~600 KB, phần lớn chưa dùng tới lúc mở trang) chỉ nạp
+     SAU sự kiện load. Để <script async> trong head thì chúng giành băng thông với ảnh
+     bìa ngay lúc đầu, và trên 4G chậm đó là phần lớn của LCP 5,7 giây (PageSpeed
+     01/11/2026). Không mất gì: ô quảng cáo đã xếp hàng bằng adsbygoogle.push() và GA4
+     xếp hàng trong dataLayer, script về lúc nào thì xử lý hàng đợi lúc đó. --}}
+@if ($adsOn || $gaOn)
+<script>
+addEventListener('load', function () {
+  [
+    @if ($adsOn)
+    ['https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-{{ config('app.admob_publisher_id') }}', 'anonymous'],
+    @endif
+    @if ($gaOn)
+    ['https://www.googletagmanager.com/gtag/js?id={{ config('app.ga_measurement_id') }}', null],
+    @endif
+  ].forEach(function (s) {
+    var el = document.createElement('script');
+    el.async = true;
+    el.src = s[0];
+    if (s[1]) el.crossOrigin = s[1];
+    document.head.appendChild(el);
+  });
+}, { once: true });
 </script>
 @endif
 {{-- Giao diện sáng / tối / sepia. Đặt data-theme TRƯỚC khi trang vẽ, không thì người
@@ -175,10 +204,12 @@ window.StoriesHistory = {
   :root{
     --bg:#FBF7F3;--surface:#fff;--surface-2:#F4ECE5;
     --text:#1A1614;--text-2:#3B332F;--muted:#776B63;
-    --accent:#FF9052;--accent-deep:#F2703A;--btn:#EC6228;
+    --accent:#FF9052;--accent-deep:#F2703A;--btn:#C94F1C;
     /* Chữ màu cam trên nền kem: #F2703A chỉ đạt tương phản ~2,9:1, đọc không rõ link.
-       --accent-ink đậm hơn cho mọi CHỮ màu cam; nền nút vẫn giữ cam tươi của thương hiệu. */
-    --accent-ink:#C24E1A;--accent-soft:#FFEFE4;
+       --accent-ink đậm hơn cho mọi CHỮ màu cam (#B4461A: 5,1:1 trên --bg). --btn là nền
+       của chữ TRẮNG (nút, nhãn "Ongoing") nên cũng phải đạt 4,5:1: #EC6228 cũ chỉ 3,3:1,
+       #C94F1C đạt 4,55:1 (PageSpeed 01/11/2026 báo cả hai). */
+    --accent-ink:#B4461A;--accent-soft:#FFEFE4;
     --border:rgba(26,22,20,.09);--border-strong:rgba(26,22,20,.17);
     --shadow:0 1px 2px rgba(26,22,20,.05),0 6px 18px rgba(26,22,20,.06);
     --shadow-lift:0 16px 34px rgba(26,22,20,.17);
@@ -294,7 +325,7 @@ window.StoriesHistory = {
   /* ---------- Chân trang ---------- */
   .site-foot{background:var(--surface);border-top:1px solid var(--border);padding:44px 0 28px;font-size:14px;color:var(--muted)}
   .foot-grid{display:grid;grid-template-columns:minmax(0,1.7fr) repeat(3,minmax(0,1fr));gap:28px}
-  .foot-grid h4{margin:2px 0 12px;font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--text)}
+  .foot-grid h2{margin:2px 0 12px;font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--text)}
   .foot-grid a{display:block;color:var(--muted);text-decoration:none;padding:3px 0;overflow-wrap:anywhere}
   .foot-grid a:hover{color:var(--accent-ink)}
   .foot-grid a.logo{display:flex;margin-bottom:10px;color:var(--text)}
@@ -852,7 +883,7 @@ window.StoriesHistory = {
       @endunless
     </div>
     <div>
-      <h4>Read</h4>
+      <h2>Read</h2>
       <a href="{{ route('public.home') }}">Home</a>
       <a href="{{ route('public.browse') }}">Browse</a>
       @foreach (($navCategories ?? collect())->sortByDesc('stories_count')->take(4) as $c)
@@ -860,14 +891,14 @@ window.StoriesHistory = {
       @endforeach
     </div>
     <div>
-      <h4>Stories</h4>
+      <h2>Stories</h2>
       <a href="{{ route('public.about') }}">About</a>
       <a href="{{ route('public.editorial') }}">Editorial standards</a>
       <a href="{{ route('public.contact') }}">Contact</a>
       <a href="mailto:{{ config('app.support_email') }}">{{ config('app.support_email') }}</a>
     </div>
     <div>
-      <h4>Legal</h4>
+      <h2>Legal</h2>
       <a href="{{ route('public.privacy') }}">Privacy Policy</a>
       <a href="{{ route('public.terms') }}">Terms of Service</a>
     </div>
