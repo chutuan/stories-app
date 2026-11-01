@@ -27,6 +27,7 @@ class HomeController extends Controller
                 ->with('categories')
                 ->withCount('chapters')
                 ->withMax('chapters', 'number')
+                ->visibleOnWeb()
                 ->where('is_featured', true)
                 ->latest('updated_at')
                 ->first();
@@ -59,13 +60,18 @@ class HomeController extends Controller
         ]);
     }
 
-    /** Truyện nhiều lượt xem nhất 7 ngày qua — cùng định nghĩa với web (Story::scopeTopThisWeek). */
+    /**
+     * Truyện nhiều lượt xem nhất 7 ngày qua — cùng định nghĩa với web (Story::scopeTopThisWeek).
+     * Truyện ẩn trên web (nội dung nhà quảng cáo chặn) vẫn đọc được trong app nhưng không được
+     * đặt lên dải nổi bật: đó là thứ đầu tiên người mới cài — và người duyệt App Store — nhìn thấy.
+     */
     private function weeklyTop(): Collection
     {
         return Story::query()
             ->with('categories')
             ->withCount('chapters')
             ->withMax('chapters', 'number')
+            ->visibleOnWeb()
             ->topThisWeek()
             ->limit(self::FEATURED_POOL)
             ->get();

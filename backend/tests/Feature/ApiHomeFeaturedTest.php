@@ -71,6 +71,35 @@ class ApiHomeFeaturedTest extends TestCase
         $this->assertMatchesRegularExpression('/id="spot-title"><a href="[^"]*\/story\/tuan">T tuan</', $html);
     }
 
+    public function test_truyen_an_tren_web_khong_len_noi_bat_nhung_van_o_ke(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-11-01 10:00:00'));
+
+        $hidden = $this->story('an');
+        $hidden->forceFill(['hidden_on_web' => true])->save();
+        $this->hits($hidden, '2026-10-31', 999);
+
+        $week = $this->story('tuan');
+        $this->hits($week, '2026-10-31', 5);
+
+        $this->getJson('/api/home')
+            ->assertOk()
+            ->assertJsonPath('featured.id', $week->id)
+            ->assertJsonPath('featured_pool.*.id', [$week->id])
+            ->assertJsonFragment(['slug' => 'an']); // vẫn nằm trong kệ Newest/Recently updated
+    }
+
+    public function test_truyen_danh_dau_noi_bat_ma_an_tren_web_thi_khong_dung(): void
+    {
+        $marked = $this->story('danh-dau', featured: true);
+        $marked->forceFill(['hidden_on_web' => true])->save();
+
+        $this->getJson('/api/home')
+            ->assertOk()
+            ->assertJsonPath('featured', null)
+            ->assertJsonPath('featured_pool', []);
+    }
+
     public function test_tuan_chua_co_luot_xem_thi_dung_truyen_admin_danh_dau(): void
     {
         $marked = $this->story('danh-dau', featured: true);
