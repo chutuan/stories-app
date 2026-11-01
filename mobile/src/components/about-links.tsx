@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { FontSize, FontWeight, Palette, Radius, Spacing } from '@/constants/theme';
+import { useNotifications } from '@/store/notifications';
 
 /**
  * Link Chính sách quyền riêng tư, Điều khoản và Liên hệ — hiện NGAY TRONG app.
@@ -38,9 +39,59 @@ async function open(url: string) {
   }
 }
 
+/**
+ * Công tắc thông báo "truyện mới hôm nay". Nằm cùng khối với các link trên vì đây là
+ * chỗ người ta tìm phần cài đặt — và là lối tắt thông báo mà Guideline 4.5.4 đòi phải
+ * có ngay trong app. Privacy Policy chỉ đường tới đây ("Library → Notifications").
+ */
+function NotificationSetting() {
+  const { supported, ready, enabled, permission, enable, disable } = useNotifications();
+  if (!supported || !ready) return null;
+
+  const on = enabled && permission === 'granted';
+  const toggle = (next: boolean) => {
+    (next ? enable() : disable()).catch(() => {});
+  };
+  const hint = !enabled
+    ? 'Off'
+    : permission === 'denied'
+      ? 'Turned off in iOS Settings — tap to open'
+      : 'At most one a day, in the evening';
+
+  return (
+    <>
+      <Text style={styles.heading}>Notifications</Text>
+      <View style={[styles.card, styles.cardGap]}>
+        <Pressable
+          onPress={() => toggle(!on)}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: on }}
+          accessibilityLabel="New story notifications"
+          accessibilityHint={hint}
+          style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+        >
+          <Ionicons name="notifications-outline" size={18} color={Palette.muted} />
+          <View style={styles.labelWrap}>
+            <Text style={styles.switchLabel}>New story each evening</Text>
+            <Text style={styles.hint}>{hint}</Text>
+          </View>
+          <Switch
+            value={on}
+            onValueChange={toggle}
+            trackColor={{ true: Palette.accent, false: Palette.borderStrong }}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          />
+        </Pressable>
+      </View>
+    </>
+  );
+}
+
 export function AboutLinks() {
   return (
     <View style={styles.wrap}>
+      <NotificationSetting />
       <Text style={styles.heading}>About Stories</Text>
       <View style={styles.card}>
         {LINKS.map((link, i) => (
@@ -97,11 +148,28 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Palette.border,
   },
+  cardGap: {
+    marginBottom: Spacing.lg,
+  },
   label: {
     flex: 1,
     color: Palette.text,
     fontSize: FontSize.body,
     fontWeight: FontWeight.medium,
+  },
+  labelWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  // Không flex: 1 như `label` — nằm trong cột cao tự động thì flex-basis 0 làm chữ sụp mất.
+  switchLabel: {
+    color: Palette.text,
+    fontSize: FontSize.body,
+    fontWeight: FontWeight.medium,
+  },
+  hint: {
+    color: Palette.faint,
+    fontSize: FontSize.caption,
   },
   pressed: {
     opacity: 0.6,

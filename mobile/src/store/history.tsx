@@ -24,11 +24,23 @@ export interface HistoryEntry {
   chapterTitle: string | null;
   /** tổng số chương lúc đọc; null nếu chưa biết */
   chaptersCount: number | null;
+  /** chương xa nhất từng mở — quay lại đọc chương cũ không làm tụt số này */
+  maxChapter: number;
   /** thời điểm đọc gần nhất, ms */
   readAt: number;
 }
 
-export type HistoryInput = Omit<HistoryEntry, 'readAt'>;
+export type HistoryInput = Omit<HistoryEntry, 'readAt' | 'maxChapter'>;
+
+/**
+ * Đã đọc hết truyện = đã mở tới chương cuối. `lastChapter`: số chương cuối HIỆN TẠI nếu
+ * nơi gọi biết (truyện đang ra thì tăng dần — có chương mới là truyện "chưa hết" trở lại);
+ * không có thì dùng tổng số chương lưu lúc đọc.
+ */
+export function isFinished(entry: HistoryEntry, lastChapter?: number | null): boolean {
+  const last = lastChapter ?? entry.chaptersCount;
+  return last != null && last > 0 && entry.maxChapter >= last;
+}
 
 interface HistoryContextValue {
   /** mới nhất trước */
@@ -64,6 +76,8 @@ function parse(raw: string | null): HistoryEntry[] {
         chapter: e.chapter,
         chapterTitle: typeof e.chapterTitle === 'string' ? e.chapterTitle : null,
         chaptersCount: typeof e.chaptersCount === 'number' ? e.chaptersCount : null,
+        // Dòng lưu từ bản cũ chưa có trường này: chương đang đọc là thứ duy nhất biết được.
+        maxChapter: typeof e.maxChapter === 'number' ? Math.max(e.maxChapter, e.chapter) : e.chapter,
         readAt: e.readAt,
       }))
       .sort((a, b) => b.readAt - a.readAt)
@@ -90,6 +104,7 @@ function applyOp(list: HistoryEntry[], op: HistoryOp): HistoryEntry[] {
     thumbnailUrl: input.thumbnailUrl ?? prev?.thumbnailUrl ?? null,
     chaptersCount: input.chaptersCount ?? prev?.chaptersCount ?? null,
     chapterTitle: input.chapterTitle ?? (prev?.chapter === input.chapter ? prev.chapterTitle : null),
+    maxChapter: Math.max(prev?.maxChapter ?? 0, input.chapter),
     readAt: Date.now(),
   };
   return [entry, ...list.filter((e) => e.storyId !== input.storyId)].slice(0, HISTORY_LIMIT);
@@ -163,4 +178,23 @@ export function useHistory(): HistoryContextValue {
   const ctx = useContext(HistoryContext);
   if (!ctx) throw new Error('useHistory must be used within a HistoryProvider');
   return ctx;
+}
+
+/**
+ * Lọc khỏi danh sách những truyện người dùng đã đọc hết — trang chủ không mời đọc lại
+ * thứ người ta vừa đọc xong. Truyện đang ra có thêm chương thì tự hiện lại.
+ */
+export function useHideFinished() {
+  const { entries } = useHistory();
+  const byStory = useMemo(() => new Map(entries.map((e) => [e.storyId, e])), [entries]);
+  return useCallback(
+    <T extends { id: number; chapters_count: number; latest_chapter_number: number | null }>(
+      stories: T[],
+    ): T[] =>
+      stories.filter((s) => {
+        const entry = byStory.get(s.id);
+        return !entry || !isFinished(entry, s.latest_chapter_number ?? s.chapters_count);
+      }),
+    [byStory],
+  );
 }

@@ -46,6 +46,7 @@ import {
   type StorySort,
 } from '@/lib/api';
 import { formatViews, plural, storyStatusLabel } from '@/lib/format';
+import { useHideFinished } from '@/store/history';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
@@ -296,10 +297,12 @@ function DiscoverTab({ focusToken, onSeeNewest }: { focusToken: number; onSeeNew
     router.push('/search');
   }, [router]);
 
-  const updated = home?.updated ?? [];
-  const newest = home?.newest ?? [];
-  const isEmpty =
-    !loading && !error && !home?.featured && updated.length === 0 && newest.length === 0;
+  // Truyện người dùng đã đọc hết không mời lại ở trang chủ (kể cả dải nổi bật).
+  const hideFinished = useHideFinished();
+  const featured = home?.featured && hideFinished([home.featured]).length > 0 ? home.featured : null;
+  const updated = useMemo(() => hideFinished(home?.updated ?? []), [hideFinished, home]);
+  const newest = useMemo(() => hideFinished(home?.newest ?? []), [hideFinished, home]);
+  const isEmpty = !loading && !error && !featured && updated.length === 0 && newest.length === 0;
 
   return (
     <ScrollView
@@ -341,7 +344,7 @@ function DiscoverTab({ focusToken, onSeeNewest }: { focusToken: number; onSeeNew
         </View>
       ) : (
         <>
-          {home?.featured ? <Hero story={home.featured} height={heroHeight} /> : null}
+          {featured ? <Hero story={featured} height={heroHeight} /> : null}
 
           <Row
             title="Recently updated"
@@ -704,7 +707,23 @@ function useStoryFeed({ sort, free }: FeedParams) {
     setReloadCount((n) => n + 1);
   }, []);
 
-  return { items, total, loading, loadingMore, refreshing, error, hasMore, loadMore, refresh, retry };
+  // Truyện đã đọc hết thì không hiện ở trang chủ. Trang ít thẻ đi thì FlatList tự gọi
+  // onEndReached tải trang sau, nên không cần bù tay.
+  const hideFinished = useHideFinished();
+  const visible = useMemo(() => hideFinished(items), [hideFinished, items]);
+
+  return {
+    items: visible,
+    total,
+    loading,
+    loadingMore,
+    refreshing,
+    error,
+    hasMore,
+    loadMore,
+    refresh,
+    retry,
+  };
 }
 
 /** Chân danh sách: vòng xoay khi tải thêm, hoặc dòng "đã hết". */

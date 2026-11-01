@@ -30,7 +30,7 @@ import {
 } from '@/constants/theme';
 import { getStory, type Story } from '@/lib/api';
 import { plural, timeAgo } from '@/lib/format';
-import { type HistoryEntry, useHistory } from '@/store/history';
+import { type HistoryEntry, isFinished, useHistory } from '@/store/history';
 import { useWallet } from '@/store/wallet';
 
 /** Số thẻ giả hiển thị khi đang tải. */
@@ -100,8 +100,13 @@ export default function SavedScreen() {
     setTab(next);
   }, []);
 
+  // Đọc dở thì mở thẳng chương đang đọc; đã đọc hết thì về trang truyện (mở lại chương
+  // cuối chẳng để làm gì).
   const openEntry = useCallback(
-    (entry: HistoryEntry) => router.push(`/reader/${entry.storyId}/${entry.chapter}`),
+    (entry: HistoryEntry) =>
+      router.push(
+        isFinished(entry) ? `/story/${entry.storyId}` : `/reader/${entry.storyId}/${entry.chapter}`,
+      ),
     [router],
   );
 
@@ -263,8 +268,10 @@ function HistoryRow({
   onPress: () => void;
   onLongPress: () => void;
 }) {
-  const progress =
-    entry.chaptersCount != null
+  const finished = isFinished(entry);
+  const progress = finished
+    ? 'Finished'
+    : entry.chaptersCount != null
       ? `Chapter ${entry.chapter} of ${entry.chaptersCount}`
       : `Chapter ${entry.chapter}`;
   return (
@@ -273,7 +280,7 @@ function HistoryRow({
       onLongPress={onLongPress}
       accessibilityRole="button"
       accessibilityLabel={`${entry.title}, ${progress}, read ${timeAgo(entry.readAt, now)}`}
-      accessibilityHint="Continues reading. Long press to remove from history."
+      accessibilityHint={`${finished ? 'Opens the story' : 'Continues reading'}. Long press to remove from history.`}
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
       <StoryCover
         thumbnailUrl={entry.thumbnailUrl}
@@ -289,9 +296,16 @@ function HistoryRow({
           {entry.title}
         </Text>
         <Text style={styles.rowMeta} numberOfLines={1}>
-          {progress} · {timeAgo(entry.readAt, now)}
+          {finished ? (
+            <Text style={styles.rowFinished}>
+              <Ionicons name="checkmark-circle" size={12} color={Palette.freeDeep} /> {progress}
+            </Text>
+          ) : (
+            progress
+          )}{' '}
+          · {timeAgo(entry.readAt, now)}
         </Text>
-        {entry.chapterTitle ? (
+        {entry.chapterTitle && !finished ? (
           <Text style={styles.rowChapter} numberOfLines={1}>
             {entry.chapterTitle}
           </Text>
@@ -392,6 +406,10 @@ const styles = StyleSheet.create({
     color: Palette.muted,
     fontSize: FontSize.caption,
     marginTop: Spacing.xxs,
+  },
+  rowFinished: {
+    color: Palette.freeDeep,
+    fontWeight: FontWeight.semibold,
   },
   rowChapter: {
     color: Palette.muted,

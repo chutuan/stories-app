@@ -136,6 +136,12 @@ module.exports = {
           enableBackgroundPlayback: false,
         },
       ],
+      // Thông báo "truyện mới hôm nay" (src/store/notifications.tsx). Plugin thêm
+      // entitlement aps-environment; KHÔNG bật enableBackgroundRemoteNotifications —
+      // thông báo chỉ hiện banner, không cần đánh thức app chạy nền (Guideline 2.5.4).
+      // ios/ bị gitignore và không prebuild lại: entitlement đã thêm tay vào
+      // ios/Stories/Stories.entitlements — prebuild lần sau plugin này sinh lại đúng thế.
+      'expo-notifications',
     ],
     extra: {
       // URL gốc của REST API. iOS chặn HTTP thường (App Transport Security)
