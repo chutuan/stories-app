@@ -56,6 +56,21 @@ class StructuredData
     }
 
     /**
+     * Người biên tập — Person có thật, đứng tên trên mọi truyện. url trỏ về /editor để
+     * Google nối byline của từng trang với một trang hồ sơ (xem ReadController::editor).
+     *
+     * @return array<string, string>
+     */
+    private static function editor(): array
+    {
+        return [
+            '@type' => 'Person',
+            'name' => (string) config('app.editor_name'),
+            'url' => route('public.editor'),
+        ];
+    }
+
+    /**
      * Nhà xuất bản.
      *
      * `publishingPrinciples` trỏ tới trang chuẩn biên tập. Đây là trường schema.org
@@ -76,6 +91,7 @@ class StructuredData
             'logo' => $logo,
             'email' => $email,
             'publishingPrinciples' => $publishingPrinciples,
+            'founder' => self::editor(),
         ]));
     }
 
@@ -91,15 +107,14 @@ class StructuredData
             '@type' => 'Book',
             'name' => $story->title,
             'url' => $url,
-            // Tác giả khai là ORGANIZATION, không phải Person.
+            // Tác giả là NGƯỜI BIÊN TẬP có thật (Person), không phải bút danh.
             //
-            // Tên hiển thị (Vivian Pryce, Nora Calloway, Marin Halloway...) là BÚT
-            // DANH của nhà xuất bản cho truyện soạn với hỗ trợ AI — không có con
-            // người nào mang tên đó. Khẳng định @type: Person cho máy đọc là nói
-            // với Google rằng họ có thật, và Publisher Policies cấm "khai gian về
-            // danh tính". Bút danh tự nó hoàn toàn hợp lệ; cái sai là khai nhầm
-            // LOẠI thực thể rồi không đính chính ở đâu cả.
-            'author' => ['@type' => 'Organization', 'name' => 'Stories'],
+            // Trước 01/11/2026 khai Organization "Stories", vì byline khi đó là bút
+            // danh (Vivian Pryce, Marin Halloway...) — khai Person cho một cái tên
+            // không có thật là khai gian danh tính. Nay byline là tên thật của người
+            // đặt brief và duyệt đăng ("Edited by …"), trang /editor nói rõ truyện
+            // soạn với công cụ AI. Không dùng lại cột `author`: cột đó vẫn còn bút danh.
+            'author' => self::editor(),
             'publisher' => ['@type' => 'Organization', 'name' => 'Stories'],
             'description' => $story->description ?: null,
             'image' => $image,
@@ -136,7 +151,7 @@ class StructuredData
             'datePublished' => $chapter->created_at?->toAtomString(),
             'dateModified' => $chapter->updated_at?->toAtomString(),
             // Cùng lý do với Book::author — xem chú thích ở trên.
-            'author' => ['@type' => 'Organization', 'name' => 'Stories'],
+            'author' => self::editor(),
             'publisher' => ['@type' => 'Organization', 'name' => 'Stories'],
             'isPartOf' => ['@type' => 'Book', 'name' => $story->title, 'url' => $storyUrl],
         ]);
@@ -194,6 +209,29 @@ class StructuredData
             'inLanguage' => 'en',
             'isPartOf' => ['@type' => 'WebSite', 'name' => 'Stories', 'url' => $home],
             'about' => ['@type' => 'Organization', 'name' => 'Stories', 'url' => $home],
+        ]);
+    }
+
+    /**
+     * Trang hồ sơ người biên tập. ProfilePage + mainEntity Person là dạng Google
+     * khuyến nghị cho trang giới thiệu một người.
+     */
+    public static function editorPage(string $url, string $home, string $name, ?string $email): string
+    {
+        return self::encode([
+            '@type' => 'ProfilePage',
+            'name' => $name.' — editor',
+            'url' => $url,
+            'inLanguage' => 'en',
+            'isPartOf' => ['@type' => 'WebSite', 'name' => 'Stories', 'url' => $home],
+            'mainEntity' => array_filter([
+                '@type' => 'Person',
+                'name' => $name,
+                'url' => $url,
+                'jobTitle' => 'Editor',
+                'email' => $email,
+                'worksFor' => ['@type' => 'Organization', 'name' => 'Stories', 'url' => $home],
+            ]),
         ]);
     }
 

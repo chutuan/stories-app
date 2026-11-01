@@ -122,7 +122,8 @@ class StoryQueue
     {
         $base = $slug ?: Str::slug($title);
         $candidate = $base;
-        for ($n = 2; Story::query()->where('slug', $candidate)->exists(); $n++) {
+        // slugTaken: cả slug cũ đang chuyển hướng về truyện khác cũng tính là đã có chủ.
+        for ($n = 2; Story::slugTaken($candidate); $n++) {
             $candidate = mb_substr($base, 0, 245).'-'.$n;
         }
 

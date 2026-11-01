@@ -147,9 +147,8 @@ class StoryController extends Controller
         $slug = $base;
         $i = 2;
 
-        while (Story::where('slug', $slug)
-            ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
-            ->exists()) {
+        // Đổi tiêu đề là đổi slug; slug cũ tự vào story_slug_redirects (Story::booted).
+        while (Story::slugTaken($slug, $ignoreId)) {
             $slug = $base.'-'.$i++;
         }
 

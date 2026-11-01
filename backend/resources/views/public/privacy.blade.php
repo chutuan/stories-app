@@ -1,6 +1,6 @@
 @extends('public.layout')
 @section('title', 'Privacy Policy')
-@section('description', 'How the Stories app handles your data.')
+@section('description', 'How the Stories website and mobile app handle your data — what the ads and analytics collect, and what stays on your device.')
 @section('content')
   <h1>Privacy Policy</h1>
   <p class="updated">Last updated: {{ config('app.legal_updated') }}</p>

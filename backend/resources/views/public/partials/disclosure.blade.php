@@ -10,10 +10,14 @@
 
   Khai thẳng vừa gỡ rủi ro đó, vừa trả lời sẵn câu hỏi mà người soát AdSense và
   người soát App Store đều sẽ đặt ra.
+
+  Từ 01/11/2026 web không in bút danh nữa: byline là tên thật của người biên tập
+  (config app.editor_name, trang /editor). Câu khai ở đây nói đúng điều đó.
 --}}
 <p class="disclosure{{ ($inline ?? false) ? ' inline' : '' }}">
-  Stories on this site are written for us with the help of AI writing tools and
-  reviewed before publication. Author names are house pen names, not real people.
+  Stories on this site are drafted with the help of AI writing tools, then checked and
+  approved for publication by our editor,
+  <a href="{{ route('public.editor') }}">{{ config('app.editor_name') }}</a>.
   Cover art is AI-generated and narration is synthesised speech.
   <a href="{{ route('public.editorial') }}">More about how these are made</a>.
 </p>

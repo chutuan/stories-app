@@ -9,6 +9,7 @@ use App\Models\Category;
 use App\Models\Chapter;
 use App\Models\Story;
 use App\Services\SocialCardGenerator;
+use App\Support\GenreIntros;
 use App\Support\StructuredData;
 use App\Support\ViewCounter;
 use Illuminate\Contracts\View\View;
@@ -64,6 +65,7 @@ class ReadController extends Controller
         $ranking = $this->cards()
             ->whereNotIn('id', $shown)
             ->orderByDesc('views')
+            ->orderByDesc('id')
             ->limit($featured ? 5 : 10)
             ->get();
         $shown = $shown->merge($ranking->pluck('id'));
@@ -71,6 +73,7 @@ class ReadController extends Controller
         $updated = $this->cards()
             ->whereNotIn('id', $shown)
             ->orderByDesc('updated_at')
+            ->orderByDesc('id')
             ->limit(12)
             ->get();
         $shown = $shown->merge($updated->pluck('id'));
@@ -84,6 +87,7 @@ class ReadController extends Controller
                 ->whereHas('categories', fn ($q) => $q->whereKey($category->getKey()))
                 ->whereNotIn('id', $shown)
                 ->orderByDesc('views')
+                ->orderByDesc('id')
                 ->limit(12)
                 ->get();
             if ($stories->count() >= 4) {
@@ -222,18 +226,63 @@ class ReadController extends Controller
         ]);
     }
 
-    /** Toàn bộ kho truyện, phân trang. */
+    /**
+     * Trang người biên tập — người thật đứng tên trên mọi truyện.
+     *
+     * Truyện soạn với công cụ AI. Byline cũ ghi bút danh / "Tuan" trong khi trang About
+     * nói đó là bút danh, và JSON-LD khai tác giả là tổ chức "Stories": ba nơi nói ba kiểu.
+     * Giờ cả ba trỏ về một người có tên thật và một trang nói rõ người đó làm gì — và KHÔNG
+     * làm gì (không tự tay viết từng câu). Chỉ ghi điều đúng; đừng thêm tiểu sử bịa.
+     */
+    public function editor(): View
+    {
+        $latest = $this->cards()
+            ->where('noindex', false)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->limit(6)
+            ->get();
+
+        return view('public.editor', [
+            'latest' => $latest,
+            'storyCount' => Story::query()->visibleOnWeb()->count(),
+            'jsonLd' => [
+                StructuredData::editorPage(
+                    route('public.editor'),
+                    route('public.home'),
+                    config('app.editor_name'),
+                    config('app.support_email'),
+                ),
+                StructuredData::breadcrumbs([
+                    ['name' => 'Home', 'url' => route('public.home')],
+                    ['name' => 'About', 'url' => route('public.about')],
+                    ['name' => config('app.editor_name')],
+                ]),
+            ],
+        ]);
+    }
+
+    /**
+     * Toàn bộ kho truyện, phân trang.
+     *
+     * Sắp theo `updated_at` RỒI `id`. Chỉ một khoá thì các truyện trùng giờ cập nhật (nạp
+     * cả lô một lúc, có lô hàng chục truyện cùng giây) không có thứ tự cố định: MySQL trả
+     * mỗi trang một kiểu, nên cùng một truyện hiện ở trang 2 lẫn trang 3 còn truyện khác
+     * không ở trang nào — kiểm 01/11 mất 42 truyện khỏi /browse. Mọi lưới phân trang hay
+     * cắt `limit` trong file này đều phải có `id` làm khoá phụ.
+     */
     public function browse(): View
     {
-        $stories = $this->cards()->orderByDesc('updated_at')->paginate(self::PER_PAGE);
+        $stories = $this->cards()->orderByDesc('updated_at')->orderByDesc('id')->paginate(self::PER_PAGE);
         $this->abortOnEmptyPage($stories);
 
         return view('public.browse', [
             'stories' => $stories,
             'categories' => $this->webCategories(),
             'category' => null,
+            'intro' => null,
             'jsonLd' => [StructuredData::collection(
-                $stories, null, route('public.browse'), route('public.home'),
+                $stories, null, $this->pageUrl(route('public.browse'), $stories), route('public.home'),
                 fn (Story $s) => route('public.story', $s),
             )],
         ]);
@@ -249,6 +298,7 @@ class ReadController extends Controller
         $stories = $this->cards()
             ->whereHas('categories', fn ($q) => $q->whereKey($category->getKey()))
             ->orderByDesc('updated_at')
+            ->orderByDesc('id')
             ->paginate(self::PER_PAGE);
 
         $this->abortOnEmptyPage($stories);
@@ -259,11 +309,20 @@ class ReadController extends Controller
             'category' => $category,
             // Thể loại mỏng vẫn mở được (thẻ truyện có link tới nó) nhưng không cho lập chỉ mục.
             'thin' => $stories->total() < Category::WEB_MIN_STORIES,
+            // Đoạn giới thiệu chỉ in ở trang 1: lặp nguyên văn trên trang 2, 3… là tạo nội
+            // dung trùng giữa các trang của chính mình.
+            'intro' => $stories->onFirstPage() ? GenreIntros::for($category->slug) : null,
             'jsonLd' => [StructuredData::collection(
-                $stories, $category, route('public.category', $category), route('public.home'),
+                $stories, $category, $this->pageUrl(route('public.category', $category), $stories), route('public.home'),
                 fn (Story $s) => route('public.story', $s),
             )],
         ]);
+    }
+
+    /** URL của đúng trang đang xem — khớp với canonical trong layout (trang 1 không mang ?page). */
+    private function pageUrl(string $base, LengthAwarePaginator $page): string
+    {
+        return $page->currentPage() > 1 ? $base.'?page='.$page->currentPage() : $base;
     }
 
     /**
@@ -300,23 +359,39 @@ class ReadController extends Controller
             ->whereKeyNot($story->getKey())
             ->when($categoryIds, fn ($q) => $q->whereHas('categories', fn ($c) => $c->whereKey($categoryIds)))
             ->orderByDesc('views')
+            ->orderByDesc('id')
             ->limit(6)
             ->get();
 
         // Thời gian đọc cả truyện, 230 từ/phút (tốc độ đọc văn xuôi tiếng Anh trên màn hình).
         $words = $story->chapters->sum(fn (Chapter $c) => str_word_count((string) $c->content));
 
+        // Đường dẫn breadcrumb trong JSON-LD phải KHỚP với dòng đường dẫn người đọc
+        // thấy (Home › Stories › thể loại › truyện). Bản cũ khai "All stories" và bỏ
+        // thể loại: Google hiện trên kết quả tìm kiếm một đường dẫn mà trang không có.
+        $genre = $story->categories->first();
+        $crumbs = [
+            ['name' => 'Home', 'url' => route('public.home')],
+            ['name' => 'Stories', 'url' => route('public.browse')],
+        ];
+        if ($genre) {
+            $crumbs[] = ['name' => $genre->name, 'url' => route('public.category', $genre)];
+        }
+        $crumbs[] = ['name' => $story->title];
+
         return view('public.story', [
             'story' => $story,
             'related' => $related,
             'readMinutes' => max(1, (int) round($words / 230)),
+            // Cắt theo KÝ TỰ ở ranh giới từ (clip), không theo số từ: 26 từ dài có thể
+            // vượt xa 155 ký tự và Google cắt ngang câu.
+            'metaDescription' => $this->clip(
+                $story->description ?: $story->title.' — a free short serial you can read in one sitting.',
+                155,
+            ),
             'jsonLd' => [
                 StructuredData::book($story, route('public.story', $story), route('public.og', $story)),
-                StructuredData::breadcrumbs([
-                    ['name' => 'Home', 'url' => route('public.home')],
-                    ['name' => 'All stories', 'url' => route('public.browse')],
-                    ['name' => $story->title],
-                ]),
+                StructuredData::breadcrumbs($crumbs),
             ],
         ]);
     }
@@ -360,8 +435,23 @@ class ReadController extends Controller
             ->first(['number', 'title']);
 
         $paragraphs = $this->paragraphs((string) $chapter->content);
-        $clean = trim(preg_replace('/^\s*Chapter\s+\d+\s*[:\-–—]\s*/iu', '', (string) $chapter->title) ?? '');
+        $clean = $chapter->cleanTitle();
         $heading = 'Chapter '.$chapter->number.($clean !== '' ? ': '.$clean : '');
+
+        // Hết truyện: gợi ý luôn vài truyện cùng thể loại thay vì chỉ một nút sang /browse.
+        // Đây là lúc người đọc quyết định đi tiếp hay rời site — và là liên kết nội bộ
+        // giúp Google tìm tới truyện khác từ trang chương (trang mang phần lớn lượt vào).
+        $related = collect();
+        if (! $next) {
+            $categoryIds = $story->categories()->pluck('categories.id')->all();
+            $related = $this->cards()
+                ->whereKeyNot($story->getKey())
+                ->when($categoryIds, fn ($q) => $q->whereHas('categories', fn ($c) => $c->whereKey($categoryIds)))
+                ->orderByDesc('views')
+                ->orderByDesc('id')
+                ->limit(4)
+                ->get();
+        }
 
         return view('public.chapter', [
             'story' => $story,
@@ -375,6 +465,7 @@ class ReadController extends Controller
                 ->get(['number', 'title']),
             'paragraphs' => $paragraphs,
             'heading' => $heading,
+            'related' => $related,
             'metaDescription' => $this->chapterDescription($story, $chapter, $clean, $paragraphs),
             'reaction' => ReactionController::summary($chapter, request()),
             'jsonLd' => [
@@ -416,6 +507,7 @@ class ReadController extends Controller
                         ->orWhereHas('categories', fn ($c) => $c->where('name', 'like', $like));
                 })
                 ->orderByDesc('updated_at')
+                ->orderByDesc('id')
                 ->paginate(self::PER_PAGE)
                 ->withQueryString();
 
@@ -436,6 +528,7 @@ class ReadController extends Controller
             ['loc' => route('public.browse'), 'priority' => '0.8', 'freq' => 'daily'],
             ['loc' => route('public.about'), 'priority' => '0.5', 'freq' => 'monthly'],
             ['loc' => route('public.editorial'), 'priority' => '0.5', 'freq' => 'monthly'],
+            ['loc' => route('public.editor'), 'priority' => '0.5', 'freq' => 'monthly'],
             ['loc' => route('public.contact'), 'priority' => '0.4', 'freq' => 'monthly'],
             ['loc' => route('public.privacy'), 'priority' => '0.3', 'freq' => 'yearly'],
             ['loc' => route('public.terms'), 'priority' => '0.3', 'freq' => 'yearly'],
@@ -552,6 +645,9 @@ class ReadController extends Controller
             break;
         }
 
+        // Bỏ dấu câu cuối tên chương trước khi nối ", chapter N": tên kiểu "She Said No."
+        // từng cho ra "She Said No., chapter 3 of …".
+        $cleanTitle = rtrim($cleanTitle, ' .!?…:;,');
         $prefix = $cleanTitle !== ''
             ? sprintf('%s, chapter %d of %s. ', $cleanTitle, $chapter->number, $story->title)
             : sprintf('Chapter %d of %s. ', $chapter->number, $story->title);

@@ -36,9 +36,10 @@
     <li><strong>Copyright and takedown.</strong> If you believe something published here
       infringes your rights, tell us which page, what the material is, and what right you hold.
       We answer every claim that identifies a specific page.</li>
-    <li><strong>Stories republished elsewhere.</strong> Everything here was written for this site
-      and belongs to us. If you find one of our stories on another site or as a video, we want
-      the link — see the <a href="{{ route('public.terms') }}">Terms of Service</a>.</li>
+    <li><strong>Stories republished elsewhere.</strong> Everything here is our own work. A few
+      stories also appear on other blogs run by our editor; if you find one on any other site
+      or as a video, we want the link — see the
+      <a href="{{ route('public.terms') }}">Terms of Service</a>.</li>
     <li><strong>What to write next.</strong> Requests for a genre, a setting or a kind of ending
       are welcome. They do shape what we commission.</li>
     <li><strong>Privacy.</strong> The site has no accounts, so there is no profile to export or
@@ -58,7 +59,9 @@
        "based in ..." biến mất hoàn toàn. Đừng viết cứng một địa chỉ ở đây — khai
        sai nơi đặt trụ sở là lỗi khai gian thông tin website, nặng hơn không khai. --}}
   <p>This site is published by <strong>{{ config('app.publisher_name') }}</strong>@if (filled(config('app.publisher_location'))), based in
-    {{ config('app.publisher_location') }}@endif. The same library is also a mobile app.
+    {{ config('app.publisher_location') }}@endif and edited by
+    <a href="{{ route('public.editor') }}">{{ config('app.editor_name') }}</a>, who reads this
+    address. The same library is also a mobile app.
     How the stories are commissioned, checked and corrected is written up in our
     <a href="{{ route('public.editorial') }}">editorial standards</a>; who we are and how the
     site pays for itself is on the <a href="{{ route('public.about') }}">About page</a>.</p>

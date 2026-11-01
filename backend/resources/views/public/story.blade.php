@@ -1,10 +1,8 @@
 @extends('public.layout')
 
 @section('title', $story->title)
-{{-- Str::limit cắt đúng số ký tự nên chẻ đôi từ giữa chừng; Str::words cắt ở
-     ranh giới từ. 29 trang từng có mô tả gãy kiểu "…it was my f…". --}}
-@section('description', Str::words($story->description
-    ?: $story->title.' — a free short serial you can read in one sitting.', 26, '…'))
+{{-- Controller cắt sẵn ≤155 ký tự ở ranh giới từ (ReadController::clip). --}}
+@section('description', $metaDescription)
 {{-- Ảnh chia sẻ dựng riêng khổ ngang 1200×630, KHÔNG dùng ảnh bìa dọc: ô xem
      trước của Facebook/Zalo là 1,91:1 nên ảnh dọc bị cắt lấy dải giữa, mất mặt
      nhân vật. Xem App\Services\SocialCardGenerator. --}}
@@ -20,12 +18,12 @@
 @endif
 
 @push('meta')
-<meta property="book:author" content="{{ $story->author ?: 'Stories' }}">
+<meta property="book:author" content="{{ config('app.editor_name') }}">
 <meta property="book:release_date" content="{{ $story->created_at?->toDateString() }}">
 @foreach ($story->categories as $category)
 <meta property="book:tag" content="{{ $category->name }}">
 @endforeach
-<meta name="author" content="{{ $story->author ?: 'Stories' }}">
+<meta name="author" content="{{ config('app.editor_name') }}">
 @endpush
 
 @push('head')
@@ -63,8 +61,11 @@
 
         <div class="sh-head">
           <h1>{{ $story->title }}</h1>
+          {{-- Tên thật của người chịu trách nhiệm, không phải cột `author` (bút danh / "Tuan"
+               từ lúc nạp): truyện soạn với công cụ AI, người ký tên là người duyệt đăng.
+               Xem trang /editor và StructuredData::editor(). --}}
           <p class="sh-by">
-            by {{ $story->author ?: 'Stories' }}
+            Edited by <a href="{{ route('public.editor') }}">{{ config('app.editor_name') }}</a>
             · <span class="status{{ $story->status === 'ongoing' ? ' live' : '' }}">{{ $story->status_label }}</span>
           </p>
         </div>
@@ -124,9 +125,8 @@
               <li>
                 <a href="{{ route('public.chapter', [$story, $chapter->number]) }}" data-ch="{{ $chapter->number }}">
                   <span class="n">{{ $chapter->number }}</span>
-                  {{-- Nhiều tên chương trong kho đã mang sẵn tiền tố "Chapter N:", nên
-                       in thẳng sẽ ra "3  Chapter 3: ..." — cắt đi cho khỏi lặp. --}}
-                  <span class="t">{{ Str::of($chapter->title)->replaceMatches('/^\s*Chapter\s+\d+\s*[:\-–—]\s*/i', '') }}</span>
+                  {{-- Bỏ tiền tố "Chapter N:" và tên kiểu "Part N" trùng số — xem Chapter::cleanTitle(). --}}
+                  <span class="t">{{ $chapter->cleanTitle() ?: 'Chapter '.$chapter->number }}</span>
                 </a>
               </li>
             @endforeach

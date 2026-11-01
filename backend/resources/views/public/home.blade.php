@@ -1,12 +1,15 @@
 @extends('public.layout')
 
-@section('title', 'Read hidden-billionaire fiction free')
+{{-- Tiêu đề cũ "Read hidden-billionaire fiction free" chỉ đúng với một thể loại nhỏ (24/307 truyện). --}}
+@section('title', 'Free short serial fiction to read online')
 {{-- Mô tả cũ nêu đích danh ba truyện — the janitor who owns the tower, the broke
      husband with a hidden empire, the beggar at the board meeting — CẢ BA đã bị gỡ
      khỏi kho ngày 10/09/2026. Google hiển thị đúng chuỗi này dưới kết quả tìm kiếm,
      nên người bấm vào sẽ không tìm thấy thứ được hứa. Mô tả mới nói về thể loại
      thật của kho hiện tại, không đính vào truyện cụ thể nào để khỏi lạc hậu lần nữa. --}}
-@section('description', 'Free short serials about betrayal, custody battles and hidden wealth — every chapter readable on the web, no account and no payment. Two stories are free in full, with narrated audio.')
+{{-- ≤155 ký tự để Google không cắt. Bản trước 183 ký tự và còn câu "Two stories are free
+     in full" — trên web MỌI truyện đều miễn phí trọn vẹn, câu đó chỉ đúng với app. --}}
+@section('description', 'Short serials you can finish in one sitting: family drama, revenge, mystery and second chances. Every chapter free to read on the web, no account needed.')
 @section('wide', '1')
 
 @push('head')

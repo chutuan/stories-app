@@ -35,6 +35,9 @@ Route::get('/contact', [ReadController::class, 'contact'])->name('public.contact
 // Đây là trang mà dòng khai minh bạch ở chân mọi trang trỏ tới, nên đừng đổi
 // đường dẫn mà không sửa partials/disclosure.blade.php.
 Route::get('/editorial', [ReadController::class, 'editorial'])->name('public.editorial');
+// Trang người biên tập: byline "Edited by …" trên mọi truyện trỏ về đây. Đường dẫn cố
+// định, không mang tên người, để đổi EDITOR_NAME không làm gãy link đã được index.
+Route::get('/editor', [ReadController::class, 'editor'])->name('public.editor');
 Route::view('/privacy', 'public.privacy')->name('public.privacy');
 Route::view('/terms', 'public.terms')->name('public.terms');
 Route::get('/search', [ReadController::class, 'search'])->name('public.search');

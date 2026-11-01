@@ -9,6 +9,7 @@ use App\Jobs\GenerateStoryCover as GenerateStoryCoverJob;
 use App\Models\Category;
 use App\Models\Chapter;
 use App\Models\Story;
+use App\Models\StorySlugRedirect;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -134,7 +135,13 @@ class StoryIngestor
     {
         $slug = $data['slug'] ?? Str::slug((string) $data['title']);
 
-        $story = Story::firstOrNew(['slug' => $slug]);
+        // Slug cũ của một truyện đã đổi slug (stories:reslug, admin sửa tiêu đề) vẫn là
+        // khoá của truyện đó: đăng lại bằng slug cũ là CẬP NHẬT nó, không tạo bản trùng,
+        // và slug hiện tại của truyện giữ nguyên.
+        $story = Story::query()->where('slug', $slug)->first()
+            ?? StorySlugRedirect::query()->where('old_slug', $slug)->first()?->story
+            ?? new Story(['slug' => $slug]);
+        $slug = $story->slug;
         $created = ! $story->exists;
 
         $story->fill([

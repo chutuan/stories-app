@@ -52,7 +52,7 @@ class WebContinuePromptTest extends TestCase
         $this->story();
 
         $this->get('/story/truyen/chapter/1')->assertOk()
-            ->assertSee('chTitle: "Chapter 1: The Start"', false)
+            ->assertSee('chTitle: "The Start"', false) // đã bỏ tiền tố "Chapter 1:" (Chapter::cleanTitle)
             ->assertSee('max: Math.max(1, prevRead', false);
     }
 

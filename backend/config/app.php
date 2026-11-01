@@ -94,6 +94,16 @@ return [
     'publisher_location' => env('PUBLISHER_LOCATION'),
 
     /*
+     | Người biên tập — TÊN THẬT của người duyệt đăng, in ở byline mọi truyện/chương
+     | ("Edited by …"), trên trang /editor và trong JSON-LD (author: Person).
+     |
+     | Thay cho bút danh và chữ "Tuan" trong cột `author`: truyện soạn với công cụ AI,
+     | nên người ký tên phải là người có thật, chịu trách nhiệm về nội dung. Đổi tên ở
+     | đây là đổi trên toàn site; đường dẫn /editor không đổi theo.
+     */
+    'editor_name' => env('EDITOR_NAME', 'Tuan Chu'),
+
+    /*
     | Publisher ID của AdMob (dạng pub-XXXXXXXXXXXXXXXX), dùng để phục vụ
     | /app-ads.txt. Để trống -> route trả 404.
     */

@@ -22,6 +22,21 @@ class Chapter extends Model
         'number' => 'integer',
     ];
 
+    /**
+     * Tên chương để HIỂN THỊ, đã bỏ phần trùng với số chương; chuỗi rỗng nếu tên chỉ là số.
+     *
+     * Nhiều tên trong kho mang sẵn tiền tố "Chapter 3: ..." nên in thẳng ra "Chapter 3:
+     * Chapter 3: ...". Lại có 148 chương (truyện nhập từ blog) tên đúng "Part 2" — số
+     * phần đó trùng số chương, nên tiêu đề từng ra "Chapter 2: Part 2" và mô tả meta
+     * "Part 2, chapter 2 of …". Trả rỗng để nơi gọi tự dùng "Chapter N".
+     */
+    public function cleanTitle(): string
+    {
+        $title = trim(preg_replace('/^\s*Chapter\s+\d+\s*[:\-–—.]\s*/iu', '', (string) $this->title) ?? '');
+
+        return preg_match('/^(?:Chapter|Part)\s+\d+\.?$/iu', $title) ? '' : $title;
+    }
+
     /** Phiếu hài lòng ở cuối chương — chỉ bản web dùng, xem ChapterReaction. */
     public function reactions(): HasMany
     {

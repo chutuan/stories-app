@@ -33,7 +33,7 @@
     $seoTitle = trim($__env->yieldContent('title', 'Stories'));
     $seoDescription = trim($__env->yieldContent(
         'description',
-        'Short serialised fiction you can finish in one sitting — hidden billionaires, secret identities and long-overdue revenge.'
+        'Short serialised fiction you can finish in one sitting — family drama, revenge, mystery and second chances.'
     ));
     // Mặc định là ảnh 1200×630 dựng sẵn, KHÔNG phải icon vuông 512: icon vuông
     // đưa vào ô chia sẻ 1,91:1 sẽ bị viền hai bên hoặc bị hạ xuống ô nhỏ.
@@ -59,7 +59,9 @@
 <meta name="robots" content="{{ $seoRobots }}">
 {{-- Canonical bỏ chuỗi truy vấn: trang danh sách có ?page= vẫn phải trỏ về
      chính nó, nhưng ?utm_* hay tham số rác thì không được sinh ra bản sao. --}}
-<link rel="canonical" href="{{ url()->current() }}{{ request()->query('page') > 1 ? '?page='.(int) request()->query('page') : '' }}">
+{{-- Ép kiểu số TRƯỚC khi so sánh: so chuỗi "abc" > 1 trong PHP 8 là so chuỗi, ra true,
+     rồi in thành ?page=0 — một canonical trỏ vào trang không tồn tại. --}}
+<link rel="canonical" href="{{ url()->current() }}{{ (int) request()->query('page') > 1 ? '?page='.(int) request()->query('page') : '' }}">
 
 <meta property="og:site_name" content="Stories">
 <meta property="og:type" content="{{ $seoType }}">
@@ -113,8 +115,12 @@
 @unless ($legalPage)
 <meta name="apple-itunes-app" content="app-id={{ config('app.ios_app_id') }}">
 @endunless
+{{-- Trang noindex cũng không quảng cáo: truyện còn đăng ở site khác của mình (noindex để
+     Google không thấy hai bản), thể loại mỏng, trang tìm kiếm. Người soát AdSense chấm cả
+     site; một trang Google được bảo bỏ qua mà vẫn treo quảng cáo là đúng thứ họ gọi là
+     nội dung trùng lặp kiếm tiền. Ô quảng cáo trong bài cũng tắt theo (partials/ad). --}}
 @php
-    $adsOn = filled(config('app.admob_publisher_id')) && ! $legalPage;
+    $adsOn = filled(config('app.admob_publisher_id')) && ! $legalPage && ! str_contains($seoRobots, 'noindex');
     $gaOn = filled(config('app.ga_measurement_id')) && ! $legalPage;
 @endphp
 @if ($adsOn)
@@ -683,6 +689,7 @@ window.StoriesHistory = {
   /* Trang danh sách (Browse / thể loại / tìm kiếm) */
   .page-head{margin:0 0 22px}
   .page-head .updated{margin:4px 0 0}
+  .page-head .intro{max-width:68ch;margin:12px 0 0;color:var(--muted);font-size:16px;line-height:1.6}
   .filters{margin:0 0 30px}
 
   /* ---------- Màn rộng ---------- */

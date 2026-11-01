@@ -1,0 +1,165 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Feature;
+
+use App\Models\Category;
+use App\Models\Chapter;
+use App\Models\Story;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+/** Đợt sửa Google Search + AdSense 01/11/2026 — xem memory seo-adsense-ke-hoach. */
+class WebSeoTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private function story(string $slug, array $attrs = [], int $chapters = 1): Story
+    {
+        $s = Story::create(['title' => ucfirst($slug), 'slug' => $slug, 'status' => 'completed'] + $attrs);
+        for ($n = 1; $n <= $chapters; $n++) {
+            Chapter::create(['story_id' => $s->id, 'number' => $n, 'title' => "Part $n", 'content' => str_repeat('Lorem ipsum dolor sit amet, consectetur adipiscing elit. ', 4)]);
+        }
+
+        return $s;
+    }
+
+    public function test_phan_trang_khong_mat_truyen_khi_trung_gio_cap_nhat(): void
+    {
+        for ($i = 1; $i <= 30; $i++) {
+            $this->story("s$i")->forceFill(['updated_at' => '2026-10-01 10:00:00'])->saveQuietly();
+        }
+
+        $seen = [];
+        foreach ([1, 2] as $page) {
+            preg_match_all('#/story/(s\d+)"#', $this->get("/browse?page=$page")->assertOk()->getContent(), $m);
+            $seen = array_merge($seen, array_unique($m[1]));
+        }
+
+        $this->assertCount(30, array_unique($seen));
+    }
+
+    public function test_trang_noindex_khong_co_quang_cao(): void
+    {
+        config(['app.admob_publisher_id' => 'pub-123']);
+        $this->story('trung', ['noindex' => true]);
+        $this->story('rieng');
+
+        $this->get('/story/trung')->assertOk()->assertDontSee('google-adsense-account', false)->assertDontSee('adsbygoogle.js', false);
+        $this->get('/story/trung/chapter/1')->assertOk()->assertDontSee('google-adsense-account', false);
+        $this->get('/story/rieng')->assertOk()->assertSee('google-adsense-account', false);
+        $this->get('/story/rieng/chapter/1')->assertOk()->assertSee('google-adsense-account', false);
+    }
+
+    public function test_ten_chuong_part_n_khong_lap_lai_so_chuong(): void
+    {
+        $this->story('a', chapters: 2);
+
+        $html = $this->get('/story/a/chapter/2')->assertOk()->getContent();
+
+        $this->assertStringContainsString('<h1>Chapter 2</h1>', $html);
+        $this->assertStringNotContainsString('Part 2', $html);
+        $this->assertStringContainsString('<meta name="description" content="Chapter 2 of A. ', $html);
+    }
+
+    public function test_mo_ta_chuong_khong_ra_dau_cham_phay(): void
+    {
+        $s = $this->story('b');
+        $s->chapters()->first()->update(['title' => 'She Said No.']);
+
+        $this->get('/story/b/chapter/1')->assertOk()
+            ->assertSee('content="She Said No, chapter 1 of B.', false);
+    }
+
+    public function test_canonical_bo_page_khong_phai_so(): void
+    {
+        $this->story('c');
+
+        $this->get('/browse?page=abc')->assertOk()
+            ->assertSee('<link rel="canonical" href="'.route('public.browse').'">', false);
+    }
+
+    public function test_byline_ten_that_va_json_ld_person(): void
+    {
+        config(['app.editor_name' => 'Tuan Chu']);
+        $this->story('d', ['author' => 'Vivian Pryce']);
+
+        $this->get('/story/d')->assertOk()
+            ->assertSee('Edited by <a href="'.route('public.editor').'">Tuan Chu</a>', false)
+            ->assertDontSee('Vivian Pryce')
+            ->assertDontSee('Author names are house pen names')
+            ->assertSee('"author":{"@type":"Person","name":"Tuan Chu","url":"'.route('public.editor').'"}', false);
+
+        $this->get('/story/d/chapter/1')->assertOk()
+            ->assertSee('<meta name="author" content="Tuan Chu">', false)
+            ->assertSee('"@type":"Person","name":"Tuan Chu"', false);
+    }
+
+    public function test_trang_nguoi_bien_tap(): void
+    {
+        config(['app.editor_name' => 'Tuan Chu']);
+        $this->story('e');
+
+        $this->get('/editor')->assertOk()
+            ->assertSee('<h1>Tuan Chu</h1>', false)
+            ->assertSee('AI writing tools')
+            ->assertSee('"@type":"ProfilePage"', false);
+        $this->get('/sitemap.xml')->assertSee(route('public.editor').'</loc>', false);
+        $this->get('/about')->assertOk()->assertSee('href="'.route('public.editor').'"', false);
+    }
+
+    public function test_breadcrumb_json_ld_khop_duong_dan_hien_thi(): void
+    {
+        $cat = Category::create(['name' => 'Revenge', 'slug' => 'revenge']);
+        $this->story('f')->categories()->attach($cat);
+
+        $this->get('/story/f')->assertOk()
+            ->assertSee('"position":2,"name":"Stories","item":"'.route('public.browse').'"', false)
+            ->assertSee('"position":3,"name":"Revenge","item":"'.route('public.category', $cat).'"', false);
+    }
+
+    public function test_trang_sau_co_so_trang_va_link_trang_1_tran(): void
+    {
+        for ($i = 1; $i <= 30; $i++) {
+            $this->story("p$i");
+        }
+
+        $this->get('/browse?page=2')->assertOk()
+            ->assertSee('<title>Browse all stories — page 2 — Stories</title>', false)
+            ->assertSee('Page 2 of 2.')
+            ->assertSee('<a href="'.route('public.browse').'" rel="prev">', false)
+            ->assertDontSee('page=1"', false)
+            ->assertSee('"url":"'.route('public.browse').'?page=2"', false);
+    }
+
+    public function test_the_loai_co_doan_gioi_thieu_o_trang_1(): void
+    {
+        $cat = Category::create(['name' => 'Revenge', 'slug' => 'revenge']);
+        for ($i = 1; $i <= 5; $i++) {
+            $this->story("r$i")->categories()->attach($cat);
+        }
+
+        $this->get('/genre/revenge')->assertOk()->assertSee('<p class="intro">Revenge stories follow', false);
+    }
+
+    public function test_trang_404_mang_giao_dien_site(): void
+    {
+        $this->get('/story/khong-co')->assertNotFound()
+            ->assertSee('Page not found')
+            ->assertSee('<meta name="robots" content="noindex, follow">', false)
+            ->assertSee('href="'.route('public.browse').'"', false);
+    }
+
+    public function test_chuong_cuoi_goi_y_truyen_khac(): void
+    {
+        $cat = Category::create(['name' => 'Drama', 'slug' => 'drama']);
+        $this->story('g', chapters: 2)->categories()->attach($cat);
+        $this->story('h')->categories()->attach($cat);
+
+        $this->get('/story/g/chapter/1')->assertOk()->assertDontSee('Read next');
+        $this->get('/story/g/chapter/2')->assertOk()
+            ->assertSee('Read next')
+            ->assertSee('href="'.route('public.story', 'h').'"', false);
+    }
+}

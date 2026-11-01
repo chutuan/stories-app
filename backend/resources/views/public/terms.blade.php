@@ -1,6 +1,6 @@
 @extends('public.layout')
 @section('title', 'Terms of Service')
-@section('description', 'The rules for using the Stories app.')
+@section('description', 'The rules for using Stories — the tunastory.com website and the mobile app.')
 @section('content')
   <h1>Terms of Service</h1>
   <p class="updated">Last updated: {{ config('app.legal_updated') }}</p>
@@ -36,8 +36,9 @@
   <h2>Content</h2>
   <p>All stories are works of fiction. Names, characters, businesses and events are products of
     the imagination; any resemblance to real people or companies is coincidental.</p>
-  <p>Every story here was created for this site and is owned by us. We publish no licensed or
-    third-party works, no fan fiction, no user submissions and nothing copied from elsewhere.</p>
+  <p>Every story here is our own work and is owned by us. We publish no licensed or third-party
+    works, no fan fiction, no user submissions and nothing copied from anyone else. Some of our
+    stories are also published on other blogs run by the same editor.</p>
 
   <h2>Copyright, scraping and AI training</h2>
   <p>Every story, chapter, cover image and audio narration on this site is our own work and is
@@ -55,8 +56,8 @@
     downloads, no site mirroring. We rate-limit and block that at the server, and we log it.</p>
   <p>If you find our stories republished somewhere else, we want to know:
     <a href="mailto:{{ config('app.support_email') }}">{{ config('app.support_email') }}</a>.
-    We file takedown notices, and the original publication dates and sitemap history on this
-    domain establish who published first.</p>
+    We file takedown notices, and our own publication records establish who published
+    first.</p>
 
   <h2>How these stories are made</h2>
   <p>We think you should know how the thing you are reading was produced, so here it is plainly.
@@ -64,11 +65,13 @@
     is in our <a href="{{ route('public.editorial') }}">editorial standards</a>.</p>
   <ul>
     <li><strong>The writing.</strong> Stories are drafted with the help of AI writing tools to a
-      brief we set, then read and approved by us before publication. They are not scraped,
-      spun or copied from other sites.</li>
-    <li><strong>The names on them.</strong> Author names such as Vivian Pryce, Nora Calloway,
-      Marin Halloway, Nora Ellison and Elise Harrow are <strong>house pen names</strong>. They are
-      not real people and do not represent anyone living.</li>
+      brief we set, then checked and approved by our editor before publication. They are not
+      scraped, spun or copied from anyone else's work.</li>
+    <li><strong>The names on them.</strong> On this website every story carries the name of our
+      editor, <a href="{{ route('public.editor') }}">{{ config('app.editor_name') }}</a>, who
+      approved it. A few older stories still show <strong>house pen names</strong> in the app,
+      such as Vivian Pryce, Nora Calloway, Marin Halloway, Nora Ellison and Elise Harrow. They
+      are not real people and do not represent anyone living.</li>
     <li><strong>The cover art.</strong> Generated with OpenAI's image model from a brief written
       against each story, then reviewed by us.</li>
     <li><strong>The audio.</strong> Where a story is narrated, the voice is synthesised speech

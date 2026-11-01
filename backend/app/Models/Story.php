@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Facades\Storage;
 
 class Story extends Model
@@ -35,6 +36,69 @@ class Story extends Model
         'noindex' => 'boolean',
         'hidden_on_web' => 'boolean',
     ];
+
+    /**
+     * Đổi slug thì slug cũ tự vào story_slug_redirects — từ lệnh stories:reslug, từ admin
+     * sửa tiêu đề, hay từ bất cứ đâu. Để nơi gọi tự nhớ ghi là chắc chắn có lúc quên, và
+     * mỗi lần quên là một loạt URL đã index thành 404.
+     */
+    protected static function booted(): void
+    {
+        static::updating(function (Story $story): void {
+            if (! $story->isDirty('slug')) {
+                return;
+            }
+            // Truyện lấy lại một slug cũ của chính nó: slug đó lại là URL thật, bỏ dòng chuyển hướng.
+            StorySlugRedirect::query()->where('old_slug', $story->slug)->delete();
+
+            $old = (string) $story->getOriginal('slug');
+            if ($old !== '' && $old !== $story->slug) {
+                StorySlugRedirect::query()->updateOrCreate(['old_slug' => $old], ['story_id' => $story->id]);
+            }
+        });
+    }
+
+    /**
+     * Slug đã có chủ: đang là slug của truyện khác, HOẶC là slug cũ đang chuyển hướng về
+     * truyện khác. Cấp slug cho truyện mới phải tránh cả hai — chiếm slug cũ là cướp URL
+     * mà Google đang chuyển về truyện kia.
+     */
+    public static function slugTaken(string $slug, ?int $ignoreId = null): bool
+    {
+        return static::query()->where('slug', $slug)->when($ignoreId, fn ($q) => $q->whereKeyNot($ignoreId))->exists()
+            || StorySlugRedirect::query()->where('old_slug', $slug)->when($ignoreId, fn ($q) => $q->where('story_id', '!=', $ignoreId))->exists();
+    }
+
+    /**
+     * Route binding {story:slug} của bản web: không thấy slug thì tra slug cũ.
+     *
+     * GET/HEAD trả 301 sang đúng route đó với slug mới (giữ số chương, giữ query). Các
+     * method khác (POST chấm điểm chương từ một trang còn nằm trong cache 10 phút) thì
+     * nhận luôn truyện, vì chuyển hướng một POST là làm mất dữ liệu gửi lên.
+     * Binding theo id của API (field null) không đi qua nhánh này.
+     */
+    public function resolveRouteBinding($value, $field = null)
+    {
+        $story = parent::resolveRouteBinding($value, $field);
+        if ($story || $field !== 'slug') {
+            return $story;
+        }
+
+        $target = StorySlugRedirect::query()->where('old_slug', $value)->first()?->story;
+        $route = request()->route();
+        if (! $target || ! $route || $route->getName() === null) {
+            return $target;
+        }
+
+        if (! request()->isMethod('GET') && ! request()->isMethod('HEAD')) {
+            return $target;
+        }
+
+        $url = route($route->getName(), ['story' => $target->slug] + $route->originalParameters());
+        $query = request()->getQueryString();
+
+        throw new HttpResponseException(redirect($url.($query ? '?'.$query : ''), 301));
+    }
 
     public function categories(): BelongsToMany
     {

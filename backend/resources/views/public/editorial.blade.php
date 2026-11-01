@@ -32,8 +32,10 @@
       <a href="{{ route('public.about') }}">About page</a> and in the
       <a href="{{ route('public.terms') }}">Terms</a>. We would rather tell you than have you
       work it out.</li>
-    <li><strong>The read-through.</strong> Every chapter is read and approved by us before it
-      is published. A draft that fails the checks below is rewritten or dropped — not
+    <li><strong>The read-through.</strong> Every story is checked against the list below
+      before it is published, and our editor,
+      <a href="{{ route('public.editor') }}">{{ config('app.editor_name') }}</a>, decides
+      whether it goes out. A draft that fails the checks is rewritten or dropped — not
       published and patched later.</li>
     <li><strong>Publication.</strong> Chapters go out in order under a fixed URL. Nothing is
       held back behind a payment on this website: every chapter is free to read here.</li>
@@ -47,9 +49,9 @@
       survive from the first chapter to the last.</li>
     <li><strong>Nobody real is in it.</strong> Characters, companies and events are invented.
       Any resemblance to a living person or a real business is coincidence, not material.</li>
-    <li><strong>Nothing is copied.</strong> Every story was written for this site. Nothing here
-      is scraped, spun, translated from someone else's work or republished from another
-      site.</li>
+    <li><strong>Nothing is taken from anyone else.</strong> Every story is our own, drafted to
+      our brief. Nothing here is scraped, spun or translated from someone else's work. (Some of
+      our own stories also appear on other blogs we run — see below.)</li>
     <li><strong>It reads on a phone.</strong> Most readers arrive on one, so paragraph length
       and chapter length are judged on a phone screen.</li>
   </ul>
@@ -64,11 +66,20 @@
       or a serial stretched past its ending.</li>
   </ul>
 
-  <h2>Pen names</h2>
-  <p>Author names such as Vivian Pryce, Nora Calloway or Marin Halloway are
-    <strong>house pen names</strong>. They are not real people and do not stand for anyone
-    living. Pen names are ordinary in fiction; hiding the fact that they are pen names is not,
-    so we say it on the story page itself and not only here.</p>
+  <h2>Whose name is on a story</h2>
+  <p>Every story page says <em>Edited by
+    <a href="{{ route('public.editor') }}">{{ config('app.editor_name') }}</a></em>: a real
+    person, who set the brief and approved the story for publication. It does not claim that
+    person typed every line — the drafting is done with AI tools, as described above. A few
+    older stories were first published under <strong>house pen names</strong> such as Nora
+    Calloway or Marin Halloway; those names are not real people, and this site no longer shows
+    them as bylines.</p>
+
+  <h2>Stories that appear on more than one site</h2>
+  <p>Some stories here first appeared on other blogs run by the same editor. This site is now
+    their main home. Where a story is still published on one of those blogs as well, only one of
+    the two copies is left open to search engines, so a search never turns up the same story
+    twice. Ads are not shown on a copy that is closed to search engines.</p>
 
   <h2>Cover art and narration</h2>
   <p>Cover images are generated with an image model from a brief written against each story,

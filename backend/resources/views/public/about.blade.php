@@ -1,7 +1,7 @@
 @extends('public.layout')
 
 @section('title', 'About Stories')
-@section('description', 'Who runs Stories, what you will find here, how the stories are made, and how the site pays for itself.')
+@section('description', 'What Stories is, who runs it, how the stories are made, and how the site pays for itself.')
 
 @push('head')
 @foreach ($jsonLd as $block)
@@ -34,15 +34,22 @@
       reading column, type size and line spacing are tuned for that first.</li>
   </ul>
 
+  <h2>Who runs Stories</h2>
+  <p>Stories is run by <a href="{{ route('public.editor') }}">{{ config('app.editor_name') }}</a>,
+    who sets the brief for each story, decides what is published and reads the contact address.
+    The line <em>Edited by {{ config('app.editor_name') }}</em> on every story page refers to
+    that person — a real name, not a pen name.</p>
+
   <h2>How the stories are made</h2>
   <p>We would rather tell you than have you guess. Stories here are drafted with the help of AI
-    writing tools to a brief we set, then read and approved before publication. Author names
-    such as Vivian Pryce or Marin Halloway are <strong>house pen names</strong> — they are not
-    real people. Cover art is AI-generated; where a story is narrated, the voice is synthesised
-    speech reading our own text.</p>
-  <p>Nothing here is scraped, spun or copied from another site. Every story was written for
-    this site and belongs to us. The full version — what we check before a chapter goes out,
-    what we refuse to publish, and how corrections work — is in our
+    writing tools to a brief we set, then checked and approved before publication. Cover art is
+    AI-generated; where a story is narrated, the voice is synthesised speech reading our own
+    text.</p>
+  <p>Nothing here is scraped or copied from anyone else: every story is our own. Some first
+    appeared on other blogs we run. This site is now their main home, and where a story is still
+    published on one of those blogs as well, only one of the two copies is left open to search
+    engines. The full version — what we check before a chapter goes out, what we refuse to
+    publish, and how corrections work — is in our
     <a href="{{ route('public.editorial') }}">editorial standards</a>; the legal wording is in
     the <a href="{{ route('public.terms') }}">Terms of Service</a>.</p>
 
@@ -64,16 +71,20 @@
     What to include so we can answer quickly is on the
     <a href="{{ route('public.contact') }}">contact page</a>.</p>
 
+  {{-- Câu cũ "Two stories are open end to end with full audio" viết cứng: danh sách là
+       truyện miễn phí trọn vẹn TRONG APP (free_chapters ≥ số chương), số lượng và việc có
+       audio hay không đều thay đổi. Không hứa gì ngoài cái danh sách. --}}
   <div class="card">
     <h2 style="margin-top:0">Start reading</h2>
-    <p>Two stories are open end to end with full audio, if you want to see what this is like
-      before anything else:</p>
-    <ul>
-      @foreach ($freeStories as $story)
-        <li><a href="{{ route('public.story', $story) }}">{{ $story->title }}</a>
-          — {{ $story->chapters_count }} chapters</li>
-      @endforeach
-    </ul>
+    @if ($freeStories->isNotEmpty())
+      <p>Not sure where to begin? Try one of these:</p>
+      <ul>
+        @foreach ($freeStories as $story)
+          <li><a href="{{ route('public.story', $story) }}">{{ $story->title }}</a>
+            — {{ $story->chapters_count }} {{ Str::plural('chapter', $story->chapters_count) }}</li>
+        @endforeach
+      </ul>
+    @endif
     <p class="meta"><a href="{{ route('public.browse') }}">Browse the whole library →</a></p>
   </div>
 @endsection

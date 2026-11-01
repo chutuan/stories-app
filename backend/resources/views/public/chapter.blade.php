@@ -23,11 +23,11 @@
 @push('meta')
 <meta property="article:published_time" content="{{ $chapter->created_at?->toAtomString() }}">
 <meta property="article:modified_time" content="{{ $chapter->updated_at?->toAtomString() }}">
-<meta property="article:author" content="{{ $story->author ?: 'Stories' }}">
+<meta property="article:author" content="{{ config('app.editor_name') }}">
 @foreach ($story->categories as $category)
 <meta property="article:tag" content="{{ $category->name }}">
 @endforeach
-<meta name="author" content="{{ $story->author ?: 'Stories' }}">
+<meta name="author" content="{{ config('app.editor_name') }}">
 @endpush
 
 @push('head')
@@ -52,7 +52,7 @@
   <h1>{{ $heading }}</h1>
   @php $totalWords = str_word_count(implode(' ', $paragraphs)); @endphp
   <p class="reader-by">
-    @if ($story->author) {{ $story->author }} · @endif
+    Edited by <a href="{{ route('public.editor') }}">{{ config('app.editor_name') }}</a> ·
     Chapter {{ $chapter->number }} of {{ $chapterList->count() }}
     · {{ max(1, (int) round($totalWords / 230)) }} min read
   </p>
@@ -68,7 +68,7 @@
       <span class="visually-hidden">Go to chapter</span>
       <select id="jump" autocomplete="off">
         @foreach ($chapterList as $c)
-          @php $t = trim(preg_replace('/^\s*Chapter\s+\d+\s*[:\-–—]\s*/iu', '', (string) $c->title) ?? ''); @endphp
+          @php $t = $c->cleanTitle(); @endphp
           <option value="{{ route('public.chapter', [$story, $c->number]) }}" @selected($c->number === $chapter->number)>
             {{ $c->number }}. {{ Str::limit($t !== '' ? $t : 'Chapter '.$c->number, 60) }}
           </option>
@@ -112,7 +112,7 @@
        Hết truyện thì mời sang truyện khác. Ô quảng cáo đứng SAU cả cụm điều hướng, không
        chen giữa: quảng cáo sát nút bấm dễ bị bấm nhầm, và AdSense phạt đúng kiểu đó. --}}
   @if ($next)
-    @php $nextTitle = trim(preg_replace('/^\s*Chapter\s+\d+\s*[:\-–—]\s*/iu', '', (string) $next->title) ?? ''); @endphp
+    @php $nextTitle = $next->cleanTitle(); @endphp
     <a class="next-card" href="{{ route('public.chapter', [$story, $next->number]) }}" rel="next">
       <span>
         <small>Next · Chapter {{ $next->number }}</small>
@@ -128,6 +128,16 @@
       </span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
     </a>
+    @if ($related->isNotEmpty())
+      <section class="sec" aria-labelledby="after-title">
+        <div class="sec-head"><h2 id="after-title">Read next</h2></div>
+        <ul class="rank plain">
+          @foreach ($related as $s)
+            @include('public.partials.story-row', ['story' => $s])
+          @endforeach
+        </ul>
+      </section>
+    @endif
   @endif
 
   <nav class="pager" aria-label="Chapter navigation">
@@ -211,7 +221,8 @@
       // Js::from chứ không phải json: directive đó tách đối số theo dấu phẩy nên vỡ với route(..., [...], false).
       url: {{ Js::from(route('public.chapter', [$story, $chapter->number], false)) }},
       ch: {{ (int) $chapter->number }},
-      chTitle: @json($chapter->title),
+      {{-- Tên đã làm sạch (Chapter::cleanTitle): tên chỉ là số phần thì để trống, ô đọc tiếp đã ghi số chương. --}}
+      chTitle: @json($chapter->cleanTitle()),
       // Chương xa nhất từng mở — để biết đã đọc hết chưa (StoriesHistory.finished).
       max: Math.max({{ (int) $chapter->number }}, prevRead ? Number(prevRead.max || prevRead.ch) || 0 : 0),
       total: {{ (int) $chapterList->count() }},

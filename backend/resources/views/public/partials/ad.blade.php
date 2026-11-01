@@ -10,6 +10,8 @@
 
   Chưa tạo ad unit nào thì cứ để trống: chỉ riêng thẻ script trong layout đã đủ
   cho Auto ads (bật trong bảng điều khiển AdSense), Google tự chọn vị trí.
+
+  Trang noindex không có ô nào — cùng quy tắc với script trong layout ($adsOn).
 --}}
 @php
     $pub = config('app.admob_publisher_id');
@@ -17,7 +19,7 @@
     $format = $format ?? 'auto';
     $label = $label ?? 'Advertisement';
 @endphp
-@if (filled($pub) && filled($slot))
+@if (filled($pub) && filled($slot) && ! str_contains($__env->yieldContent('robots'), 'noindex'))
   <div class="adslot" role="complementary" aria-label="{{ $label }}">
     <ins class="adsbygoogle"
          style="display:block"

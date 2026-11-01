@@ -61,6 +61,7 @@ class PublicPageCache
         'public.about',
         'public.contact',
         'public.editorial',
+        'public.editor',
         'public.privacy',
         'public.terms',
         'public.sitemap',

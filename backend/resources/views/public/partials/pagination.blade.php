@@ -4,14 +4,21 @@
 
   rel="prev"/"next" là có chủ đích: nó cho Google biết đây là một chuỗi trang nối
   tiếp chứ không phải nhiều trang trùng nội dung.
+
+  Link về trang 1 là URL TRẦN, không mang ?page=1: canonical của trang 1 là URL trần,
+  nên ?page=1 là một bản trùng mà chính site tự rải link tới.
 --}}
+@php
+    $bare = static fn (?string $url): ?string => $url === null ? null : preg_replace('/([?&])page=1(?=&|$)/', '$1', $url);
+    $tidy = static fn (?string $url): ?string => $url === null ? null : rtrim(str_replace('?&', '?', $bare($url)), '?&');
+@endphp
 @if ($paginator->hasPages())
   <nav aria-label="Pagination">
     <ul class="pagination">
       @if ($paginator->onFirstPage())
         <li><span aria-hidden="true">Previous</span></li>
       @else
-        <li><a href="{{ $paginator->previousPageUrl() }}" rel="prev">Previous</a></li>
+        <li><a href="{{ $tidy($paginator->previousPageUrl()) }}" rel="prev">Previous</a></li>
       @endif
 
       @foreach ($elements as $element)
@@ -24,7 +31,7 @@
             @if ($page == $paginator->currentPage())
               <li><span class="cur" aria-current="page">{{ $page }}</span></li>
             @else
-              <li><a href="{{ $url }}">{{ $page }}</a></li>
+              <li><a href="{{ $tidy($url) }}">{{ $page }}</a></li>
             @endif
           @endforeach
         @endif
