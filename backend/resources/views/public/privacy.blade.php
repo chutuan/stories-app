@@ -114,6 +114,20 @@
     does: the app contains no analytics SDK of its own, and still requests every ad in
     non-personalised mode. The Privacy Policy, Terms of Service and Contact pages, which the app
     opens in an in-app browser, carry no ads and no analytics.</p>
+  {{-- Ba câu dưới là phần AdSense BẮT BUỘC có trong chính sách quyền riêng tư của site
+       chạy quảng cáo (nhà cung cấp bên thứ ba dùng cookie theo lượt truy cập trước, cookie
+       quảng cáo của Google, cách tắt quảng cáo cá nhân hoá). Đừng rút gọn chúng. --}}
+  <p>Third-party vendors, including Google, use cookies to serve ads based on your prior visits
+    to this website or to other websites. Google's use of advertising cookies enables it and its
+    partners to serve ads to you based on your visits to this site and/or other sites on the
+    Internet.</p>
+  <ul>
+    <li>You can opt out of personalised advertising from Google in
+      <a href="https://adssettings.google.com/" rel="noopener">Google Ads Settings</a>.</li>
+    <li>You can opt out of some other vendors' use of cookies for personalised advertising at
+      <a href="https://optout.aboutads.info/" rel="noopener">aboutads.info</a> or, in Europe,
+      <a href="https://www.youronlinechoices.eu/" rel="noopener">youronlinechoices.eu</a>.</li>
+  </ul>
   <p>Google Analytics sets its own cookies in your browser and may use web beacons — tiny
     invisible images embedded in a page — to record that a page was opened. We do not combine
     any of it with a name, an email address or any other identity, because we hold none.</p>

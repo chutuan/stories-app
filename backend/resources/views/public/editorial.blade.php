@@ -43,8 +43,9 @@
 
   <h2>What we check before publishing</h2>
   <ul>
-    <li><strong>It is a story, and it ends.</strong> No serial is cut off to force you
-      somewhere else, and no chapter is padded to hit a word count.</li>
+    <li><strong>It is a story, and it is written to an ending.</strong> A serial that is still
+      being written is marked <em>Ongoing</em> until its last chapter is out. None is cut off to
+      force you somewhere else, and no chapter is padded to hit a word count.</li>
     <li><strong>Continuity holds.</strong> Names, ages, jobs, places and the timeline have to
       survive from the first chapter to the last.</li>
     <li><strong>Nobody real is in it.</strong> Characters, companies and events are invented.

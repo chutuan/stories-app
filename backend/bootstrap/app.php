@@ -29,6 +29,9 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\PublicPageCache::class,
         ]);
 
+        // Toàn cục (chạy TRƯỚC khi khớp route) để cả URL không có route nào cũng được gỡ "/" cuối.
+        $middleware->prepend(\App\Http\Middleware\StripTrailingSlash::class);
+
         $middleware->alias([
             'ingest' => \App\Http\Middleware\VerifyIngestToken::class,
         ]);

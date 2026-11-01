@@ -168,6 +168,7 @@ class ReadController extends Controller
             'chapterCount' => $stats['chapters'],
             'wordCount' => $stats['words'],
             'audioCount' => $stats['audio'],
+            'ongoingCount' => Story::query()->visibleOnWeb()->where('status', 'ongoing')->count(),
             'freeStories' => $freeStories,
             'jsonLd' => [
                 StructuredData::aboutPage(route('public.about'), route('public.home')),

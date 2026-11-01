@@ -17,7 +17,7 @@ class WebSeoTest extends TestCase
 
     private function story(string $slug, array $attrs = [], int $chapters = 1): Story
     {
-        $s = Story::create(['title' => ucfirst($slug), 'slug' => $slug, 'status' => 'completed'] + $attrs);
+        $s = Story::create($attrs + ['title' => ucfirst($slug), 'slug' => $slug, 'status' => 'completed']);
         for ($n = 1; $n <= $chapters; $n++) {
             Chapter::create(['story_id' => $s->id, 'number' => $n, 'title' => "Part $n", 'content' => str_repeat('Lorem ipsum dolor sit amet, consectetur adipiscing elit. ', 4)]);
         }
@@ -149,6 +149,44 @@ class WebSeoTest extends TestCase
             ->assertSee('Page not found')
             ->assertSee('<meta name="robots" content="noindex, follow">', false)
             ->assertSee('href="'.route('public.browse').'"', false);
+    }
+
+    public function test_url_co_gach_cheo_cuoi_chuyen_301(): void
+    {
+        $this->story('k');
+
+        // $this->get() tự cắt "/" cuối của URI, nên phải gửi thẳng qua kernel mới thử được.
+        $send = fn (string $uri, string $method = 'GET') => $this->app->make(\Illuminate\Contracts\Http\Kernel::class)
+            ->handle(\Illuminate\Http\Request::create($uri, $method));
+
+        $r = $send('/browse/');
+        $this->assertSame(301, $r->getStatusCode());
+        $this->assertSame(route('public.browse'), $r->headers->get('Location'));
+
+        $r = $send('/story/k/chapter/1/?utm_source=x');
+        $this->assertSame(301, $r->getStatusCode());
+        $this->assertSame(route('public.chapter', ['k', 1]).'?utm_source=x', $r->headers->get('Location'));
+
+        $this->assertSame(200, $send('/')->getStatusCode());
+        $this->assertNotSame(301, $send('/api/home/')->getStatusCode()); // /api không bị đụng tới
+        $this->assertNotSame(301, $send('/story/k/chapter/1/react/', 'POST')->getStatusCode());
+    }
+
+    public function test_chuong_cuoi_cua_truyen_dang_viet_khong_ghi_the_end(): void
+    {
+        $this->story('dang-viet', ['status' => 'ongoing'], chapters: 2);
+        $this->story('xong', chapters: 1);
+
+        $this->get('/story/dang-viet/chapter/2')->assertOk()->assertSee('More chapters coming')->assertDontSee('The end');
+        $this->get('/story/xong/chapter/1')->assertOk()->assertSee('The end');
+        $this->get('/about')->assertOk()->assertSee('The 1 still being written');
+    }
+
+    public function test_privacy_co_cau_bat_buoc_cua_adsense(): void
+    {
+        $this->get('/privacy')->assertOk()
+            ->assertSee('Third-party vendors, including Google, use cookies to serve ads based on your prior visits')
+            ->assertSee('https://adssettings.google.com/', false);
     }
 
     public function test_chuong_cuoi_goi_y_truyen_khac(): void

@@ -121,10 +121,12 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
     </a>
   @else
+    {{-- Truyện còn 'ongoing' thì chương cuối hiện có KHÔNG phải hồi kết: ghi "The end" ở
+         đó là nói sai với người đọc (và với người soát AdSense đọc tới cuối). --}}
     <a class="next-card end" href="{{ route('public.browse') }}">
       <span>
-        <small>The end</small>
-        <strong>Find your next story</strong>
+        <small>{{ $story->status === 'ongoing' ? 'More chapters coming' : 'The end' }}</small>
+        <strong>{{ $story->status === 'ongoing' ? 'Read something else meanwhile' : 'Find your next story' }}</strong>
       </span>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
     </a>

@@ -22,8 +22,12 @@
 
   <h2>What you will find</h2>
   <ul>
-    <li><strong>Complete stories, not teasers.</strong> Each serial runs 3–10 chapters and
-      reaches an actual ending. Nothing is cut off to make you pay.</li>
+    {{-- Câu cũ "Each serial … reaches an actual ending" sai với các truyện còn 'ongoing'
+         (17 truyện gốc dừng ở chương 3–6 từ tháng 9/2026). Số lấy động. --}}
+    <li><strong>Complete stories, not teasers.</strong> Most serials run 3–10 chapters and
+      reach an actual ending.@if ($ongoingCount > 0) The {{ $ongoingCount }} still being written
+      are marked <em>Ongoing</em> until their last chapter is out.@endif Nothing is cut off to
+      make you pay.</li>
     {{-- Trước đây câu này viết "you can listen from the reading screen" trong mục
          mô tả CHÍNH TRANG WEB, nơi không có lấy một thẻ <audio> nào. Đúng cho app,
          sai cho web. Với site đang xin AdSense thì mô tả sai là thứ không nên để. --}}
