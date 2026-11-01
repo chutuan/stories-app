@@ -33,6 +33,26 @@ class HomeLayoutTest extends TestCase
         }
     }
 
+    public function test_hang_the_loai_khong_lap_truyen_da_hien_o_muc_tren(): void
+    {
+        $genre = \App\Models\Category::create(['name' => 'Revenge', 'slug' => 'revenge']);
+        $this->story('featured-one', 999, true)->categories()->attach($genre);
+        foreach (range(1, 40) as $i) {
+            $this->story("g$i", $i)->categories()->attach($genre);
+        }
+
+        $html = $this->get('/')->assertOk()->assertSee('Revenge')->getContent();
+        // Có truyện nổi bật: 5 xếp hạng + 12 mới cập nhật + 12 ở hàng "Revenge" = 29 truyện,
+        // mỗi truyện đúng một thẻ.
+        $shown = 0;
+        foreach (range(1, 40) as $i) {
+            $n = substr_count($html, "/story/g$i\"");
+            $this->assertLessThanOrEqual(1, $n, "g$i hiện $n lần");
+            $shown += $n;
+        }
+        $this->assertSame(29, $shown);
+    }
+
     public function test_truyen_noi_bat_khong_lap_lai_o_most_read(): void
     {
         $f = $this->story('featured-one', 999, true);

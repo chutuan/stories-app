@@ -41,7 +41,14 @@ class ReadController extends Controller
     /** Số truyện mỗi trang ở /browse và /search. */
     private const PER_PAGE = 24;
 
-    /** Trang chủ: truyện nổi bật + hai hàng như màn Home của app. */
+    /**
+     * Trang chủ, theo bố cục quen thuộc của các web đọc truyện: truyện nổi bật cạnh
+     * bảng xếp hạng, rồi lưới "Recently updated", rồi vài hàng cuộn ngang theo thể loại.
+     *
+     * MỘT TRUYỆN CHỈ HIỆN MỘT LẦN trên cả trang: mỗi mục loại các truyện mục trước đã
+     * lấy ($shown). Kho có nhiều truyện vừa được đọc nhiều vừa mới cập nhật, không loại
+     * thì cùng một bìa lặp ba bốn lần và trang chủ trông nghèo hơn thực tế.
+     */
     public function home(): View
     {
         $featured = $this->cards()
@@ -49,23 +56,48 @@ class ReadController extends Controller
             ->latest('updated_at')
             ->first();
 
-        $updated = $this->cards()->orderByDesc('updated_at')->limit(12)->get();
+        $shown = collect($featured ? [$featured->id] : []);
+
+        // Bảng xếp hạng đánh số, đứng cạnh truyện nổi bật. Theo `views` thật — không
+        // bao giờ dựng số mồi (xem partials/rating). Cạnh truyện nổi bật chỉ đủ cao cho
+        // 5 dòng; không có truyện nổi bật thì bảng chiếm cả hàng, chia hai cột, 10 dòng.
+        $ranking = $this->cards()
+            ->whereNotIn('id', $shown)
+            ->orderByDesc('views')
+            ->limit($featured ? 5 : 10)
+            ->get();
+        $shown = $shown->merge($ranking->pluck('id'));
+
+        $updated = $this->cards()
+            ->whereNotIn('id', $shown)
+            ->orderByDesc('updated_at')
+            ->limit(12)
+            ->get();
+        $shown = $shown->merge($updated->pluck('id'));
+
+        // Ba thể loại đông truyện nhất, mỗi thể loại một hàng cuộn ngang. Hàng nào sau
+        // khi loại trùng còn dưới 4 truyện thì bỏ — một hàng ba bìa trông như trang lỗi.
+        $shelves = [];
+        $topCategories = Category::query()->withCount('stories')->orderByDesc('stories_count')->limit(3)->get();
+        foreach ($topCategories as $category) {
+            $stories = $this->cards()
+                ->whereHas('categories', fn ($q) => $q->whereKey($category->getKey()))
+                ->whereNotIn('id', $shown)
+                ->orderByDesc('views')
+                ->limit(12)
+                ->get();
+            if ($stories->count() >= 4) {
+                $shelves[] = ['category' => $category, 'stories' => $stories];
+                $shown = $shown->merge($stories->pluck('id'));
+            }
+        }
 
         return view('public.home', [
             'featured' => $featured,
+            'ranking' => $ranking,
             'updated' => $updated,
-            // "Most read" thay cho "Newest": sau đợt nạp 249 truyện 25/10/2026, truyện mới
-            // nhất cũng chính là truyện vừa cập nhật, nên hai hàng lặp y hệt nhau. Loại các
-            // truyện đã có ở hàng trên để trang chủ không hiện một bìa hai lần.
-            'popular' => $this->cards()
-                ->whereNotIn('id', $updated->pluck('id'))
-                // KHÔNG viết whereKeyNot($featured?->id): khi không có truyện nổi bật nó thành
-                // `id <> NULL`, điều kiện luôn sai trong SQL, và cả hàng Most read biến mất.
-                ->when($featured, fn ($q) => $q->whereKeyNot($featured->id))
-                ->orderByDesc('views')
-                ->limit(12)
-                ->get(),
-            'categories' => Category::query()->orderBy('name')->get(),
+            'shelves' => $shelves,
+            'categories' => Category::query()->withCount('stories')->orderBy('name')->get(),
             'jsonLd' => [
                 StructuredData::website(route('public.home'), route('public.search')),
                 StructuredData::organization(
@@ -255,8 +287,23 @@ class ReadController extends Controller
 
         ViewCounter::record(request(), $story, null, ViewCounter::SOURCE_WEB);
 
+        // "You may also like": cùng thể loại, đọc nhiều nhất trước. Truyện không có thể
+        // loại nào thì lấy truyện đọc nhiều nhất của cả kho, để mục này không bao giờ trống.
+        $categoryIds = $story->categories->modelKeys();
+        $related = $this->cards()
+            ->whereKeyNot($story->getKey())
+            ->when($categoryIds, fn ($q) => $q->whereHas('categories', fn ($c) => $c->whereKey($categoryIds)))
+            ->orderByDesc('views')
+            ->limit(6)
+            ->get();
+
+        // Thời gian đọc cả truyện, 230 từ/phút (tốc độ đọc văn xuôi tiếng Anh trên màn hình).
+        $words = $story->chapters->sum(fn (Chapter $c) => str_word_count((string) $c->content));
+
         return view('public.story', [
             'story' => $story,
+            'related' => $related,
+            'readMinutes' => max(1, (int) round($words / 230)),
             'jsonLd' => [
                 StructuredData::book($story, route('public.story', $story), route('public.og', $story)),
                 StructuredData::breadcrumbs([
@@ -313,6 +360,11 @@ class ReadController extends Controller
             'chapter' => $chapter,
             'prev' => $prev,
             'next' => $next,
+            // Ô "nhảy tới chương" trên thanh đọc: chỉ số và tên, không kéo nội dung.
+            'chapterList' => Chapter::query()
+                ->where('story_id', $story->getKey())
+                ->orderBy('number')
+                ->get(['number', 'title']),
             'paragraphs' => $paragraphs,
             'heading' => $heading,
             'metaDescription' => $this->chapterDescription($story, $chapter, $clean, $paragraphs),
@@ -518,6 +570,7 @@ class ReadController extends Controller
             ->with('categories')
             ->withCount(['chapters', 'reactions'])
             ->withAvg('reactions', 'score')
+            ->withMin('chapters', 'number')
             ->withMax('chapters', 'number');
     }
 

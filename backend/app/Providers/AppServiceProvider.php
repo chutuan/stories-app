@@ -2,10 +2,12 @@
 
 namespace App\Providers;
 
+use App\Models\Category;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -28,6 +30,12 @@ class AppServiceProvider extends ServiceProvider
         JsonResource::withoutWrapping();
 
         $this->configureRateLimiting();
+
+        // Menu "Genres" ở đầu mọi trang công khai. Một truy vấn nhỏ (vài chục dòng);
+        // trang công khai đã được Cloudflare cache 10 phút nên không đáng dựng thêm cache.
+        View::composer('public.layout', function ($view): void {
+            $view->with('navCategories', Category::query()->withCount('stories')->orderBy('name')->get());
+        });
     }
 
     /**

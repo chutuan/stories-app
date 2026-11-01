@@ -92,6 +92,29 @@ class Story extends Model
         return $parts === [] ? null : implode(', ', $parts);
     }
 
+    /**
+     * Một URL ảnh bìa nhỏ (bản WebP 320w nếu đã sinh, không thì ảnh gốc).
+     *
+     * Dùng ở những chỗ chỉ cần một ảnh cố định, không qua <picture>: nền mờ phía sau
+     * đầu trang truyện, ảnh thu nhỏ trong bảng xếp hạng, và mục "Continue reading"
+     * lưu ở localStorage. Ảnh gốc 600×800 cho một ô 56px là phí gấp mười lần.
+     */
+    public function coverSmallUrl(): ?string
+    {
+        $source = (string) $this->thumbnail;
+
+        if ($source === '') {
+            return null;
+        }
+
+        $disk = Storage::disk('public');
+        $path = DeriveCovers::derivedPath($source, 320);
+
+        return $disk->exists($path)
+            ? $disk->url($path).'?v='.$disk->lastModified($path)
+            : $this->thumbnail_url;
+    }
+
     protected function thumbnailUrl(): Attribute
     {
         // Gắn version theo thời điểm sửa file: khi ảnh bìa thay đổi mà tên file

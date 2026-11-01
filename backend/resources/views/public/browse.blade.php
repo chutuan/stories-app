@@ -16,18 +16,20 @@
 @endpush
 
 @section('content')
-  <h1>{{ $category ? $category->name : 'All stories' }}</h1>
-  <p class="updated">
-    {{ $stories->total() }} {{ Str::plural('story', $stories->total()) }}
-    @if ($category) in {{ $category->name }} @endif
-    · every chapter free to read
-  </p>
+  <div class="page-head">
+    <h1>{{ $category ? $category->name : 'All stories' }}</h1>
+    <p class="updated">
+      {{ $stories->total() }} {{ Str::plural('story', $stories->total()) }}
+      @if ($category) in {{ $category->name }} @endif
+      · every chapter free to read
+    </p>
+  </div>
 
   @if ($categories->isNotEmpty())
-    <ul class="tags">
-      <li><a class="tag {{ $category ? '' : 'on' }}" href="{{ route('public.browse') }}">All</a></li>
+    <ul class="chips scroll filters">
+      <li><a class="chip {{ $category ? '' : 'on' }}" href="{{ route('public.browse') }}">All</a></li>
       @foreach ($categories as $c)
-        <li><a class="tag {{ $category && $c->is($category) ? 'on' : '' }}"
+        <li><a class="chip {{ $category && $c->is($category) ? 'on' : '' }}"
                href="{{ route('public.category', $c) }}">{{ $c->name }}</a></li>
       @endforeach
     </ul>

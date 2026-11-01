@@ -9,7 +9,12 @@
 @section('wide', '1')
 
 @section('content')
-  <h1>{{ $q !== '' ? 'Results for “'.$q.'”' : 'Search stories' }}</h1>
+  <div class="page-head">
+    <h1>{{ $q !== '' ? 'Results for “'.$q.'”' : 'Search stories' }}</h1>
+    @if ($q !== '' && $stories->isNotEmpty())
+      <p class="updated">{{ $stories->total() }} {{ Str::plural('story', $stories->total()) }} found</p>
+    @endif
+  </div>
 
   @if ($q === '')
     <p class="empty">Type a story title, an author or a genre in the box above.</p>
@@ -19,7 +24,6 @@
       <a href="{{ route('public.browse') }}">Browse all stories</a> instead.
     </p>
   @else
-    <p class="updated">{{ $stories->total() }} {{ Str::plural('story', $stories->total()) }} found</p>
     <ul class="grid">
       @foreach ($stories as $story)
         <li>@include('public.partials.story-card', ['story' => $story])</li>
