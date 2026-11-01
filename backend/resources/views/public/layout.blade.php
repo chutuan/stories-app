@@ -193,6 +193,11 @@ window.StoriesHistory = {
     list.unshift(entry);
     try { localStorage.setItem(this.KEY, JSON.stringify(list.slice(0, 12))); } catch (e) {}
   },
+  // Đã đọc tới chương cuối (tính theo số chương lúc đọc). `max` = chương xa nhất từng mở,
+  // để đọc xong rồi mở lại chương 1 vẫn tính là đã xong; bản ghi cũ chưa có `max`.
+  finished: function (h) {
+    return !!h && h.total > 0 && Math.max(Number(h.max) || 0, Number(h.ch) || 0) >= h.total;
+  },
 };
 </script>
 <style>
@@ -909,8 +914,10 @@ window.StoriesHistory = {
   </div>
 </div></footer>
 @include('public.partials.protect')
-{{-- Mời tải app trên iPhone/iPad. Không gắn trên ba trang pháp lý (app mở chúng bên trong app). --}}
+{{-- Mời đọc tiếp truyện dở và mời tải app trên iPhone/iPad. Không gắn trên ba trang pháp lý
+     (app mở chúng bên trong app). Đọc tiếp đứng trước: hiện ở trang này thì app-prompt nhường. --}}
 @unless ($legalPage)
+  @include('public.partials.continue-prompt')
   @include('public.partials.app-prompt')
 @endunless
 <script>

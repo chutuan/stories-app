@@ -200,6 +200,7 @@
 
   // Ghi lịch sử đọc cho "Continue reading" ở trang chủ và nút "Continue" ở trang truyện.
   if (window.StoriesHistory) {
+    var prevRead = StoriesHistory.get(@json($story->slug));
     StoriesHistory.save({
       slug: @json($story->slug),
       title: @json($story->title),
@@ -207,6 +208,9 @@
       // Js::from chứ không phải json: directive đó tách đối số theo dấu phẩy nên vỡ với route(..., [...], false).
       url: {{ Js::from(route('public.chapter', [$story, $chapter->number], false)) }},
       ch: {{ (int) $chapter->number }},
+      chTitle: @json($chapter->title),
+      // Chương xa nhất từng mở — để biết đã đọc hết chưa (StoriesHistory.finished).
+      max: Math.max({{ (int) $chapter->number }}, prevRead ? Number(prevRead.max || prevRead.ch) || 0 : 0),
       total: {{ (int) $chapterList->count() }},
       at: Date.now()
     });

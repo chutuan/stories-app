@@ -8,7 +8,8 @@
     - các trường hợp khác hiện sau 8 giây, khi người đọc đã thấy nội dung;
     - đóng hay bấm tải thì 1 ngày sau mới hiện lại; không bấm gì mà rời trang
       thì chưa tính, trang sau vẫn có thể hiện;
-    - không gắn trên Privacy/Terms/Contact (layout lo phần này): app mở ba trang đó bên trong app.
+    - không gắn trên Privacy/Terms/Contact (layout lo phần này): app mở ba trang đó bên trong app;
+    - trang nào đã hiện modal "đọc tiếp" (continue-prompt) thì nhường trang sau.
   Safari trên iPhone còn tự hiện Smart App Banner (thẻ meta apple-itunes-app trong layout),
   thứ đó không bị Google phạt; modal này là lời mời thứ hai, rõ hơn.
 
@@ -116,6 +117,8 @@
     return !!a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
   }
   function trigger() {
+    // Modal "đọc tiếp" đã hiện ở trang này: nhường, không hoãn — trang sau vẫn mời được.
+    if (window.StoriesSheetShown) return;
     if (typing()) {
       document.addEventListener('focusout', function () { setTimeout(trigger, 3000); }, { once: true });
       return;
