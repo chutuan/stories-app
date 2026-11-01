@@ -31,6 +31,13 @@
     </div>
 </div>
 
+@if ($queueCount > 0)
+    <div class="alert alert-light border shadow-sm d-flex justify-content-between align-items-center mb-4">
+        <span>Kho chờ đăng còn <strong>{{ $queueCount }}</strong> truyện, mỗi ngày đăng tự động vài truyện.</span>
+        <a href="{{ route('admin.queue.index') }}" class="btn btn-sm btn-outline-primary">Xem kho</a>
+    </div>
+@endif
+
 <div class="card shadow-sm">
     <div class="card-header bg-white fw-semibold">Truyện cập nhật gần đây</div>
     <div class="table-responsive">

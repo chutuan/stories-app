@@ -48,6 +48,31 @@ duyệt → `sync_public.py` nhận 403. Không lách (không giả User-Agent, 
 Nguồn thứ hai: **mundodehistorias.cafex.biz** → `imports/mundodehistorias/`. Lần 31/10/2026: 8.616 bài
 nhưng chỉ 681 đã đăng (~151 truyện); 7.935 bản nháp chưa kéo (Tuấn chọn chỉ lấy bài đã đăng).
 
+Nguồn thứ ba: **darkchapter.cafex.biz** → `imports/darkchapter/`. Lần 01/11/2026: 5.806 bài = 4.240 đã
+đăng (845 truyện, gần hết 5 chương, ~8,5 triệu từ, đăng 29/09–31/10) + 1.566 nháp (chưa kéo). Trang
+`/admin` hiện "403 Forbidden" nhưng API admin vẫn trả dữ liệu với phiên đăng nhập. Lấy chi tiết 6 luồng
+song song mất ~4 phút, file xuất 61 MB. `stories_existing.json` lấy thẳng từ DB server (chỉ đọc).
+Site này đăng nhiều bản viết lại cùng một dàn ý dưới tên khác (một cốt truyện có tới 14 bản). Lọc
+theo tên riêng hiếm bỏ sót những cụm dùng tên phổ biến; cách chạy được là **độ giống TF-IDF toàn văn**
+(cosine trên 400 từ nặng nhất mỗi truyện, viết bằng Python thuần). Hiệu chỉnh trên 205 cặp agent đã đọc:
+cặp cùng truyện ≥ 0,3 (174/177), cặp khác truyện < 0,2 (26/28). Nên ≥ 0,3 gộp thẳng, 0,2–0,3 cho agent
+đọc. So cả với bản dump truyện ĐANG có trên server: 37 truyện darkchapter là bản viết lại của truyện
+đã đăng. Kết quả 01/11: giữ 484 / 845 (bỏ 247 viết lại, 72 nhạy cảm, 37 trùng truyện đang có, 5 trùng
+y hệt) → đưa vào **kho chờ đăng**, không nạp thẳng (xem dưới).
+
+## Kho chờ đăng (từ 01/11/2026)
+
+Lô lớn không nạp một lần nữa mà xếp vào bảng `story_queue`; `stories:release-queued` đăng 10 truyện
+đầu hàng mỗi ngày lúc 13:00 UTC (lịch ở `routes/console.php`). Gói cần `source_key` (build_bundle.py
+đã ghi id series Blogbio). Xếp hàng lại cùng file không nhân đôi: truyện đang chờ được cập nhật, truyện
+đã đăng hay đã bỏ thì giữ nguyên. Xem / bỏ truyện trong hàng ở `/admin/queue`.
+
+```bash
+php artisan stories:queue-add bundle.json --source=darkchapter --covers=stories_covers --noindex --dry
+php artisan stories:queue-add bundle.json --source=darkchapter --covers=stories_covers --noindex
+php artisan stories:release-queued --dry     # 10 truyện sắp đăng
+```
+
 ## Nạp vào Stories (đã làm 25/10/2026: 249 truyện, 1.245 chương)
 
 ```bash

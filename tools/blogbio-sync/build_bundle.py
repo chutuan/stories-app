@@ -191,6 +191,8 @@ def main():
     for sid in sorted(keep, key=lambda x: posts[series[x]['chapters'][0]].get('published_at') or ''):
         s = series[sid]
         title = clean_title(s['title'])
+        if title.isupper():                                   # "THE KISS THAT EVERYONE SAW"
+            title = title_case(title)
         slug = base = slugify(title)
         k = 2
         while slug in used:
@@ -218,7 +220,9 @@ def main():
         if sid in meta:
             story['categories'] = meta[sid]['categories']
             story['description'] = meta[sid]['description']
-        bundles.append({'story': story, 'chapters': chapters, 'generate': {'cover': False, 'audio': False}})
+        # source_key: để `stories:queue-add` xếp hàng lại cùng file mà không nhân đôi truyện.
+        bundles.append({'source_key': sid, 'story': story, 'chapters': chapters,
+                        'generate': {'cover': False, 'audio': False}})
         imap[sid] = {'slug': slug, 'title': title, 'cover_file': cover_by_series.get(sid),
                      'chapters': len(chapters), 'blogbio_first_chapter': posts[s['chapters'][0]]['url']}
 

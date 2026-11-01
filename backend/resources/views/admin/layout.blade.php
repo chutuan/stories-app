@@ -30,6 +30,9 @@
                     <a class="nav-link {{ request()->routeIs('admin.stories.*') ? 'active' : '' }}" href="{{ route('admin.stories.index') }}">Truyện</a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('admin.queue.*') ? 'active' : '' }}" href="{{ route('admin.queue.index') }}">Kho chờ đăng</a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('admin.votes.*') ? 'active' : '' }}" href="{{ route('admin.votes.index') }}">Phiếu đánh giá</a>
                 </li>
                 <li class="nav-item">

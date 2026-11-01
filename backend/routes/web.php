@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ChapterController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\VoteController;
+use App\Http\Controllers\Admin\QueueController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\StoryController;
 use App\Http\Controllers\Web\ReactionController;
@@ -118,6 +119,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::get('votes', [VoteController::class, 'index'])->name('votes.index');
         Route::delete('votes/{vote}', [VoteController::class, 'destroy'])->name('votes.destroy');
+
+        Route::get('queue', [QueueController::class, 'index'])->name('queue.index');
+        Route::delete('queue/{item}', [QueueController::class, 'destroy'])->name('queue.destroy');
 
         Route::get('settings', [SettingsController::class, 'index'])->name('settings.index');
         Route::put('settings', [SettingsController::class, 'update'])->name('settings.update');

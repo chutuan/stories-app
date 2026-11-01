@@ -24,7 +24,9 @@ use Illuminate\Support\Facades\Storage;
  */
 class DeriveCovers extends Command
 {
-    protected $signature = 'covers:derive {--force : làm lại cả những bản đã có}';
+    protected $signature = 'covers:derive
+        {--force : làm lại cả những bản đã có}
+        {--story=* : chỉ những truyện này (id), vd. truyện vừa đăng từ kho}';
 
     protected $description = 'Sinh ảnh bìa WebP 2:3 cho web (32w nền mờ, 320w, 480w, 640w)';
 
@@ -54,7 +56,12 @@ class DeriveCovers extends Command
         $made = 0;
         $saved = 0;
 
-        foreach (Story::whereNotNull('thumbnail')->get() as $story) {
+        $ids = array_map('intval', (array) $this->option('story'));
+        $stories = Story::whereNotNull('thumbnail')
+            ->when($ids !== [], fn ($q) => $q->whereIn('id', $ids))
+            ->get();
+
+        foreach ($stories as $story) {
             $src = (string) $story->thumbnail;
 
             if (! $disk->exists($src)) {
