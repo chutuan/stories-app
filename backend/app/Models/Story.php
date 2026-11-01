@@ -24,12 +24,14 @@ class Story extends Model
         'free_chapters',
         'views',
         'is_featured',
+        'noindex',
     ];
 
     protected $casts = [
         'free_chapters' => 'integer',
         'views' => 'integer',
         'is_featured' => 'boolean',
+        'noindex' => 'boolean',
     ];
 
     public function categories(): BelongsToMany

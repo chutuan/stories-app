@@ -16,6 +16,9 @@
 @section('og_image_h', '630')
 @section('og_image_alt', $story->title.' — '.$heading)
 @section('og_type', 'article')
+@if ($story->noindex)
+@section('robots', 'noindex, follow')
+@endif
 
 @push('meta')
 <meta property="article:published_time" content="{{ $chapter->created_at?->toAtomString() }}">

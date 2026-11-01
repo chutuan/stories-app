@@ -30,6 +30,12 @@
             <input type="checkbox" name="is_featured" value="1" class="form-check-input" id="is_featured" @checked(old('is_featured', $story->is_featured))>
             <label class="form-check-label" for="is_featured">Đánh dấu nổi bật (hero banner trang chủ)</label>
         </div>
+        <div class="form-check mb-3">
+            <input type="hidden" name="noindex" value="0">
+            <input type="checkbox" name="noindex" value="1" class="form-check-input" id="noindex" @checked(old('noindex', $story->noindex))>
+            <label class="form-check-label" for="noindex">Không cho Google lập chỉ mục (noindex)</label>
+            <div class="form-text">Dùng cho truyện đã đăng ở site khác: vẫn đọc được trên web và app, nhưng có thẻ noindex và không nằm trong sitemap.</div>
+        </div>
     </div>
 
     <div class="col-md-4">

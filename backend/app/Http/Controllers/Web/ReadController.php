@@ -441,7 +441,12 @@ class ReadController extends Controller
             ];
         }
 
-        $stories = Story::query()->with(['chapters' => fn ($q) => $q->orderBy('number')])->get();
+        // Truyện noindex không vào sitemap: khai một URL rồi bảo Google đừng lập chỉ
+        // mục là hai tín hiệu ngược nhau, Search Console sẽ báo lỗi.
+        $stories = Story::query()
+            ->where('noindex', false)
+            ->with(['chapters' => fn ($q) => $q->orderBy('number')])
+            ->get();
 
         foreach ($stories as $story) {
             $urls[] = [

@@ -14,6 +14,10 @@
 @section('og_image_alt', $story->title.' — free short serial on Stories')
 @section('og_type', 'book')
 @section('wide', '1')
+{{-- Truyện cũng đăng ở site khác của mình: không để Google thấy hai bản trùng. --}}
+@if ($story->noindex)
+@section('robots', 'noindex, follow')
+@endif
 
 @push('meta')
 <meta property="book:author" content="{{ $story->author ?: 'Stories' }}">

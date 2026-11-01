@@ -118,6 +118,7 @@ class StoryController extends Controller
             'status' => ['required', 'in:ongoing,completed'],
             'free_chapters' => ['required', 'integer', 'min:0'],
             'is_featured' => ['nullable', 'boolean'],
+            'noindex' => ['nullable', 'boolean'],
             'categories' => ['nullable', 'array'],
             'categories.*' => ['integer', 'exists:categories,id'],
             'thumbnail' => ['nullable', 'image', 'max:4096'],
@@ -132,6 +133,7 @@ class StoryController extends Controller
         $story->status = $data['status'];
         $story->free_chapters = $data['free_chapters'];
         $story->is_featured = (bool) ($data['is_featured'] ?? false);
+        $story->noindex = (bool) ($data['noindex'] ?? false);
     }
 
     protected function uniqueSlug(string $title, ?int $ignoreId = null): string

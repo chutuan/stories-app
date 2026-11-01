@@ -42,7 +42,12 @@
                         </td>
                         <td>
                             <div class="fw-semibold">{{ $story->title }}</div>
-                            <div class="text-muted small">{{ $story->author ?: '—' }}</div>
+                            <div class="text-muted small">
+                                {{ $story->author ?: '—' }}
+                                @if ($story->noindex)
+                                    <span class="badge bg-light text-muted border" title="Không cho Google lập chỉ mục">noindex</span>
+                                @endif
+                            </div>
                         </td>
                         <td>
                             @foreach ($story->categories as $cat)
