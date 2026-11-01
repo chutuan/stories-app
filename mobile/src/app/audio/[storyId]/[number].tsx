@@ -31,7 +31,6 @@ import {
   StyleSheet,
   Text,
   View,
-  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -52,6 +51,7 @@ import {
 } from '@/constants/theme';
 import { API_URL } from '@/lib/api';
 import { formatCoins } from '@/lib/format';
+import { CONTENT_MAX_WIDTH, SHEET_MAX_WIDTH, useResponsive } from '@/lib/responsive';
 import { useHistory } from '@/store/history';
 import { COIN_PER_CHAPTER, useWallet } from '@/store/wallet';
 
@@ -113,6 +113,9 @@ const SPEED_LABELS = ['1x', '1.25x', '1.5x', '2x'] as const;
 const SKIP_SECONDS = 15;
 /** Chiều cao 1 dòng trong bảng mục lục (cố định để FlatList nhảy đúng vị trí). */
 const SHEET_ROW_HEIGHT = 56;
+/** Bìa to nhất: iPhone 232, màn rộng (iPad) 320 — vẫn bị chặn theo chiều cao cửa sổ. */
+const COVER_MAX = 232;
+const COVER_MAX_WIDE = 320;
 
 /* ------------------------------------------------------------------ */
 /* HÀM PHỤ                                                             */
@@ -176,7 +179,7 @@ export default function AudioPlayerScreen() {
   const chapterNumber = Number(number);
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { width, height } = useWindowDimensions();
+  const { width, height, wide, contentInset } = useResponsive();
   /**
    * Audio đi theo ĐÚNG quyền đọc: chương miễn phí thì ai cũng nghe, chương trả phí
    * phải mở bằng xu ở màn đọc.
@@ -519,7 +522,9 @@ export default function AudioPlayerScreen() {
         : null;
 
   /* ---- Kích thước bìa + đĩa than ---- */
-  const coverSize = Math.round(Math.max(Math.min(width * 0.56, height * 0.28, 232), 140));
+  const coverSize = Math.round(
+    Math.max(Math.min(width * 0.56, height * 0.28, wide ? COVER_MAX_WIDE : COVER_MAX), 140),
+  );
   const discSize = Math.round(coverSize * 0.94);
   const discPeek = Math.round(coverSize * 0.3);
 
@@ -745,7 +750,15 @@ export default function AudioPlayerScreen() {
           </ScrollView>
 
           {/* ---------- Khối điều khiển ---------- */}
-          <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, Spacing.md) }]}>
+          {/* Màn rộng: nền trải hết bề ngang, còn thanh tua và hàng nút gói trong cột giữa. */}
+          <View
+            style={[
+              styles.bottom,
+              {
+                paddingHorizontal: Math.max(Spacing.xl, contentInset),
+                paddingBottom: Math.max(insets.bottom, Spacing.md),
+              },
+            ]}>
             {notice === 'no-audio' ? (
               <Notice
                 icon="mic-off-outline"
@@ -1219,6 +1232,10 @@ const styles = StyleSheet.create({
   // --- Thân màn ---
   body: {
     flexGrow: 1,
+    // Màn rộng: cụm bìa + điều khiển ở giữa, thanh tua không kéo dài hết bề ngang iPad.
+    width: '100%',
+    maxWidth: CONTENT_MAX_WIDTH,
+    alignSelf: 'center',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: Spacing.xl,
@@ -1456,6 +1473,10 @@ const styles = StyleSheet.create({
     backgroundColor: Palette.overlay,
   },
   sheet: {
+    // Màn rộng: bảng nổi giữa đáy màn thay vì trải hết bề ngang.
+    width: '100%',
+    maxWidth: SHEET_MAX_WIDTH,
+    alignSelf: 'center',
     maxHeight: '72%',
     backgroundColor: Palette.surfaceHigh,
     borderTopLeftRadius: Radius.xxl,

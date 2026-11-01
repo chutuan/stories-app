@@ -28,6 +28,7 @@ import {
 import { AboutLinks } from '@/components/about-links';
 import { showRewarded } from '@/lib/ads';
 import { formatCoins } from '@/lib/format';
+import { CONTENT_MAX_WIDTH } from '@/lib/responsive';
 import {
   AD_MAX_COINS,
   AD_TASKS,
@@ -598,6 +599,10 @@ const styles = StyleSheet.create({
     backgroundColor: Palette.bg,
   },
   content: {
+    // Màn rộng: cột thẻ ở giữa, thanh mốc thưởng không kéo dài hết bề ngang iPad.
+    width: '100%',
+    maxWidth: CONTENT_MAX_WIDTH,
+    alignSelf: 'center',
     paddingHorizontal: Spacing.screen,
     gap: Spacing.md,
   },

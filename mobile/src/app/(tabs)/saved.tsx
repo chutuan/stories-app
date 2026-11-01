@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   AppState,
@@ -10,7 +10,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,6 +29,7 @@ import {
 } from '@/constants/theme';
 import { getStory, type Story } from '@/lib/api';
 import { plural, timeAgo } from '@/lib/format';
+import { CONTENT_MAX_WIDTH, useResponsive } from '@/lib/responsive';
 import { type HistoryEntry, isFinished, useHistory } from '@/store/history';
 import { useWallet } from '@/store/wallet';
 
@@ -43,7 +43,7 @@ type LibraryTab = 'saved' | 'history';
 export default function SavedScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { width } = useWindowDimensions();
+  const { columns, cellWidth, gap } = useResponsive();
   const { savedIds, ready } = useWallet();
   const { entries, ready: historyReady, remove, clear } = useHistory();
   const [tab, setTab] = useState<LibraryTab>('saved');
@@ -52,11 +52,6 @@ export default function SavedScreen() {
   // Giờ hiện tại cho nhãn "2h ago", cập nhật mỗi lần quay lại tab thay vì mỗi lần render.
   const [now, setNow] = useState(() => Date.now());
 
-  /** Bề rộng 1 thẻ trong lưới 2 cột — tính sẵn để hàng lẻ không bị giãn. */
-  const cardWidth = useMemo(
-    () => Math.floor((width - Spacing.screen * 2 - Spacing.gutter) / 2),
-    [width],
-  );
 
   const load = useCallback(async () => {
     // Chờ AsyncStorage đọc xong danh sách đã lưu, tránh nháy "Chưa lưu truyện nào".
@@ -212,9 +207,9 @@ export default function SavedScreen() {
           />
         )
       ) : showSkeleton ? (
-        <View style={styles.skeletonGrid}>
-          {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
-            <StoryCardSkeleton key={i} width={cardWidth} />
+        <View style={[styles.skeletonGrid, { columnGap: gap }]}>
+          {Array.from({ length: Math.max(SKELETON_COUNT, columns * 2) }).map((_, i) => (
+            <StoryCardSkeleton key={i} width={cellWidth} />
           ))}
         </View>
       ) : stories.length === 0 ? (
@@ -235,8 +230,10 @@ export default function SavedScreen() {
         <FlatList
           data={stories}
           keyExtractor={(item) => String(item.id)}
-          numColumns={2}
-          columnWrapperStyle={styles.gridRow}
+          // FlatList không đổi numColumns tại chỗ được: xoay máy / kéo cửa sổ thì dựng lại.
+          key={`grid-${columns}`}
+          numColumns={columns}
+          columnWrapperStyle={[styles.gridRow, { gap }]}
           contentContainerStyle={styles.grid}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -248,7 +245,7 @@ export default function SavedScreen() {
               progressBackgroundColor={Palette.surface}
             />
           }
-          renderItem={({ item }) => <StoryCardView story={item} width={cardWidth} />}
+          renderItem={({ item }) => <StoryCardView story={item} width={cellWidth} />}
           ListFooterComponent={<AboutLinks />}
         />
       )}
@@ -379,6 +376,10 @@ const styles = StyleSheet.create({
 
   // --- Lịch sử ---
   list: {
+    // Màn rộng: lịch sử đọc là danh sách hàng chữ — giữ ở cột giữa như trang chi tiết.
+    width: '100%',
+    maxWidth: CONTENT_MAX_WIDTH,
+    alignSelf: 'center',
     paddingHorizontal: Spacing.screen,
     paddingTop: Spacing.sm,
     paddingBottom: Spacing.xxxl,

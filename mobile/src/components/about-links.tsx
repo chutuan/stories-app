@@ -3,6 +3,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { Linking, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { FontSize, FontWeight, Palette, Radius, Spacing } from '@/constants/theme';
+import { CONTENT_MAX_WIDTH } from '@/lib/responsive';
 import { useNotifications } from '@/store/notifications';
 
 /**
@@ -118,6 +119,10 @@ export function AboutLinks() {
 
 const styles = StyleSheet.create({
   wrap: {
+    // Màn rộng: thẻ cài đặt nằm ở cột giữa như Rewards, không trải hết màn dưới lưới truyện.
+    width: '100%',
+    maxWidth: CONTENT_MAX_WIDTH,
+    alignSelf: 'center',
     marginTop: Spacing.lg,
     marginBottom: Spacing.md,
   },

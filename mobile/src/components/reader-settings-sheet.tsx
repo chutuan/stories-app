@@ -13,6 +13,7 @@ import {
   Shadow,
   Spacing,
 } from '@/constants/theme';
+import { useResponsive } from '@/lib/responsive';
 import {
   FONT_SIZE_MAX,
   FONT_SIZE_MIN,
@@ -46,6 +47,7 @@ function formatRatio(value: number): string {
 
 export function ReaderSettingsSheet({ visible, onClose }: ReaderSettingsSheetProps) {
   const insets = useSafeAreaInsets();
+  const { sheetInset } = useResponsive();
   const {
     fontSize,
     lineHeight,
@@ -77,7 +79,13 @@ export function ReaderSettingsSheet({ visible, onClose }: ReaderSettingsSheetPro
         accessibilityLabel="Close reading settings"
       />
 
-      <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, Spacing.lg) }]}>
+      <View
+        style={[
+          styles.sheet,
+          // màn rộng: bảng nổi giữa đáy màn, không trải hết bề ngang
+          { left: sheetInset, right: sheetInset, paddingBottom: Math.max(insets.bottom, Spacing.lg) },
+        ]}
+      >
         <View style={styles.grabber} />
 
         <View style={styles.titleRow}>

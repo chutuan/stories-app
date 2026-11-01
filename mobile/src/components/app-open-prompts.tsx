@@ -18,6 +18,7 @@ import {
   Spacing,
   Typography,
 } from '@/constants/theme';
+import { useResponsive } from '@/lib/responsive';
 import { isFinished, type HistoryEntry, useHistory } from '@/store/history';
 import { openedFromNotificationRecently, useNotifications } from '@/store/notifications';
 
@@ -147,8 +148,14 @@ export function AppOpenPrompts() {
 
 function SheetFrame({ children }: { children: React.ReactNode }) {
   const insets = useSafeAreaInsets();
+  const { sheetInset } = useResponsive();
   return (
-    <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, Spacing.lg) }]}>
+    <View
+      style={[
+        styles.sheet,
+        // màn rộng: bảng nổi giữa đáy màn, không trải hết bề ngang
+        { left: sheetInset, right: sheetInset, paddingBottom: Math.max(insets.bottom, Spacing.lg) },
+      ]}>
       <View style={styles.grabber} />
       {children}
     </View>

@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -10,7 +10,6 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,6 +31,7 @@ import {
 } from '@/constants/theme';
 import { getCategories, getStories, type Category, type StoryCard } from '@/lib/api';
 import { plural } from '@/lib/format';
+import { useResponsive } from '@/lib/responsive';
 
 /** Số thẻ giả hiển thị khi lưới đang tải. */
 const SKELETON_COUNT = 6;
@@ -44,13 +44,8 @@ export default function CategoryScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { width } = useWindowDimensions();
+  const { columns, cellWidth, gap } = useResponsive();
 
-  /** Bề rộng 1 thẻ trong lưới 2 cột — tính sẵn để hàng lẻ không bị giãn. */
-  const cardWidth = useMemo(
-    () => Math.floor((width - Spacing.screen * 2 - Spacing.gutter) / 2),
-    [width],
-  );
 
   // --- Thông tin thể loại (tên + ảnh bìa) lấy từ /api/categories ---
   const [category, setCategory] = useState<Category | null>(null);
@@ -173,9 +168,9 @@ export default function CategoryScreen() {
           />
         </View>
       ) : loading && items.length === 0 ? (
-        <View style={styles.skeletonGrid}>
-          {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
-            <StoryCardSkeleton key={i} width={cardWidth} />
+        <View style={[styles.skeletonGrid, { columnGap: gap }]}>
+          {Array.from({ length: Math.max(SKELETON_COUNT, columns * 2) }).map((_, i) => (
+            <StoryCardSkeleton key={i} width={cellWidth} />
           ))}
         </View>
       ) : error && items.length === 0 ? (
@@ -204,8 +199,10 @@ export default function CategoryScreen() {
         <FlatList
           data={items}
           keyExtractor={(item) => String(item.id)}
-          numColumns={2}
-          columnWrapperStyle={styles.gridRow}
+          // FlatList không đổi numColumns tại chỗ được: xoay máy / kéo cửa sổ thì dựng lại.
+          key={`grid-${columns}`}
+          numColumns={columns}
+          columnWrapperStyle={[styles.gridRow, { gap }]}
           contentContainerStyle={styles.grid}
           showsVerticalScrollIndicator={false}
           onEndReached={loadMore}
@@ -231,7 +228,7 @@ export default function CategoryScreen() {
               progressBackgroundColor={Palette.surface}
             />
           }
-          renderItem={({ item }) => <StoryCardView story={item} width={cardWidth} />}
+          renderItem={({ item }) => <StoryCardView story={item} width={cellWidth} />}
         />
       )}
     </View>

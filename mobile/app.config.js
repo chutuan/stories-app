@@ -38,7 +38,11 @@ module.exports = {
       // "Signing for Stories requires a development team" (đã dính 27/09/2026).
       // EAS tự quản lý chứng chỉ nên dòng này không ảnh hưởng build trên EAS.
       appleTeamId: '22W729ZRX2',
-      supportsTablet: false,
+      // Bản iPad native (từ 01/11/2026): bố cục co theo bề ngang cửa sổ, xem src/lib/responsive.ts.
+      // requireFullScreen để mặc định false -> Expo tự khai đủ 4 hướng xoay cho iPad (Apple
+      // bắt buộc khi hỗ trợ Split View, ITMS-90474); iPhone vẫn khoá dọc theo `orientation`.
+      // KHÔNG đổi lại false: bản đã phát hành có iPad thì bản cập nhật không được bỏ iPad.
+      supportsTablet: true,
       infoPlist: {
         // Tuân thủ xuất khẩu mã hoá: app chỉ dùng HTTPS/TLS tiêu chuẩn, thuộc diện
         // miễn trừ. Khai false để App Store Connect không hỏi lại mỗi lần nộp build.

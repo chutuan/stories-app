@@ -33,6 +33,7 @@ import {
 import { BannerAd, InlineAd, showRewarded } from '@/lib/ads';
 import { API_URL, ApiError, getStory, type Chapter } from '@/lib/api';
 import { formatCoins, plural } from '@/lib/format';
+import { CONTENT_MAX_WIDTH, SHEET_MAX_WIDTH, useResponsive } from '@/lib/responsive';
 import {
   ReaderPrefsProvider,
   useReaderPrefs,
@@ -109,6 +110,7 @@ export default function ReaderRoute() {
 function ReaderScreen() {
   const { storyId, number } = useLocalSearchParams<{ storyId: string; number: string }>();
   const insets = useSafeAreaInsets();
+  const { contentInset } = useResponsive();
   const router = useRouter();
   const { coins, spendCoins, isUnlocked, unlock } = useWallet();
   // Sổ cái quảng cáo dùng CHUNG với tab Phần thưởng: mọi lượt xem đều phải đếm
@@ -750,7 +752,12 @@ function ReaderScreen() {
       {/* Thanh điều hướng chương — hiện cả ở MÀN KHÓA để không bị cụt đường
           (chương khóa vẫn nhảy được sang chương trước/sau). */}
       {chapter && !loading ? (
-        <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, Spacing.md) }]}>
+        <View
+          style={[
+            styles.bottomBar,
+            // màn rộng: nút Previous/Next thẳng cột chữ thay vì kéo dài hết bề ngang
+            { paddingHorizontal: contentInset, paddingBottom: Math.max(insets.bottom, Spacing.md) },
+          ]}>
           <NavButton
             label="Previous"
             direction="prev"
@@ -857,8 +864,11 @@ function NavButton({ label, direction, disabled, onPress }: NavButtonProps) {
 /* ------------------------------------------------------------------ */
 
 function ReaderSkeleton({ rt }: { rt: ReaderTheme }) {
+  // cùng lề với cột chữ `readerContent` (rộng tối đa CONTENT_MAX_WIDTH, nằm giữa)
+  const { width } = useResponsive();
+  const side = Math.max(0, (width - CONTENT_MAX_WIDTH) / 2) + Spacing.xl;
   return (
-    <View style={[styles.skeletonWrap, { backgroundColor: rt.bg }]}>
+    <View style={[styles.skeletonWrap, { backgroundColor: rt.bg, paddingHorizontal: side }]}>
       <View style={styles.skeletonMeta}>
         <Skeleton width={82} height={20} radius={Radius.pill} />
         <Skeleton width={68} height={20} radius={Radius.pill} />
@@ -972,6 +982,10 @@ const styles = StyleSheet.create({
 
   // --- Nội dung đọc ---
   readerContent: {
+    // Màn rộng: cột chữ ở giữa, dòng không dài quá ~70 ký tự cho dễ đọc.
+    width: '100%',
+    maxWidth: CONTENT_MAX_WIDTH,
+    alignSelf: 'center',
     paddingHorizontal: Spacing.xl,
     paddingTop: Spacing.xl,
     paddingBottom: Spacing.xxl,
@@ -1094,6 +1108,9 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.xxl,
   },
   lockCard: {
+    width: '100%',
+    maxWidth: SHEET_MAX_WIDTH,
+    alignSelf: 'center',
     alignItems: 'center',
     gap: Spacing.md,
     padding: Spacing.xxl,

@@ -6,7 +6,6 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -27,6 +26,7 @@ import {
 } from '@/constants/theme';
 import { getCategories, getStories, type Category, type StoryCard } from '@/lib/api';
 import { plural } from '@/lib/format';
+import { useResponsive } from '@/lib/responsive';
 
 /** Số thẻ giả hiển thị khi đang tải. */
 const SKELETON_COUNT = 6;
@@ -35,7 +35,7 @@ const DEBOUNCE_MS = 350;
 
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const { columns, cellWidth, gap } = useResponsive();
   const [query, setQuery] = useState('');
   const [inputFocused, setInputFocused] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -48,11 +48,6 @@ export default function SearchScreen() {
   /** Số thứ tự lần gọi API gần nhất — bỏ qua kết quả về muộn của lần gõ cũ. */
   const requestId = useRef(0);
 
-  /** Bề rộng 1 thẻ trong lưới 2 cột — tính sẵn để hàng lẻ không bị giãn. */
-  const cardWidth = useMemo(
-    () => Math.floor((width - Spacing.screen * 2 - Spacing.gutter) / 2),
-    [width],
-  );
 
   const activeCategoryName = useMemo(
     () => categories.find((c) => c.slug === activeCategory)?.name ?? null,
@@ -179,9 +174,9 @@ export default function SearchScreen() {
       />
 
       {showSkeleton ? (
-        <View style={styles.skeletonGrid}>
-          {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
-            <StoryCardSkeleton key={i} width={cardWidth} />
+        <View style={[styles.skeletonGrid, { columnGap: gap }]}>
+          {Array.from({ length: Math.max(SKELETON_COUNT, columns * 2) }).map((_, i) => (
+            <StoryCardSkeleton key={i} width={cellWidth} />
           ))}
         </View>
       ) : error ? (
@@ -213,10 +208,12 @@ export default function SearchScreen() {
         <FlatList
           data={results}
           keyExtractor={(item) => String(item.id)}
-          numColumns={2}
+          // FlatList không đổi numColumns tại chỗ được: xoay máy / kéo cửa sổ thì dựng lại.
+          key={`grid-${columns}`}
+          numColumns={columns}
           // đang tải lại (đổi từ khoá/thể loại) thì làm mờ kết quả cũ thay vì nháy skeleton
           style={loading ? styles.dimmed : undefined}
-          columnWrapperStyle={styles.gridRow}
+          columnWrapperStyle={[styles.gridRow, { gap }]}
           contentContainerStyle={styles.grid}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
@@ -227,7 +224,7 @@ export default function SearchScreen() {
               {activeCategoryName ? ` in ${activeCategoryName}` : ''}
             </Text>
           }
-          renderItem={({ item }) => <StoryCardView story={item} width={cardWidth} />}
+          renderItem={({ item }) => <StoryCardView story={item} width={cellWidth} />}
         />
       )}
     </View>

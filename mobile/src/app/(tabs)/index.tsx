@@ -11,10 +11,9 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  useWindowDimensions,
   View,
 } from 'react-native';
-import type { LayoutChangeEvent } from 'react-native';
+import type { LayoutChangeEvent, ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Chip } from '@/components/chip';
@@ -46,6 +45,7 @@ import {
   type StorySort,
 } from '@/lib/api';
 import { formatViews, plural, storyStatusLabel } from '@/lib/format';
+import { gridFor, useResponsive } from '@/lib/responsive';
 import { useHideFinished } from '@/store/history';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
@@ -54,10 +54,17 @@ type IoniconName = keyof typeof Ionicons.glyphMap;
 /* HẰNG SỐ                                                             */
 /* ------------------------------------------------------------------ */
 
-/** Bề rộng 1 card trong hàng ngang + khoảng cách -> bước snap. */
-const CARD_WIDTH = Layout.cardWidthLarge;
+/** Khoảng cách giữa 2 card trong hàng ngang; bề rộng card lấy từ useResponsive(). */
 const CARD_GAP = Spacing.gutter;
-const SNAP_INTERVAL = CARD_WIDTH + CARD_GAP;
+/** Bề rộng bìa trong hero màn rộng. */
+const HERO_WIDE_COVER = 200;
+/** Ô thể loại hẹp nhất trên màn rộng (iPhone giữ 2 cột). */
+const CATEGORY_TILE_MIN = 200;
+/** Số dòng thẻ của mỗi hàng ngang: thẻ xếp theo cột (1–2 ở cột đầu, 3–4 ở cột hai…)
+ *  để truyện đứng đầu danh sách luôn nằm trong phần nhìn thấy, cuộn ngang theo từng cột. */
+const ROW_LINES = 2;
+/** Khoảng cách dọc giữa các dòng thẻ — bằng khoảng cách hàng của lưới truyện. */
+const ROW_LINE_GAP = Spacing.xl;
 
 /** Số thẻ giả khi lưới đang tải. */
 const GRID_SKELETON_COUNT = 6;
@@ -75,15 +82,6 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'ranking', label: 'Ranking' },
   { key: 'free', label: 'Free' },
 ];
-
-/* ------------------------------------------------------------------ */
-/* TIỆN ÍCH                                                            */
-/* ------------------------------------------------------------------ */
-
-/** Bề rộng 1 ô trong lưới 2 cột, đã trừ lề màn hình và khe giữa. */
-function twoColumnWidth(screenWidth: number): number {
-  return Math.floor((screenWidth - Spacing.screen * 2 - Spacing.gutter) / 2);
-}
 
 /* ------------------------------------------------------------------ */
 /* MÀN HÌNH                                                            */
@@ -216,7 +214,7 @@ function TabRow({ value, onChange }: { value: TabKey; onChange: (key: TabKey) =>
 
 function DiscoverTab({ focusToken, onSeeNewest }: { focusToken: number; onSeeNewest: () => void }) {
   const router = useRouter();
-  const { width, height } = useWindowDimensions();
+  const { width, height, wide } = useResponsive();
   const [home, setHome] = useState<HomeData | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -232,7 +230,7 @@ function DiscoverTab({ focusToken, onSeeNewest }: { focusToken: number; onSeeNew
   const scrollPending = useRef(false);
 
   const heroHeight = Math.round(Math.min(width * 1.02, height * 0.44));
-  const tileWidth = useMemo(() => twoColumnWidth(width), [width]);
+  const tiles = useMemo(() => gridFor(width, CATEGORY_TILE_MIN, 6), [width]);
 
   useEffect(() => {
     let alive = true;
@@ -324,7 +322,7 @@ function DiscoverTab({ focusToken, onSeeNewest }: { focusToken: number; onSeeNew
         />
       }>
       {loading ? (
-        <DiscoverSkeleton heroHeight={heroHeight} tileWidth={tileWidth} />
+        <DiscoverSkeleton heroHeight={heroHeight} tiles={tiles} wide={wide} />
       ) : error ? (
         <View style={[styles.stateWrap, { minHeight: height * 0.45 }]}>
           <EmptyState
@@ -348,7 +346,13 @@ function DiscoverTab({ focusToken, onSeeNewest }: { focusToken: number; onSeeNew
         </View>
       ) : (
         <>
-          {featured ? <Hero story={featured} height={heroHeight} /> : null}
+          {featured ? (
+            wide ? (
+              <HeroWide story={featured} />
+            ) : (
+              <Hero story={featured} height={heroHeight} />
+            )
+          ) : null}
 
           <Row
             title="Recently updated"
@@ -368,9 +372,9 @@ function DiscoverTab({ focusToken, onSeeNewest }: { focusToken: number; onSeeNew
           {categories.length > 0 ? (
             <View style={styles.section} onLayout={onCategoryLayout}>
               <SectionHeader title="Genres" subtitle="Pick a genre you love" icon="grid" />
-              <View style={styles.catGrid}>
+              <View style={[styles.catGrid, { columnGap: tiles.gap, rowGap: tiles.gap }]}>
                 {categories.map((category) => (
-                  <CategoryTile key={category.id} category={category} width={tileWidth} />
+                  <CategoryTile key={category.id} category={category} width={tiles.cellWidth} />
                 ))}
               </View>
             </View>
@@ -391,22 +395,8 @@ function Hero({ story, height }: { story: Story; height: number }) {
     story.thumbnail_url ? 'loading' : 'error',
   );
 
-  const completed = story.status === 'completed';
-  const canRead = story.chapters_count > 0;
-  const categories = story.categories.slice(0, 2);
-  const meta = [
-    story.author,
-    canRead ? plural(story.chapters_count, 'chapter', 'chapters') : null,
-  ]
-    .filter(Boolean)
-    .join('  ·  ');
-
   const openDetail = useCallback(() => {
     router.push(`/story/${story.id}`);
-  }, [router, story.id]);
-
-  const openFirstChapter = useCallback(() => {
-    router.push(`/reader/${story.id}/1`);
   }, [router, story.id]);
 
   return (
@@ -464,73 +454,162 @@ function Hero({ story, height }: { story: Story; height: number }) {
       </View>
 
       <View style={styles.heroContent} pointerEvents="box-none">
-        <View style={styles.chipRow} pointerEvents="none">
-          <Chip
-            label={storyStatusLabel(story.status)}
-            icon={completed ? 'checkmark-circle' : 'flash'}
-            variant={completed ? 'free' : 'accent'}
-            size="sm"
-            solid
-          />
-          {categories.map((c) => (
-            <Chip key={c.id} label={c.name} size="sm" style={styles.heroChip} />
-          ))}
-        </View>
+        <HeroInfo story={story} />
+      </View>
+    </View>
+  );
+}
 
-        <Text style={styles.heroTitle} numberOfLines={2}>
-          {story.title}
+/** Nhãn + tên + tác giả + nút đọc của truyện nổi bật — dùng chung cho hero iPhone và màn rộng. */
+function HeroInfo({ story, titleLines = 2 }: { story: Story; titleLines?: number }) {
+  const router = useRouter();
+  const completed = story.status === 'completed';
+  const canRead = story.chapters_count > 0;
+  const categories = story.categories.slice(0, 2);
+  const meta = [
+    story.author,
+    canRead ? plural(story.chapters_count, 'chapter', 'chapters') : null,
+  ]
+    .filter(Boolean)
+    .join('  ·  ');
+
+  const openDetail = useCallback(() => {
+    router.push(`/story/${story.id}`);
+  }, [router, story.id]);
+
+  const openFirstChapter = useCallback(() => {
+    router.push(`/reader/${story.id}/1`);
+  }, [router, story.id]);
+
+  return (
+    <>
+      <View style={styles.chipRow} pointerEvents="none">
+        <Chip
+          label={storyStatusLabel(story.status)}
+          icon={completed ? 'checkmark-circle' : 'flash'}
+          variant={completed ? 'free' : 'accent'}
+          size="sm"
+          solid
+        />
+        {categories.map((c) => (
+          <Chip key={c.id} label={c.name} size="sm" style={styles.heroChip} />
+        ))}
+      </View>
+
+      <Text style={styles.heroTitle} numberOfLines={titleLines}>
+        {story.title}
+      </Text>
+
+      {meta ? (
+        <Text style={styles.heroMeta} numberOfLines={1}>
+          {meta}
         </Text>
+      ) : null}
 
-        {meta ? (
-          <Text style={styles.heroMeta} numberOfLines={1}>
-            {meta}
-          </Text>
-        ) : null}
-
-        <View style={styles.heroActions}>
-          {canRead ? (
-            <>
-              <Pressable
-                onPress={openFirstChapter}
-                accessibilityRole="button"
-                accessibilityLabel="Read chapter 1 now"
-                style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}>
-                <LinearGradient
-                  colors={Gradients.accent}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.primaryFill}>
-                  <Ionicons name="play" size={15} color={Palette.onAccent} />
-                  <Text style={styles.primaryText}>Read now</Text>
-                </LinearGradient>
-              </Pressable>
-
-              <Pressable
-                onPress={openDetail}
-                accessibilityRole="button"
-                accessibilityLabel="View story details"
-                style={({ pressed }) => [styles.ghostBtn, pressed && styles.pressed]}>
-                <Ionicons name="list-outline" size={15} color={Palette.text} />
-                <Text style={styles.ghostText}>Details</Text>
-              </Pressable>
-            </>
-          ) : (
+      <View style={styles.heroActions}>
+        {canRead ? (
+          <>
             <Pressable
-              onPress={openDetail}
+              onPress={openFirstChapter}
               accessibilityRole="button"
-              accessibilityLabel="View story details"
+              accessibilityLabel="Read chapter 1 now"
               style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}>
               <LinearGradient
                 colors={Gradients.accent}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.primaryFill}>
-                <Ionicons name="information-circle-outline" size={15} color={Palette.onAccent} />
-                <Text style={styles.primaryText}>View details</Text>
+                <Ionicons name="play" size={15} color={Palette.onAccent} />
+                <Text style={styles.primaryText}>Read now</Text>
               </LinearGradient>
             </Pressable>
-          )}
+
+            <Pressable
+              onPress={openDetail}
+              accessibilityRole="button"
+              accessibilityLabel="View story details"
+              style={({ pressed }) => [styles.ghostBtn, pressed && styles.pressed]}>
+              <Ionicons name="list-outline" size={15} color={Palette.text} />
+              <Text style={styles.ghostText}>Details</Text>
+            </Pressable>
+          </>
+        ) : (
+          <Pressable
+            onPress={openDetail}
+            accessibilityRole="button"
+            accessibilityLabel="View story details"
+            style={({ pressed }) => [styles.primaryBtn, pressed && styles.pressed]}>
+            <LinearGradient
+              colors={Gradients.accent}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.primaryFill}>
+              <Ionicons name="information-circle-outline" size={15} color={Palette.onAccent} />
+              <Text style={styles.primaryText}>View details</Text>
+            </LinearGradient>
+          </Pressable>
+        )}
+      </View>
+    </>
+  );
+}
+
+/**
+ * Hero trên màn rộng (iPad). Bìa truyện là ảnh DỌC 3:4: kéo tràn ~1000pt bề ngang như
+ * hero iPhone thì chỉ còn một dải giữa ảnh, nhoè và bị lớp mờ hai đầu nuốt gần hết.
+ * Ở đây bìa sắc nét đứng bên trái, chữ bên phải, nền là chính ảnh bìa làm mờ.
+ */
+function HeroWide({ story }: { story: Story }) {
+  const router = useRouter();
+  const openDetail = useCallback(() => {
+    router.push(`/story/${story.id}`);
+  }, [router, story.id]);
+
+  return (
+    <View style={styles.heroWide}>
+      {story.thumbnail_url ? (
+        <Image
+          source={{ uri: story.thumbnail_url }}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          blurRadius={40}
+          transition={280}
+          cachePolicy="memory-disk"
+          accessible={false}
+        />
+      ) : (
+        <LinearGradient
+          colors={coverGradient(story.id)}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+      )}
+      {/* phủ SÁNG như nền mờ ở trang chi tiết: chữ tối đọc được trên mọi ảnh */}
+      <View style={styles.heroWideVeil} pointerEvents="none" />
+
+      <Pressable
+        style={StyleSheet.absoluteFill}
+        onPress={openDetail}
+        accessibilityRole="button"
+        accessibilityLabel={`Featured story: ${story.title}`}
+      />
+
+      <View style={styles.heroWideCover} pointerEvents="none">
+        <StoryCover
+          thumbnailUrl={story.thumbnail_url}
+          title={story.title}
+          seed={story.id}
+          showRibbon={false}
+          showChapters={false}
+        />
+      </View>
+
+      <View style={styles.heroWideInfo} pointerEvents="box-none">
+        <View style={styles.chipRow} pointerEvents="none">
+          <Chip label="Featured" icon="sparkles" variant="accent" size="sm" solid />
         </View>
+        <HeroInfo story={story} titleLines={3} />
       </View>
     </View>
   );
@@ -553,22 +632,35 @@ function Row({
   stories: StoryCard[];
   onSeeMore?: () => void;
 }) {
+  const { rowCardWidth } = useResponsive();
+  const columns = useMemo(() => {
+    const out: StoryCard[][] = [];
+    for (let i = 0; i < stories.length; i += ROW_LINES) out.push(stories.slice(i, i + ROW_LINES));
+    return out;
+  }, [stories]);
+
   if (stories.length === 0) return null;
   return (
     <View style={styles.section}>
       <SectionHeader title={title} subtitle={subtitle} icon={icon} onPress={onSeeMore} />
       <FlatList
         horizontal
-        data={stories}
-        keyExtractor={(item) => String(item.id)}
+        data={columns}
+        keyExtractor={(column) => String(column[0].id)}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.rowList}
-        snapToInterval={SNAP_INTERVAL}
+        snapToInterval={rowCardWidth + CARD_GAP}
         snapToAlignment="start"
         decelerationRate="fast"
         disableIntervalMomentum
         initialNumToRender={4}
-        renderItem={({ item }) => <StoryCardView story={item} width={CARD_WIDTH} />}
+        renderItem={({ item: column }) => (
+          <View style={styles.rowColumn}>
+            {column.map((story) => (
+              <StoryCardView key={story.id} story={story} width={rowCardWidth} />
+            ))}
+          </View>
+        )}
       />
     </View>
   );
@@ -776,15 +868,14 @@ function GridFeed({
   emptyDescription: string;
   countLabel: (total: number) => string;
 }) {
-  const { width } = useWindowDimensions();
-  const cardWidth = useMemo(() => twoColumnWidth(width), [width]);
+  const { columns, cellWidth, gap } = useResponsive();
   const feed = useStoryFeed({ sort, free });
 
   if (feed.loading && feed.items.length === 0) {
     return (
-      <View style={styles.skeletonGrid}>
-        {Array.from({ length: GRID_SKELETON_COUNT }).map((_, i) => (
-          <StoryCardSkeleton key={i} width={cardWidth} />
+      <View style={[styles.skeletonGrid, { columnGap: gap }]}>
+        {Array.from({ length: Math.max(GRID_SKELETON_COUNT, columns * 2) }).map((_, i) => (
+          <StoryCardSkeleton key={i} width={cellWidth} />
         ))}
       </View>
     );
@@ -821,10 +912,12 @@ function GridFeed({
 
   return (
     <FlatList
+      // FlatList không đổi numColumns tại chỗ được: xoay máy / kéo cửa sổ đổi số cột thì dựng lại.
+      key={`grid-${columns}`}
       data={feed.items}
       keyExtractor={(item) => String(item.id)}
-      numColumns={2}
-      columnWrapperStyle={styles.gridRow}
+      numColumns={columns}
+      columnWrapperStyle={[styles.gridRow, { gap }]}
       contentContainerStyle={styles.grid}
       showsVerticalScrollIndicator={false}
       onEndReached={feed.loadMore}
@@ -846,7 +939,7 @@ function GridFeed({
           progressBackgroundColor={Palette.surface}
         />
       }
-      renderItem={({ item }) => <StoryCardView story={item} width={cardWidth} />}
+      renderItem={({ item }) => <StoryCardView story={item} width={cellWidth} />}
     />
   );
 }
@@ -857,12 +950,18 @@ function GridFeed({
 
 function RankFeed() {
   const feed = useStoryFeed({ sort: 'views' });
+  // Màn rộng: bảng xếp hạng 2 cột (1 2 / 3 4…), một hàng trải hết bề ngang iPad thì thưa.
+  const { width, wide, gap } = useResponsive();
+  const rankColumns = wide ? 2 : 1;
+  const cell: ViewStyle | undefined = wide
+    ? { width: Math.floor((width - Spacing.screen * 2 - gap) / 2) }
+    : undefined;
 
   if (feed.loading && feed.items.length === 0) {
     return (
-      <View style={styles.rankSkeletonWrap}>
-        {Array.from({ length: RANK_SKELETON_COUNT }).map((_, i) => (
-          <RankRowSkeleton key={i} />
+      <View style={[styles.rankSkeletonWrap, wide && { flexDirection: 'row', flexWrap: 'wrap', columnGap: gap }]}>
+        {Array.from({ length: RANK_SKELETON_COUNT * rankColumns }).map((_, i) => (
+          <RankRowSkeleton key={i} style={cell} />
         ))}
       </View>
     );
@@ -899,8 +998,11 @@ function RankFeed() {
 
   return (
     <FlatList
+      key={`rank-${rankColumns}`}
       data={feed.items}
       keyExtractor={(item) => String(item.id)}
+      numColumns={rankColumns}
+      columnWrapperStyle={wide ? { gap } : undefined}
       contentContainerStyle={styles.rankList}
       showsVerticalScrollIndicator={false}
       onEndReached={feed.loadMore}
@@ -922,12 +1024,12 @@ function RankFeed() {
           progressBackgroundColor={Palette.surface}
         />
       }
-      renderItem={({ item, index }) => <RankRow story={item} rank={index + 1} />}
+      renderItem={({ item, index }) => <RankRow story={item} rank={index + 1} style={cell} />}
     />
   );
 }
 
-function RankRow({ story, rank }: { story: StoryCard; rank: number }) {
+function RankRow({ story, rank, style }: { story: StoryCard; rank: number; style?: ViewStyle }) {
   const router = useRouter();
   const top = rank <= 3;
 
@@ -940,7 +1042,7 @@ function RankRow({ story, rank }: { story: StoryCard; rank: number }) {
       onPress={open}
       accessibilityRole="link"
       accessibilityLabel={`Rank ${rank}: ${story.title}`}
-      style={({ pressed }) => [styles.rankRow, pressed && styles.pressed]}>
+      style={({ pressed }) => [styles.rankRow, style, pressed && styles.pressed]}>
       <View style={styles.rankBadge}>
         <Text style={[styles.rankNum, top && styles.rankNumTop]}>{rank}</Text>
       </View>
@@ -980,9 +1082,9 @@ function RankRow({ story, rank }: { story: StoryCard; rank: number }) {
   );
 }
 
-function RankRowSkeleton() {
+function RankRowSkeleton({ style }: { style?: ViewStyle }) {
   return (
-    <View style={styles.rankRow}>
+    <View style={[styles.rankRow, style]}>
       <Skeleton width={22} height={18} radius={Radius.xs} />
       <Skeleton width={54} aspectRatio={Layout.coverAspect} radius={Radius.md} />
       <View style={styles.rankInfo}>
@@ -998,25 +1100,42 @@ function RankRowSkeleton() {
 /* SKELETON TAB KHÁM PHÁ                                               */
 /* ------------------------------------------------------------------ */
 
-function DiscoverSkeleton({ heroHeight, tileWidth }: { heroHeight: number; tileWidth: number }) {
+function DiscoverSkeleton({
+  heroHeight,
+  tiles,
+  wide,
+}: {
+  heroHeight: number;
+  tiles: ReturnType<typeof gridFor>;
+  wide: boolean;
+}) {
   return (
     <View>
-      <View style={[styles.hero, { height: heroHeight }]}>
-        <Skeleton style={StyleSheet.absoluteFill} width="100%" height="100%" radius={0} />
-        <LinearGradient colors={Gradients.heroScrim} style={styles.heroScrim} pointerEvents="none" />
-        <View style={styles.heroContent} pointerEvents="none">
-          <View style={styles.chipRow}>
-            <Skeleton width={78} height={20} radius={Radius.pill} />
-            <Skeleton width={62} height={20} radius={Radius.pill} />
-          </View>
-          <Skeleton width="82%" height={24} radius={Radius.xs} />
-          <Skeleton width="52%" height={24} radius={Radius.xs} />
-          <View style={styles.heroActions}>
-            <Skeleton width={132} height={40} radius={Radius.pill} />
-            <Skeleton width={104} height={40} radius={Radius.pill} />
+      {wide ? (
+        <View style={styles.heroWideSkeleton}>
+          <Skeleton
+            height={Math.round(HERO_WIDE_COVER / Layout.coverAspect) + Spacing.xxl * 2}
+            radius={Radius.xl}
+          />
+        </View>
+      ) : (
+        <View style={[styles.hero, { height: heroHeight }]}>
+          <Skeleton style={StyleSheet.absoluteFill} width="100%" height="100%" radius={0} />
+          <LinearGradient colors={Gradients.heroScrim} style={styles.heroScrim} pointerEvents="none" />
+          <View style={styles.heroContent} pointerEvents="none">
+            <View style={styles.chipRow}>
+              <Skeleton width={78} height={20} radius={Radius.pill} />
+              <Skeleton width={62} height={20} radius={Radius.pill} />
+            </View>
+            <Skeleton width="82%" height={24} radius={Radius.xs} />
+            <Skeleton width="52%" height={24} radius={Radius.xs} />
+            <View style={styles.heroActions}>
+              <Skeleton width={132} height={40} radius={Radius.pill} />
+              <Skeleton width={104} height={40} radius={Radius.pill} />
+            </View>
           </View>
         </View>
-      </View>
+      )}
 
       <RowSkeleton />
       <RowSkeleton />
@@ -1025,9 +1144,9 @@ function DiscoverSkeleton({ heroHeight, tileWidth }: { heroHeight: number; tileW
         <View style={styles.skelHeader}>
           <Skeleton width={96} height={18} radius={Radius.xs} />
         </View>
-        <View style={styles.catGrid}>
-          {[0, 1, 2, 3].map((i) => (
-            <Skeleton key={i} width={tileWidth} height={88} radius={Radius.card} />
+        <View style={[styles.catGrid, { columnGap: tiles.gap, rowGap: tiles.gap }]}>
+          {Array.from({ length: tiles.columns * 2 }, (_, i) => (
+            <Skeleton key={i} width={tiles.cellWidth} height={88} radius={Radius.card} />
           ))}
         </View>
       </View>
@@ -1036,14 +1155,21 @@ function DiscoverSkeleton({ heroHeight, tileWidth }: { heroHeight: number; tileW
 }
 
 function RowSkeleton() {
+  const { width, rowCardWidth } = useResponsive();
+  // đủ cột lấp bề ngang hiện tại (iPhone 3 cột, cột thứ ba ló một phần)
+  const count = Math.ceil((width - Spacing.screen) / (rowCardWidth + CARD_GAP));
   return (
     <View style={styles.section}>
       <View style={styles.skelHeader}>
         <Skeleton width={128} height={18} radius={Radius.xs} />
       </View>
       <View style={styles.skelRow}>
-        {[0, 1, 2].map((i) => (
-          <StoryCardSkeleton key={i} width={CARD_WIDTH} />
+        {Array.from({ length: count }, (_, i) => (
+          <View key={i} style={styles.rowColumn}>
+            {Array.from({ length: ROW_LINES }, (_, line) => (
+              <StoryCardSkeleton key={line} width={rowCardWidth} />
+            ))}
+          </View>
         ))}
       </View>
     </View>
@@ -1161,6 +1287,38 @@ const styles = StyleSheet.create({
   rowList: {
     paddingHorizontal: Spacing.screen,
     gap: CARD_GAP,
+  },
+  rowColumn: {
+    gap: ROW_LINE_GAP,
+  },
+
+  // --- Hero màn rộng ---
+  heroWide: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xxl,
+    marginHorizontal: Spacing.screen,
+    padding: Spacing.xxl,
+    borderRadius: Radius.xl,
+    overflow: 'hidden',
+    backgroundColor: Palette.surfaceAlt,
+  },
+  heroWideSkeleton: {
+    paddingHorizontal: Spacing.screen,
+  },
+  heroWideVeil: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: withAlpha(Palette.bg, 0.72),
+  },
+  heroWideCover: {
+    width: HERO_WIDE_COVER,
+    borderRadius: Radius.cover,
+    backgroundColor: Palette.surfaceAlt,
+    ...Shadow.float,
+  },
+  heroWideInfo: {
+    flex: 1,
+    gap: Spacing.sm,
   },
 
   // --- Hero ---

@@ -26,6 +26,7 @@ import {
 } from '@/constants/theme';
 import { getStory, type ChapterMeta, type Story } from '@/lib/api';
 import { formatCoins, formatViews, plural, storyStatusLabel } from '@/lib/format';
+import { CONTENT_MAX_WIDTH, useResponsive } from '@/lib/responsive';
 import { COIN_PER_CHAPTER, useWallet } from '@/store/wallet';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
@@ -38,10 +39,12 @@ type IoniconName = keyof typeof Ionicons.glyphMap;
  */
 type ChapterItem = ChapterMeta & { has_audio?: boolean };
 
-/** Chiều cao vùng ảnh nền mờ (chưa tính safe-area). */
+/** Chiều cao vùng ảnh nền mờ (chưa tính safe-area); màn rộng bìa to hơn nên nền cao hơn. */
 const BACKDROP_HEIGHT = 340;
+const BACKDROP_HEIGHT_WIDE = 420;
 /** Bìa sắc nét ở giữa hero. */
 const COVER_WIDTH = 150;
+const COVER_WIDTH_WIDE = 200;
 /** Số dòng mô tả khi thu gọn. */
 const DESC_LINES = 4;
 /** Mô tả dài hơn ngần này ký tự thì mới hiện nút "Xem thêm". */
@@ -71,6 +74,7 @@ function chapterLabel(chapter: ChapterItem): string {
 export default function StoryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
+  const { wide } = useResponsive();
   const router = useRouter();
   const { isSaved, toggleSaved, isUnlocked } = useWallet();
 
@@ -195,7 +199,10 @@ export default function StoryDetailScreen() {
         <View style={styles.hero}>
           <View
             pointerEvents="none"
-            style={[styles.backdrop, { height: BACKDROP_HEIGHT + insets.top }]}>
+            style={[
+              styles.backdrop,
+              { height: (wide ? BACKDROP_HEIGHT_WIDE : BACKDROP_HEIGHT) + insets.top },
+            ]}>
             {story.thumbnail_url ? (
               <Image
                 source={{ uri: story.thumbnail_url }}
@@ -224,7 +231,7 @@ export default function StoryDetailScreen() {
 
           <View style={[styles.heroContent, { paddingTop: insets.top + 56 }]}>
             {/* Bìa sắc nét, bo góc + bóng mềm */}
-            <View style={styles.coverShadow}>
+            <View style={[styles.coverShadow, wide && styles.coverShadowWide]}>
               <StoryCover
                 thumbnailUrl={story.thumbnail_url}
                 title={story.title}
@@ -519,10 +526,15 @@ function ChapterRow({
 /* ------------------------------------------------------------------ */
 
 function DetailSkeleton({ topInset }: { topInset: number }) {
+  const { wide } = useResponsive();
   return (
     <View style={{ paddingTop: topInset + 56 }}>
       <View style={styles.heroContent}>
-        <Skeleton width={COVER_WIDTH} aspectRatio={Layout.coverAspect} radius={Radius.cover} />
+        <Skeleton
+          width={wide ? COVER_WIDTH_WIDE : COVER_WIDTH}
+          aspectRatio={Layout.coverAspect}
+          radius={Radius.cover}
+        />
         <Skeleton width="70%" height={22} radius={Radius.xs} style={styles.skelTitle} />
         <Skeleton width="40%" height={13} radius={Radius.xs} style={styles.skelAuthor} />
         <Skeleton width={170} height={16} radius={Radius.pill} style={styles.skelRating} />
@@ -615,6 +627,10 @@ const styles = StyleSheet.create({
     height: '116%',
   },
   heroContent: {
+    // Màn rộng: cột nội dung ở giữa, ảnh nền mờ vẫn tràn hết bề ngang.
+    width: '100%',
+    maxWidth: CONTENT_MAX_WIDTH,
+    alignSelf: 'center',
     alignItems: 'center',
     paddingHorizontal: Spacing.screen,
     paddingBottom: Spacing.sm,
@@ -627,6 +643,9 @@ const styles = StyleSheet.create({
     // Android cần backgroundColor thì elevation mới đổ bóng
     backgroundColor: Palette.surfaceAlt,
     ...Shadow.float,
+  },
+  coverShadowWide: {
+    width: COVER_WIDTH_WIDE,
   },
   title: {
     marginTop: Spacing.lg,
@@ -822,6 +841,9 @@ const styles = StyleSheet.create({
 
   // --- Mục nội dung ---
   section: {
+    width: '100%',
+    maxWidth: CONTENT_MAX_WIDTH,
+    alignSelf: 'center',
     marginTop: Spacing.xxl,
   },
   sectionBody: {
