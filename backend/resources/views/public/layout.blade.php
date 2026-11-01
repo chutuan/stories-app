@@ -521,6 +521,7 @@ window.StoriesHistory = {
   .sh-more{grid-area:more}
   .sh-head h1{color:#fff;font-size:34px;line-height:1.16;margin:0 0 8px}
   .sh-by{color:rgba(255,255,255,.74);font-size:15px;margin:0}
+  .sh-hook{color:rgba(255,255,255,.88);font-size:17px;font-style:italic;line-height:1.5;margin:16px 0 0;max-width:62ch}
   .status{display:inline-block;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;vertical-align:1px;
           background:rgba(255,255,255,.14);color:#fff}
   .status.live{background:var(--btn)}
@@ -769,6 +770,7 @@ window.StoriesHistory = {
     .sh-head h1{font-size:21px;line-height:1.25}
     .sh-more{margin-top:16px}
     .sh-by{font-size:13.5px}
+    .sh-hook{font-size:15px;margin:0 0 14px}
     .stats{margin:0 0 4px}
     .stats li{padding:0 12px}
     .stats strong{font-size:17px}

@@ -1,6 +1,8 @@
 @extends('public.layout')
 
-@section('title', $story->title)
+{{-- Câu mồi đi sau tựa ngắn: đó là câu người đọc từ Facebook gõ vào Google
+     (xem migration add_hook_to_stories_table). Dấu chấm cuối bỏ đi, "…" thì giữ. --}}
+@section('title', $story->hook ? $story->title.' — '.rtrim($story->hook, '.') : $story->title)
 {{-- Controller cắt sẵn ≤155 ký tự ở ranh giới từ (ReadController::clip). --}}
 @section('description', $metaDescription)
 {{-- Ảnh chia sẻ dựng riêng khổ ngang 1200×630, KHÔNG dùng ảnh bìa dọc: ô xem
@@ -73,6 +75,11 @@
         {{-- Trên điện thoại khối này xuống dưới, trải hết bề ngang (xem .sh-main trong layout):
              cạnh bìa 116px không đủ chỗ cho ba con số và hai nút. --}}
         <div class="sh-more">
+          {{-- Ở .sh-more chứ không ở .sh-head: trên điện thoại .sh-head nằm cạnh bìa 116px,
+               câu dài gần 200 ký tự nhét vào đó thành một cột chữ hẹp dài ngoằng. --}}
+          @if ($story->hook)
+            <p class="sh-hook">{{ $story->hook }}</p>
+          @endif
           <ul class="stats">
             <li><strong>{{ $story->chapters->count() }}</strong><span>{{ Str::plural('Chapter', $story->chapters->count()) }}</span></li>
             <li><strong>{{ $readMinutes < 60 ? $readMinutes.' min' : round($readMinutes / 60, 1).' h' }}</strong><span>Read time</span></li>

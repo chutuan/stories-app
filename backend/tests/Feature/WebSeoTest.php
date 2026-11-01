@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Models\Category;
 use App\Models\Chapter;
 use App\Models\Story;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -199,5 +200,40 @@ class WebSeoTest extends TestCase
         $this->get('/story/g/chapter/2')->assertOk()
             ->assertSee('Read next')
             ->assertSee('href="'.route('public.story', 'h').'"', false);
+    }
+
+    public function test_cau_moi_hien_duoi_tua_va_noi_vao_title(): void
+    {
+        $this->story('office', ['title' => 'The Office My Mother Kept', 'hook' => 'Twelve hours after my husband slapped me in a crowded restaurant to defend his first love…']);
+        $this->story('suit', ['title' => 'The Suit', 'hook' => 'My boss fired me after five years.']);
+        $this->story('plain', ['title' => 'Plain']);
+
+        $this->get('/story/office')->assertOk()
+            ->assertSee('<title>The Office My Mother Kept — Twelve hours after my husband slapped me in a crowded restaurant to defend his first love… — Stories</title>', false)
+            ->assertSee('<p class="sh-hook">Twelve hours after my husband slapped me', false)
+            ->assertSee('<h1>The Office My Mother Kept</h1>', false)
+            ->assertSee('"alternateName":"Twelve hours after', false);
+        // Dấu chấm cuối câu không lọt vào <title>.
+        $this->get('/story/suit')->assertOk()->assertSee('<title>The Suit — My boss fired me after five years — Stories</title>', false);
+        $this->get('/story/plain')->assertOk()
+            ->assertSee('<title>Plain — Stories</title>', false)
+            ->assertDontSee('<p class="sh-hook">', false)
+            ->assertDontSee('alternateName', false);
+        // Trang chương giữ tựa ngắn.
+        $this->get('/story/office/chapter/1')->assertOk()->assertSee('<title>The Office My Mother Kept · Chapter 1 — Stories</title>', false);
+    }
+
+    public function test_admin_sua_cau_moi_khong_doi_slug(): void
+    {
+        $title = 'A title long enough that its full slug runs well past the sixty character cap';
+        $s = $this->story('a-title-long-enough-that-its-full-slug-runs-well-past-the', ['title' => $title]);
+
+        $this->actingAs(User::factory()->create())
+            ->put("/admin/stories/{$s->id}", ['title' => $title, 'hook' => 'New hook.', 'status' => 'completed', 'free_chapters' => 1])
+            ->assertRedirect();
+
+        $s->refresh();
+        $this->assertSame('New hook.', $s->hook);
+        $this->assertSame('a-title-long-enough-that-its-full-slug-runs-well-past-the', $s->slug);
     }
 }

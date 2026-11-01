@@ -75,7 +75,11 @@ class StoryController extends Controller
         $data = $this->validateData($request);
 
         $this->fill($story, $data);
-        $story->slug = $this->uniqueSlug($data['title'], $story->id);
+        // Chỉ khi đổi tựa: slug hiện tại có thể đã được stories:reslug cắt ≤ 60 ký tự, dựng
+        // lại từ tựa ở mỗi lần lưu (vd. chỉ sửa câu mồi) sẽ đổi URL thêm lần nữa vô cớ.
+        if ($story->isDirty('title')) {
+            $story->slug = $this->uniqueSlug($data['title'], $story->id);
+        }
 
         if ($request->hasFile('thumbnail')) {
             if ($story->thumbnail) {
@@ -113,6 +117,7 @@ class StoryController extends Controller
     {
         return $request->validate([
             'title' => ['required', 'string', 'max:255'],
+            'hook' => ['nullable', 'string', 'max:255'],
             'author' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'status' => ['required', 'in:ongoing,completed'],
@@ -129,6 +134,7 @@ class StoryController extends Controller
     protected function fill(Story $story, array $data): void
     {
         $story->title = $data['title'];
+        $story->hook = $data['hook'] ?? null;
         $story->author = $data['author'] ?? null;
         $story->description = $data['description'] ?? null;
         $story->status = $data['status'];

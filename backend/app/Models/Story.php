@@ -17,6 +17,7 @@ class Story extends Model
 {
     protected $fillable = [
         'title',
+        'hook',
         'slug',
         'author',
         'description',

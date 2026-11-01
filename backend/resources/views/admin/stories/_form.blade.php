@@ -5,6 +5,11 @@
             <input type="text" name="title" value="{{ old('title', $story->title) }}" class="form-control" required autofocus>
         </div>
         <div class="mb-3">
+            <label class="form-label">Câu mồi (phụ đề)</label>
+            <input type="text" name="hook" value="{{ old('hook', $story->hook) }}" class="form-control" maxlength="255">
+            <div class="form-text">Hiện dưới tựa trên web và nối sau tựa trong kết quả Google. Viết như câu người đọc sẽ gõ tìm, ví dụ "My husband slapped me in a crowded restaurant to defend his first love…". Để trống nếu không cần.</div>
+        </div>
+        <div class="mb-3">
             <label class="form-label">Tác giả</label>
             <input type="text" name="author" value="{{ old('author', $story->author) }}" class="form-control">
         </div>

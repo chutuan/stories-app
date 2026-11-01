@@ -106,6 +106,7 @@ class StructuredData
         return self::encode([
             '@type' => 'Book',
             'name' => $story->title,
+            'alternateName' => $story->hook ?: null,
             'url' => $url,
             // Tác giả là NGƯỜI BIÊN TẬP có thật (Person), không phải bút danh.
             //
