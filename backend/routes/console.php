@@ -15,6 +15,8 @@ Schedule::command('push:daily-story')->hourly()->withoutOverlapping();
 
 // Mỗi ngày đăng vài truyện đầu hàng trong kho chờ (StoryQueue). 13:00 UTC = sáng sớm ở Mỹ:
 // truyện kịp có lượt xem trước khi push:daily-story chọn "truyện mới 24h" lúc 19–22h giờ máy.
+// Lô darkchapter vào kho ngày 01/11/2026; Tuấn chọn đăng "từ mai" nên lượt đầu là 02/11.
 Schedule::command('stories:release-queued', ['--count' => ReleaseQueuedStories::DAILY])
     ->dailyAt('13:00')
+    ->when(fn () => now()->gte('2026-11-02'))
     ->withoutOverlapping();

@@ -66,7 +66,10 @@ def to_text(content_html):
     # Bỏ quảng cáo chèn giữa bài và mọi khối không phải đoạn văn.
     body = re.sub(r'<div[^>]*class="[^"]*in-article-ad[^"]*"[^>]*>.*?</div>\s*</div>', '', body, flags=re.S)
     paras = []
-    for p in re.findall(r'<p\b[^>]*>(.*?)</p>', body, flags=re.S):
+    blocks = re.findall(r'<p\b[^>]*>(.*?)</p>', body, flags=re.S)
+    if not blocks:                                     # vài bài darkchapter chia đoạn bằng <div> thay vì <p>
+        blocks = re.findall(r'<div\b[^>]*>(.*?)</div>', body, flags=re.S)
+    for p in blocks:
         if '<img' in p and not re.sub(r'<[^>]+>', '', p).strip():
             continue                                   # đoạn chỉ có ảnh
         t = re.sub(r'<br\s*/?>', '\n', p)
