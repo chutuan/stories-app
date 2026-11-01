@@ -14,6 +14,9 @@ class HomeController extends Controller
     /** Số ứng viên nổi bật gửi về app: app bỏ qua truyện người dùng đã đọc hết rồi lấy truyện kế. */
     private const FEATURED_POOL = 10;
 
+    /** Số truyện mỗi hàng "Recently updated"/"Newest" của app. */
+    private const SHELF_SIZE = 14;
+
     public function index(): JsonResponse
     {
         $pool = $this->weeklyTop();
@@ -30,12 +33,13 @@ class HomeController extends Controller
             $pool = new Collection($marked ? [$marked] : []);
         }
 
+        // SHELF_SIZE 14 = 7 cột x 2 dòng: hàng lấp kín iPad xoay ngang; iPhone vẫn cuộn ngang.
         $updated = Story::query()
             ->with('categories')
             ->withCount('chapters')
             ->withMax('chapters', 'number')
             ->orderByDesc('updated_at')
-            ->limit(10)
+            ->limit(self::SHELF_SIZE)
             ->get();
 
         $newest = Story::query()
@@ -43,7 +47,7 @@ class HomeController extends Controller
             ->withCount('chapters')
             ->withMax('chapters', 'number')
             ->orderByDesc('created_at')
-            ->limit(10)
+            ->limit(self::SHELF_SIZE)
             ->get();
 
         return response()->json([
