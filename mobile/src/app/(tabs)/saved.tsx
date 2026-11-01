@@ -24,6 +24,7 @@ import {
   LineHeight,
   Palette,
   Radius,
+  Shadow,
   Spacing,
   Typography,
 } from '@/constants/theme';
@@ -43,7 +44,7 @@ type LibraryTab = 'saved' | 'history';
 export default function SavedScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { columns, cellWidth, gap } = useResponsive();
+  const { wide, columns, cellWidth, gap } = useResponsive();
   const { savedIds, ready } = useWallet();
   const { entries, ready: historyReady, remove, clear } = useHistory();
   const [tab, setTab] = useState<LibraryTab>('saved');
@@ -188,6 +189,28 @@ export default function SavedScreen() {
               <AboutLinks />
             </View>
           </ScrollView>
+        ) : wide ? (
+          // Màn rộng: lưới thẻ cùng cỡ với tab Saved, thẳng hàng với tiêu đề, thay cho danh
+          // sách hàng chữ ở cột giữa (bìa 56pt trông lọt thỏm trên iPad).
+          <FlatList
+            data={entries}
+            keyExtractor={(item) => String(item.storyId)}
+            key={`history-${columns}`}
+            numColumns={columns}
+            columnWrapperStyle={[styles.gridRow, { gap }]}
+            contentContainerStyle={styles.grid}
+            showsVerticalScrollIndicator={false}
+            renderItem={({ item }) => (
+              <HistoryCard
+                entry={item}
+                now={now}
+                width={cellWidth}
+                onPress={() => openEntry(item)}
+                onLongPress={() => confirmRemove(item)}
+              />
+            )}
+            ListFooterComponent={<AboutLinks />}
+          />
         ) : (
           <FlatList
             data={entries}
@@ -253,6 +276,78 @@ export default function SavedScreen() {
   );
 }
 
+/** "Chapter 2 of 5" / "Finished" — dùng chung cho dòng lịch sử (iPhone) và thẻ (màn rộng). */
+function progressLabel(entry: HistoryEntry, finished: boolean): string {
+  if (finished) return 'Finished';
+  return entry.chaptersCount != null
+    ? `Chapter ${entry.chapter} of ${entry.chaptersCount}`
+    : `Chapter ${entry.chapter}`;
+}
+
+/**
+ * Thẻ lịch sử trên màn rộng: bìa như lưới Saved, thanh tiến độ (chương xa nhất đã mở / tổng
+ * số chương) ngay dưới bìa, rồi tên truyện và lúc đọc. Bấm để đọc tiếp, nhấn giữ để xoá.
+ */
+function HistoryCard({
+  entry,
+  now,
+  width,
+  onPress,
+  onLongPress,
+}: {
+  entry: HistoryEntry;
+  now: number;
+  width: number;
+  onPress: () => void;
+  onLongPress: () => void;
+}) {
+  const finished = isFinished(entry);
+  const progress = progressLabel(entry, finished);
+  const total = entry.chaptersCount;
+  const ratio = finished ? 1 : total ? Math.min(1, entry.maxChapter / total) : 0;
+  return (
+    <Pressable
+      onPress={onPress}
+      onLongPress={onLongPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${entry.title}, ${progress}, read ${timeAgo(entry.readAt, now)}`}
+      accessibilityHint={`${finished ? 'Opens the story' : 'Continues reading'}. Long press to remove from history.`}
+      style={({ pressed }) => [styles.card, { width }, pressed && styles.pressed]}>
+      <StoryCover
+        thumbnailUrl={entry.thumbnailUrl}
+        title={entry.title}
+        seed={entry.storyId}
+        radius={Radius.md}
+        showRibbon={false}
+        showChapters={false}
+      />
+      {total ? (
+        <View style={styles.cardTrack}>
+          <View
+            style={[
+              styles.cardFill,
+              finished && styles.cardFillDone,
+              { width: `${Math.round(ratio * 100)}%` },
+            ]}
+          />
+        </View>
+      ) : null}
+      <View style={styles.cardMeta}>
+        <Text style={styles.cardTitle} numberOfLines={2}>
+          {entry.title}
+        </Text>
+        {/* Thời gian xuống dòng riêng: chung một dòng thì ô hẹp cắt mất ("Chapter 1 of 10 · just n…") */}
+        <Text style={[styles.cardSub, finished && styles.rowFinished]} numberOfLines={1}>
+          {progress}
+        </Text>
+        <Text style={[styles.cardSub, styles.cardSubTime]} numberOfLines={1}>
+          {timeAgo(entry.readAt, now)}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
 /** Một dòng lịch sử: bìa nhỏ, tên truyện, chương đang dở, thời điểm đọc. Bấm để đọc tiếp. */
 function HistoryRow({
   entry,
@@ -266,11 +361,7 @@ function HistoryRow({
   onLongPress: () => void;
 }) {
   const finished = isFinished(entry);
-  const progress = finished
-    ? 'Finished'
-    : entry.chaptersCount != null
-      ? `Chapter ${entry.chapter} of ${entry.chaptersCount}`
-      : `Chapter ${entry.chapter}`;
+  const progress = progressLabel(entry, finished);
   return (
     <Pressable
       onPress={onPress}
@@ -421,6 +512,53 @@ const styles = StyleSheet.create({
   separator: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: Palette.border,
+  },
+
+  // --- Thẻ lịch sử (màn rộng) — cùng khung với StoryCardView ---
+  card: {
+    gap: Spacing.sm,
+    padding: Spacing.sm - 2,
+    borderRadius: Radius.card,
+    backgroundColor: Palette.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Palette.border,
+    ...Shadow.card,
+  },
+  cardTrack: {
+    height: 4,
+    marginHorizontal: Spacing.xs - 2,
+    borderRadius: Radius.pill,
+    backgroundColor: Palette.surfaceAlt,
+    overflow: 'hidden',
+  },
+  cardFill: {
+    height: '100%',
+    borderRadius: Radius.pill,
+    backgroundColor: Palette.accent,
+  },
+  cardFillDone: {
+    backgroundColor: Palette.freeDeep,
+  },
+  cardMeta: {
+    gap: 2,
+    paddingHorizontal: Spacing.xs - 2,
+    paddingBottom: Spacing.xs - 2,
+  },
+  cardTitle: {
+    color: Palette.text,
+    fontSize: FontSize.small,
+    fontWeight: FontWeight.bold,
+    lineHeight: LineHeight.small,
+  },
+  cardSub: {
+    color: Palette.accentDeep,
+    fontSize: FontSize.tiny,
+    fontWeight: FontWeight.semibold,
+    lineHeight: LineHeight.caption,
+  },
+  cardSubTime: {
+    color: Palette.muted,
+    fontWeight: FontWeight.medium,
   },
 
   // --- Trạng thái rỗng ---

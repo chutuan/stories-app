@@ -113,9 +113,14 @@ const SPEED_LABELS = ['1x', '1.25x', '1.5x', '2x'] as const;
 const SKIP_SECONDS = 15;
 /** Chiều cao 1 dòng trong bảng mục lục (cố định để FlatList nhảy đúng vị trí). */
 const SHEET_ROW_HEIGHT = 56;
-/** Bìa to nhất: iPhone 232, màn rộng (iPad) 320 — vẫn bị chặn theo chiều cao cửa sổ. */
+/**
+ * Bìa to nhất: iPhone 232, màn rộng (iPad) 440 — vẫn bị chặn theo chiều cao cửa sổ: iPhone
+ * 28% chiều cao, iPad 36% (thanh điều khiển dưới đáy cao cố định, nên màn cao còn dư chỗ).
+ */
 const COVER_MAX = 232;
-const COVER_MAX_WIDE = 320;
+const COVER_MAX_WIDE = 440;
+const COVER_HEIGHT_SHARE = 0.28;
+const COVER_HEIGHT_SHARE_WIDE = 0.36;
 
 /* ------------------------------------------------------------------ */
 /* HÀM PHỤ                                                             */
@@ -523,7 +528,14 @@ export default function AudioPlayerScreen() {
 
   /* ---- Kích thước bìa + đĩa than ---- */
   const coverSize = Math.round(
-    Math.max(Math.min(width * 0.56, height * 0.28, wide ? COVER_MAX_WIDE : COVER_MAX), 140),
+    Math.max(
+      Math.min(
+        width * 0.56,
+        height * (wide ? COVER_HEIGHT_SHARE_WIDE : COVER_HEIGHT_SHARE),
+        wide ? COVER_MAX_WIDE : COVER_MAX,
+      ),
+      140,
+    ),
   );
   const discSize = Math.round(coverSize * 0.94);
   const discPeek = Math.round(coverSize * 0.3);
@@ -725,7 +737,10 @@ export default function AudioPlayerScreen() {
 
             {/* Tên chương */}
             {title ? (
-              <Text style={styles.title} numberOfLines={2}>
+              <Text
+                style={[styles.title, wide && [styles.titleWide, { maxWidth: coverSize + discPeek }]]}
+                numberOfLines={2}
+              >
                 {title}
               </Text>
             ) : (
@@ -736,12 +751,12 @@ export default function AudioPlayerScreen() {
 
             {/* Tác giả + vị trí chương */}
             <View style={styles.metaRow}>
-              <Ionicons name="person-outline" size={13} color={Palette.muted} />
-              <Text style={styles.metaText} numberOfLines={1}>
+              <Ionicons name="person-outline" size={wide ? 15 : 13} color={Palette.muted} />
+              <Text style={[styles.metaText, wide && styles.metaTextWide]} numberOfLines={1}>
                 {authorLabel}
               </Text>
               <View style={styles.metaDot} />
-              <Text style={styles.metaText} numberOfLines={1}>
+              <Text style={[styles.metaText, wide && styles.metaTextWide]} numberOfLines={1}>
                 {totalChapters != null
                   ? `Chapter ${chapterNumber}/${totalChapters}`
                   : `Chapter ${chapterNumber}`}
@@ -1309,6 +1324,11 @@ const styles = StyleSheet.create({
     lineHeight: LineHeight.h1,
     textAlign: 'center',
   },
+  // iPad: bìa lên tới 440pt mà tên chương vẫn 20pt thì lọt thỏm — tăng theo bìa.
+  titleWide: {
+    fontSize: FontSize.display,
+    lineHeight: LineHeight.display,
+  },
   titleSkeleton: {
     alignSelf: 'stretch',
     alignItems: 'center',
@@ -1324,6 +1344,9 @@ const styles = StyleSheet.create({
     fontSize: FontSize.caption,
     fontWeight: FontWeight.medium,
     flexShrink: 1,
+  },
+  metaTextWide: {
+    fontSize: FontSize.body,
   },
   metaDot: {
     width: 3,

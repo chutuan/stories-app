@@ -44,11 +44,29 @@ const BACKDROP_HEIGHT = 340;
 const BACKDROP_HEIGHT_WIDE = 420;
 /** Bìa sắc nét ở giữa hero. */
 const COVER_WIDTH = 150;
-const COVER_WIDTH_WIDE = 200;
+/**
+ * Màn rộng: bìa đứng bên trái, thông tin bên phải (như trang sách của Apple Books) thay
+ * vì một cột iPhone đặt giữa màn. Cả trang nằm trong cột DETAIL_MAX_WIDTH; bìa co từ
+ * COVER_WIDTH_WIDE xuống COVER_WIDTH_WIDE_MIN khi cửa sổ hẹp để cột thông tin còn đủ
+ * INFO_MIN_WIDTH cho tên truyện và hàng nút.
+ */
+const DETAIL_MAX_WIDTH = 880;
+const COVER_WIDTH_WIDE = 240;
+const COVER_WIDTH_WIDE_MIN = 150;
+const INFO_MIN_WIDTH = 340;
+const SPLIT_GAP = Spacing.xxxl;
 /** Số dòng mô tả khi thu gọn. */
 const DESC_LINES = 4;
 /** Mô tả dài hơn ngần này ký tự thì mới hiện nút "Xem thêm". */
 const DESC_TOGGLE_MIN = 165;
+
+function coverWidthFor(width: number, wide: boolean): number {
+  if (!wide) return COVER_WIDTH;
+  const inner = Math.min(width, DETAIL_MAX_WIDTH) - Spacing.screen * 2;
+  return Math.round(
+    Math.max(COVER_WIDTH_WIDE_MIN, Math.min(COVER_WIDTH_WIDE, inner - SPLIT_GAP - INFO_MIN_WIDTH)),
+  );
+}
 
 /*
  * ĐÃ GỠ: `simulatedRating()` và `starIcons()`.
@@ -74,7 +92,8 @@ function chapterLabel(chapter: ChapterItem): string {
 export default function StoryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
-  const { wide } = useResponsive();
+  const { wide, width } = useResponsive();
+  const coverWidth = coverWidthFor(width, wide);
   const router = useRouter();
   const { isSaved, toggleSaved, isUnlocked } = useWallet();
 
@@ -229,9 +248,14 @@ export default function StoryDetailScreen() {
             />
           </View>
 
-          <View style={[styles.heroContent, { paddingTop: insets.top + 56 }]}>
+          <View
+            style={[
+              styles.heroContent,
+              wide && styles.heroContentWide,
+              { paddingTop: insets.top + 56 },
+            ]}>
             {/* Bìa sắc nét, bo góc + bóng mềm */}
-            <View style={[styles.coverShadow, wide && styles.coverShadowWide]}>
+            <View style={[styles.coverShadow, { width: coverWidth }]}>
               <StoryCover
                 thumbnailUrl={story.thumbnail_url}
                 title={story.title}
@@ -241,159 +265,177 @@ export default function StoryDetailScreen() {
               />
             </View>
 
-            <Text style={styles.title} numberOfLines={3}>
-              {story.title}
-            </Text>
+            <View style={wide ? styles.infoWide : styles.info}>
+              <Text style={[styles.title, wide && styles.titleWide]} numberOfLines={3}>
+                {story.title}
+              </Text>
 
-            {story.author ? (
-              <View style={styles.authorRow}>
-                <Ionicons name="create-outline" size={13} color={Palette.muted} />
-                <Text style={styles.author} numberOfLines={1}>
-                  {story.author}
-                </Text>
+              {story.author ? (
+                <View style={styles.authorRow}>
+                  <Ionicons name="create-outline" size={13} color={Palette.muted} />
+                  <Text style={styles.author} numberOfLines={1}>
+                    {story.author}
+                  </Text>
+                </View>
+              ) : null}
+
+              {/* ---------- Hàng thông tin nhanh: 3 ô ngăn cách (màn rộng: một dòng gọn) ---------- */}
+              {wide ? (
+                <View style={styles.statLine}>
+                  <StatInline
+                    icon={completed ? 'checkmark-done-outline' : 'time-outline'}
+                    text={storyStatusLabel(story.status)}
+                    tone={completed ? Palette.freeDeep : Palette.accentDeep}
+                  />
+                  <StatInline
+                    icon="layers-outline"
+                    text={plural(story.chapters_count, 'chapter', 'chapters')}
+                    tone={Palette.muted}
+                  />
+                  <StatInline
+                    icon="eye-outline"
+                    text={`${formatViews(story.views)} ${story.views === 1 ? 'view' : 'views'}`}
+                    tone={Palette.muted}
+                  />
+                </View>
+              ) : (
+                <View style={styles.statCard}>
+                  <StatCell
+                    icon={completed ? 'checkmark-done-outline' : 'time-outline'}
+                    value={storyStatusLabel(story.status)}
+                    label="Status"
+                    tone={completed ? Palette.freeDeep : Palette.accentDeep}
+                  />
+                  <View style={styles.statDivider} />
+                  <StatCell
+                    icon="layers-outline"
+                    value={String(story.chapters_count)}
+                    label="Chapters"
+                    tone={Palette.text}
+                  />
+                  <View style={styles.statDivider} />
+                  <StatCell
+                    icon="eye-outline"
+                    value={formatViews(story.views)}
+                    label="Views"
+                    tone={Palette.text}
+                  />
+                </View>
+              )}
+
+              {/* ---------- Thể loại ---------- */}
+              {story.categories.length > 0 ? (
+                <View style={[styles.chips, wide && styles.chipsWide]}>
+                  {story.categories.map((c) => (
+                    <Chip key={c.id} label={c.name} variant="accent" size="sm" />
+                  ))}
+                </View>
+              ) : null}
+
+              {/* ---------- Màn rộng: tóm tắt nằm ngay cạnh bìa ---------- */}
+              {wide && description ? (
+                <View style={styles.synopsisWide}>
+                  <Synopsis
+                    text={description}
+                    expanded={descExpanded}
+                    canToggle={canToggleDesc}
+                    onToggle={() => setDescExpanded((v) => !v)}
+                  />
+                </View>
+              ) : null}
+
+              {/* ---------- Hành động chính ---------- */}
+              <View style={styles.actions}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Read now"
+                  onPress={() => openChapter(firstChapter)}
+                  style={({ pressed }) => [styles.readBtn, pressed && styles.pressed]}>
+                  <Ionicons name="book" size={17} color={Palette.onAccent} />
+                  <Text style={styles.readBtnText}>Read now</Text>
+                </Pressable>
+
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: saved }}
+                  accessibilityLabel={saved ? 'Remove from library' : 'Save to library'}
+                  onPress={() => toggleSaved(story.id)}
+                  style={({ pressed }) => [
+                    styles.saveBtn,
+                    saved && styles.saveBtnActive,
+                    pressed && styles.pressed,
+                  ]}>
+                  <Ionicons
+                    name={saved ? 'bookmark' : 'bookmark-outline'}
+                    size={17}
+                    color={saved ? Palette.accentDeep : Palette.muted}
+                  />
+                  <Text style={[styles.saveBtnText, saved && styles.saveBtnTextActive]}>
+                    {saved ? 'Saved' : 'Save'}
+                  </Text>
+                </Pressable>
               </View>
-            ) : null}
 
-            {/* ---------- Hàng thông tin nhanh: 3 ô ngăn cách ---------- */}
-            <View style={styles.statCard}>
-              <StatCell
-                icon={completed ? 'checkmark-done-outline' : 'time-outline'}
-                value={storyStatusLabel(story.status)}
-                label="Status"
-                tone={completed ? Palette.freeDeep : Palette.accentDeep}
-              />
-              <View style={styles.statDivider} />
-              <StatCell
-                icon="layers-outline"
-                value={String(story.chapters_count)}
-                label="Chapters"
-                tone={Palette.text}
-              />
-              <View style={styles.statDivider} />
-              <StatCell
-                icon="eye-outline"
-                value={formatViews(story.views)}
-                label="Views"
-                tone={Palette.text}
-              />
-            </View>
-
-            {/* ---------- Thể loại ---------- */}
-            {story.categories.length > 0 ? (
-              <View style={styles.chips}>
-                {story.categories.map((c) => (
-                  <Chip key={c.id} label={c.name} variant="accent" size="sm" />
-                ))}
-              </View>
-            ) : null}
-
-            {/* ---------- Hành động chính ---------- */}
-            <View style={styles.actions}>
+              {/* ---------- Nghe truyện (mờ đi khi chưa có audio) ---------- */}
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Read now"
-                onPress={() => openChapter(firstChapter)}
-                style={({ pressed }) => [styles.readBtn, pressed && styles.pressed]}>
-                <Ionicons name="book" size={17} color={Palette.onAccent} />
-                <Text style={styles.readBtnText}>Read now</Text>
-              </Pressable>
-
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ selected: saved }}
-                accessibilityLabel={saved ? 'Remove from library' : 'Save to library'}
-                onPress={() => toggleSaved(story.id)}
+                accessibilityLabel={
+                  audioChapter ? `Listen to chapter ${audioChapter.number}` : 'No audio yet'
+                }
+                accessibilityState={{ disabled: !audioChapter }}
+                disabled={!audioChapter}
+                onPress={() => {
+                  if (audioChapter) openAudio(audioChapter.number);
+                }}
                 style={({ pressed }) => [
-                  styles.saveBtn,
-                  saved && styles.saveBtnActive,
+                  styles.listenBtn,
+                  !audioChapter && styles.listenBtnDisabled,
                   pressed && styles.pressed,
                 ]}>
-                <Ionicons
-                  name={saved ? 'bookmark' : 'bookmark-outline'}
-                  size={17}
-                  color={saved ? Palette.accentDeep : Palette.muted}
-                />
-                <Text style={[styles.saveBtnText, saved && styles.saveBtnTextActive]}>
-                  {saved ? 'Saved' : 'Save'}
+                <View
+                  style={[styles.listenIcon, !audioChapter && styles.listenIconDisabled]}
+                  pointerEvents="none">
+                  <Ionicons
+                    name="headset"
+                    size={16}
+                    color={audioChapter ? Palette.accentDeep : Palette.faint}
+                  />
+                </View>
+                <Text
+                  style={[styles.listenText, !audioChapter && styles.listenTextDisabled]}
+                  numberOfLines={1}>
+                  Listen
                 </Text>
+                <Text style={styles.listenHint} numberOfLines={1}>
+                  {audioChapter ? `Chapter ${audioChapter.number}` : 'No audio yet'}
+                </Text>
+                {audioChapter ? (
+                  <Ionicons name="chevron-forward" size={15} color={Palette.accentDeep} />
+                ) : null}
               </Pressable>
             </View>
-
-            {/* ---------- Nghe truyện (mờ đi khi chưa có audio) ---------- */}
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={
-                audioChapter ? `Listen to chapter ${audioChapter.number}` : 'No audio yet'
-              }
-              accessibilityState={{ disabled: !audioChapter }}
-              disabled={!audioChapter}
-              onPress={() => {
-                if (audioChapter) openAudio(audioChapter.number);
-              }}
-              style={({ pressed }) => [
-                styles.listenBtn,
-                !audioChapter && styles.listenBtnDisabled,
-                pressed && styles.pressed,
-              ]}>
-              <View
-                style={[styles.listenIcon, !audioChapter && styles.listenIconDisabled]}
-                pointerEvents="none">
-                <Ionicons
-                  name="headset"
-                  size={16}
-                  color={audioChapter ? Palette.accentDeep : Palette.faint}
-                />
-              </View>
-              <Text
-                style={[styles.listenText, !audioChapter && styles.listenTextDisabled]}
-                numberOfLines={1}>
-                Listen
-              </Text>
-              <Text style={styles.listenHint} numberOfLines={1}>
-                {audioChapter ? `Chapter ${audioChapter.number}` : 'No audio yet'}
-              </Text>
-              {audioChapter ? (
-                <Ionicons name="chevron-forward" size={15} color={Palette.accentDeep} />
-              ) : null}
-            </Pressable>
           </View>
         </View>
 
         {/* ---------- Giới thiệu ---------- */}
-        {description ? (
+        {!wide && description ? (
           <View style={styles.section}>
             <SectionHeader title="Synopsis" icon="information-circle-outline" />
             <View style={styles.sectionBody}>
               <View style={styles.card}>
-                <Text
-                  style={styles.desc}
-                  numberOfLines={descExpanded || !canToggleDesc ? undefined : DESC_LINES}>
-                  {description}
-                </Text>
-                {canToggleDesc ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={descExpanded ? 'Show less' : 'Show more'}
-                    hitSlop={8}
-                    onPress={() => setDescExpanded((v) => !v)}
-                    style={({ pressed }) => [styles.descToggle, pressed && styles.pressed]}>
-                    <Text style={styles.descToggleText}>
-                      {descExpanded ? 'Show less' : 'Show more'}
-                    </Text>
-                    <Ionicons
-                      name={descExpanded ? 'chevron-up' : 'chevron-down'}
-                      size={14}
-                      color={Palette.accentDeep}
-                    />
-                  </Pressable>
-                ) : null}
+                <Synopsis
+                  text={description}
+                  expanded={descExpanded}
+                  canToggle={canToggleDesc}
+                  onToggle={() => setDescExpanded((v) => !v)}
+                />
               </View>
             </View>
           </View>
         ) : null}
 
         {/* ---------- Danh sách chương ---------- */}
-        <View style={styles.section}>
+        <View style={[styles.section, wide && styles.sectionWide]}>
           <SectionHeader
             title="Chapters"
             icon="list-outline"
@@ -458,6 +500,57 @@ function StatCell({
   );
 }
 
+/** Một mục trong dòng thông tin gọn của màn rộng: icon + chữ cùng tông màu. */
+function StatInline({ icon, text, tone }: { icon: IoniconName; text: string; tone: string }) {
+  return (
+    <View style={styles.statInline}>
+      <Ionicons name={icon} size={15} color={tone} />
+      <Text style={[styles.statInlineText, { color: tone }]} numberOfLines={1}>
+        {text}
+      </Text>
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Tóm tắt: thu gọn DESC_LINES dòng + nút Xem thêm                     */
+/* ------------------------------------------------------------------ */
+
+function Synopsis({
+  text,
+  expanded,
+  canToggle,
+  onToggle,
+}: {
+  text: string;
+  expanded: boolean;
+  canToggle: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <>
+      <Text style={styles.desc} numberOfLines={expanded || !canToggle ? undefined : DESC_LINES}>
+        {text}
+      </Text>
+      {canToggle ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={expanded ? 'Show less' : 'Show more'}
+          hitSlop={8}
+          onPress={onToggle}
+          style={({ pressed }) => [styles.descToggle, pressed && styles.pressed]}>
+          <Text style={styles.descToggleText}>{expanded ? 'Show less' : 'Show more'}</Text>
+          <Ionicons
+            name={expanded ? 'chevron-up' : 'chevron-down'}
+            size={14}
+            color={Palette.accentDeep}
+          />
+        </Pressable>
+      ) : null}
+    </>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* Một dòng chương                                                      */
 /* ------------------------------------------------------------------ */
@@ -510,12 +603,25 @@ function ChapterRow({
         </View>
       ) : null}
 
+      {/* Chip mặc định `alignSelf: flex-start` -> phải kéo về giữa hàng cho thẳng với số chương */}
       {free ? (
-        <Chip label="Free" variant="free" size="sm" />
+        <Chip label="Free" variant="free" size="sm" style={styles.rowChip} />
       ) : unlocked ? (
-        <Chip label="Unlocked" variant="accent" size="sm" icon="checkmark-circle" />
+        <Chip
+          label="Unlocked"
+          variant="accent"
+          size="sm"
+          icon="checkmark-circle"
+          style={styles.rowChip}
+        />
       ) : (
-        <Chip label={formatCoins(COIN_PER_CHAPTER)} variant="coin" size="sm" icon="lock-closed" />
+        <Chip
+          label={formatCoins(COIN_PER_CHAPTER)}
+          variant="coin"
+          size="sm"
+          icon="lock-closed"
+          style={styles.rowChip}
+        />
       )}
     </Pressable>
   );
@@ -526,34 +632,54 @@ function ChapterRow({
 /* ------------------------------------------------------------------ */
 
 function DetailSkeleton({ topInset }: { topInset: number }) {
-  const { wide } = useResponsive();
+  const { wide, width } = useResponsive();
   return (
     <View style={{ paddingTop: topInset + 56 }}>
-      <View style={styles.heroContent}>
+      <View style={[styles.heroContent, wide && styles.heroContentWide]}>
         <Skeleton
-          width={wide ? COVER_WIDTH_WIDE : COVER_WIDTH}
+          width={coverWidthFor(width, wide)}
           aspectRatio={Layout.coverAspect}
           radius={Radius.cover}
         />
-        <Skeleton width="70%" height={22} radius={Radius.xs} style={styles.skelTitle} />
-        <Skeleton width="40%" height={13} radius={Radius.xs} style={styles.skelAuthor} />
-        <Skeleton width={170} height={16} radius={Radius.pill} style={styles.skelRating} />
-        <Skeleton height={72} radius={Radius.card} style={styles.skelStats} />
-        <View style={styles.skelActions}>
-          <Skeleton height={48} radius={Radius.pill} style={styles.skelFlex} />
-          <Skeleton width={132} height={48} radius={Radius.pill} />
+        <View style={wide ? styles.infoWide : styles.info}>
+          <Skeleton
+            width="70%"
+            height={wide ? 30 : 22}
+            radius={Radius.xs}
+            style={!wide && styles.skelTitle}
+          />
+          <Skeleton width="40%" height={13} radius={Radius.xs} style={styles.skelAuthor} />
+          {wide ? (
+            <>
+              <Skeleton width={260} height={16} radius={Radius.pill} style={styles.skelRating} />
+              <View style={styles.skelSynopsisWide}>
+                <SkeletonText lines={4} lineHeight={12} lastLineWidth="55%" />
+              </View>
+            </>
+          ) : (
+            <>
+              <Skeleton width={170} height={16} radius={Radius.pill} style={styles.skelRating} />
+              <Skeleton height={72} radius={Radius.card} style={styles.skelStats} />
+            </>
+          )}
+          <View style={styles.skelActions}>
+            <Skeleton height={48} radius={Radius.pill} style={styles.skelFlex} />
+            <Skeleton width={132} height={48} radius={Radius.pill} />
+          </View>
+          <Skeleton height={44} radius={Radius.pill} style={styles.skelListen} />
         </View>
-        <Skeleton height={44} radius={Radius.pill} style={styles.skelListen} />
       </View>
 
-      <View style={styles.section}>
-        <Skeleton width="35%" height={17} radius={Radius.xs} style={styles.skelHeading} />
-        <View style={styles.sectionBody}>
-          <SkeletonText lines={3} lineHeight={12} lastLineWidth="55%" />
+      {!wide ? (
+        <View style={styles.section}>
+          <Skeleton width="35%" height={17} radius={Radius.xs} style={styles.skelHeading} />
+          <View style={styles.sectionBody}>
+            <SkeletonText lines={3} lineHeight={12} lastLineWidth="55%" />
+          </View>
         </View>
-      </View>
+      ) : null}
 
-      <View style={styles.section}>
+      <View style={[styles.section, wide && styles.sectionWide]}>
         <Skeleton width="45%" height={17} radius={Radius.xs} style={styles.skelHeading} />
         <View style={styles.sectionBody}>
           <View style={styles.chapterList}>
@@ -637,15 +763,29 @@ const styles = StyleSheet.create({
     /** nằm TRÊN ảnh nền mờ (backdrop là anh em `position: absolute` phía trước) */
     zIndex: 1,
   },
+  /** Màn rộng: bìa bên trái, cột thông tin bên phải, khung rộng hơn cột đọc thường. */
+  heroContentWide: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: SPLIT_GAP,
+    maxWidth: DETAIL_MAX_WIDTH,
+  },
+  /** iPhone: mọi thứ xếp dọc, căn giữa dưới bìa */
+  info: {
+    alignSelf: 'stretch',
+    alignItems: 'center',
+  },
+  infoWide: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: 'flex-start',
+  },
   coverShadow: {
     width: COVER_WIDTH,
     borderRadius: Radius.cover,
     // Android cần backgroundColor thì elevation mới đổ bóng
     backgroundColor: Palette.surfaceAlt,
     ...Shadow.float,
-  },
-  coverShadowWide: {
-    width: COVER_WIDTH_WIDE,
   },
   title: {
     marginTop: Spacing.lg,
@@ -654,6 +794,12 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.black,
     lineHeight: LineHeight.display,
     textAlign: 'center',
+  },
+  titleWide: {
+    marginTop: 0,
+    fontSize: 30,
+    lineHeight: 36,
+    textAlign: 'left',
   },
   authorRow: {
     flexDirection: 'row',
@@ -731,6 +877,25 @@ const styles = StyleSheet.create({
     height: 34,
     backgroundColor: Palette.borderStrong,
   },
+  /** Màn rộng: trạng thái · số chương · lượt xem trên một dòng, thay cho thẻ 3 ô */
+  statLine: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: Spacing.lg,
+    rowGap: Spacing.xs,
+    marginTop: Spacing.md,
+  },
+  statInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs + 1,
+  },
+  statInlineText: {
+    fontSize: FontSize.small,
+    fontWeight: FontWeight.semibold,
+    lineHeight: LineHeight.small,
+  },
 
   // --- Thể loại ---
   chips: {
@@ -738,6 +903,13 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'center',
     gap: Spacing.sm,
+    marginTop: Spacing.lg,
+  },
+  chipsWide: {
+    justifyContent: 'flex-start',
+  },
+  synopsisWide: {
+    alignSelf: 'stretch',
     marginTop: Spacing.lg,
   },
 
@@ -846,6 +1018,9 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginTop: Spacing.xxl,
   },
+  sectionWide: {
+    maxWidth: DETAIL_MAX_WIDTH,
+  },
   sectionBody: {
     paddingHorizontal: Spacing.screen,
   },
@@ -938,6 +1113,9 @@ const styles = StyleSheet.create({
     color: Palette.muted,
     fontWeight: FontWeight.medium,
   },
+  rowChip: {
+    alignSelf: 'center',
+  },
   rowListen: {
     width: 26,
     height: 26,
@@ -965,6 +1143,10 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     gap: Spacing.md,
     marginTop: Spacing.xl,
+  },
+  skelSynopsisWide: {
+    alignSelf: 'stretch',
+    marginTop: Spacing.lg,
   },
   skelListen: {
     alignSelf: 'stretch',

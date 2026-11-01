@@ -32,7 +32,8 @@ export const FONT_SIZE_MIN = 14;
 export const FONT_SIZE_MAX = 26;
 /** mỗi lần bấm Aa- / Aa+ đổi 1pt */
 export const FONT_SIZE_STEP = 1;
-export const FONT_SIZE_DEFAULT = 17;
+/** iPad cầm xa mắt hơn iPhone nên chữ mặc định to hơn 2pt; người dùng chỉnh rồi thì theo lựa chọn đã lưu. */
+export const FONT_SIZE_DEFAULT = Platform.OS === 'ios' && Platform.isPad ? 19 : 17;
 
 /** hệ số giãn dòng nhỏ nhất (dòng sát nhau) */
 export const LINE_HEIGHT_MIN = 1.4;

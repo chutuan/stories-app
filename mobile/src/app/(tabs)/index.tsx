@@ -461,7 +461,16 @@ function Hero({ story, height }: { story: Story; height: number }) {
 }
 
 /** Nhãn + tên + tác giả + nút đọc của truyện nổi bật — dùng chung cho hero iPhone và màn rộng. */
-function HeroInfo({ story, titleLines = 2 }: { story: Story; titleLines?: number }) {
+function HeroInfo({
+  story,
+  titleLines = 2,
+  showDescription = false,
+}: {
+  story: Story;
+  titleLines?: number;
+  /** hero màn rộng có chỗ cho vài dòng tóm tắt; hero iPhone thì không */
+  showDescription?: boolean;
+}) {
   const router = useRouter();
   const completed = story.status === 'completed';
   const canRead = story.chapters_count > 0;
@@ -472,6 +481,8 @@ function HeroInfo({ story, titleLines = 2 }: { story: Story; titleLines?: number
   ]
     .filter(Boolean)
     .join('  ·  ');
+  // mô tả có xuống dòng giữa các đoạn: gộp thành một đoạn để cắt 3 dòng cho gọn
+  const description = showDescription ? (story.description ?? '').replace(/\s+/g, ' ').trim() : '';
 
   const openDetail = useCallback(() => {
     router.push(`/story/${story.id}`);
@@ -503,6 +514,12 @@ function HeroInfo({ story, titleLines = 2 }: { story: Story; titleLines?: number
       {meta ? (
         <Text style={styles.heroMeta} numberOfLines={1}>
           {meta}
+        </Text>
+      ) : null}
+
+      {description ? (
+        <Text style={styles.heroDesc} numberOfLines={3}>
+          {description}
         </Text>
       ) : null}
 
@@ -609,7 +626,7 @@ function HeroWide({ story }: { story: Story }) {
         <View style={styles.chipRow} pointerEvents="none">
           <Chip label="Featured" icon="sparkles" variant="accent" size="sm" solid />
         </View>
-        <HeroInfo story={story} titleLines={3} />
+        <HeroInfo story={story} titleLines={3} showDescription />
       </View>
     </View>
   );
@@ -1318,6 +1335,8 @@ const styles = StyleSheet.create({
   },
   heroWideInfo: {
     flex: 1,
+    // xoay ngang hero rộng ~1300pt: giữ dòng tóm tắt ở độ dài đọc được
+    maxWidth: 640,
     gap: Spacing.sm,
   },
 
@@ -1389,6 +1408,14 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.semibold,
     lineHeight: LineHeight.caption,
     marginTop: -Spacing.xs,
+  },
+  heroDesc: {
+    color: Palette.text,
+    fontSize: FontSize.body,
+    fontWeight: FontWeight.regular,
+    lineHeight: LineHeight.body,
+    opacity: 0.82,
+    marginBottom: Spacing.xs,
   },
   heroActions: {
     flexDirection: 'row',

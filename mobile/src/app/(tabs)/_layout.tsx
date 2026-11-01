@@ -5,6 +5,7 @@ import type { ColorValue } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FontSize, FontWeight, Palette, Radius, Shadow, Spacing } from '@/constants/theme';
+import { useResponsive } from '@/lib/responsive';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
@@ -13,6 +14,11 @@ const TAB_BAR_CONTENT_HEIGHT = 60;
 /** Viên nang bao quanh icon của tab đang chọn. */
 const PILL_WIDTH = 52;
 const PILL_HEIGHT = 28;
+/**
+ * Màn rộng: các tab gom vào giữa trong khoảng này, giống thanh tab iPad của hệ thống.
+ * Để mặc định thì 4 tab chia đều ~1000pt, mỗi tab rộng 250pt, icon cách nhau cả gang tay.
+ */
+const TAB_BAR_WIDE_MAX = 560;
 
 /**
  * Bóng mềm hắt LÊN, tách thanh tab trắng khỏi nền kem của trang.
@@ -48,6 +54,8 @@ function TabIcon({ solid, outline, focused, color }: TabIconProps) {
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
+  const { width, wide } = useResponsive();
+  const tabInset = wide ? Math.max(0, Math.round((width - TAB_BAR_WIDE_MAX) / 2)) : 0;
 
   return (
     <Tabs
@@ -65,6 +73,9 @@ export default function TabsLayout() {
           borderTopColor: Palette.border,
           height: TAB_BAR_CONTENT_HEIGHT + insets.bottom,
           paddingTop: Spacing.xs + 2,
+          // đặt sau phần lề safe-area trái/phải của React Navigation nên ghi đè được nó;
+          // iPad không có lề trái/phải nên không mất gì
+          ...(tabInset ? { paddingHorizontal: tabInset } : null),
           ...BAR_SHADOW,
         },
         tabBarIconStyle: {

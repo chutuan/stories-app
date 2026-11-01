@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link } from 'expo-router';
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
 
@@ -162,8 +162,17 @@ export interface StoryCardViewProps {
 /**
  * Card truyện: khối TRẮNG bo 16 + bóng mềm, bên trong là bìa + tên (2 dòng)
  * + thể loại (1 dòng). Tap -> /story/[id].
+ *
+ * memo: lưới iPad gắn cả trăm thẻ cùng lúc; mỗi lần danh sách tải thêm trang (bật/tắt
+ * loadingMore, nối dữ liệu) mà thẻ cũ cũng dựng lại là cuộn bị khựng. Thẻ cũ giữ nguyên
+ * object `story` nên memo bỏ qua được.
  */
-export function StoryCardView({ story, width, showCategory = true, style }: StoryCardViewProps) {
+export const StoryCardView = memo(function StoryCardView({
+  story,
+  width,
+  showCategory = true,
+  style,
+}: StoryCardViewProps) {
   const categoryText = story.categories.map((c) => c.name).join(' · ');
 
   return (
@@ -199,7 +208,7 @@ export function StoryCardView({ story, width, showCategory = true, style }: Stor
       </Pressable>
     </Link>
   );
-}
+});
 
 export interface StoryCardSkeletonProps {
   /** bề rộng cố định; bỏ trống -> flex: 1 */

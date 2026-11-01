@@ -28,7 +28,7 @@ import {
 import { AboutLinks } from '@/components/about-links';
 import { showRewarded } from '@/lib/ads';
 import { formatCoins } from '@/lib/format';
-import { CONTENT_MAX_WIDTH } from '@/lib/responsive';
+import { CONTENT_MAX_WIDTH, useResponsive } from '@/lib/responsive';
 import {
   AD_MAX_COINS,
   AD_TASKS,
@@ -51,6 +51,10 @@ import { useWallet } from '@/store/wallet';
 /* THANH MỐC DÙNG CHUNG                                                */
 /* ------------------------------------------------------------------ */
 
+/** Cửa sổ rộng từ chừng này (iPad 12,9"/13" dọc, mọi iPad xoay ngang) thì chia hai cột thẻ,
+ *  mỗi cột ~470pt — vừa đủ cho thanh 4 mốc và hàng 7 ngày điểm danh. */
+const REWARDS_SPLIT_MIN = 960;
+const REWARDS_SPLIT_MAX_WIDTH = 1040;
 /** bề rộng 1 ô mốc (vòng tròn + nhãn dưới) */
 const CELL_WIDTH = 56;
 /** đường kính vòng tròn mốc */
@@ -216,6 +220,8 @@ function readingPosition(minutes: number): number {
 
 function RewardsContent() {
   const insets = useSafeAreaInsets();
+  const { width } = useResponsive();
+  const split = width >= REWARDS_SPLIT_MIN;
   const router = useRouter();
   const { coins } = useWallet();
   const {
@@ -347,11 +353,212 @@ function RewardsContent() {
     ? `Read ${Math.max(1, nextReading.minutes - readingMinutes)} more min to get +${formatCoins(nextReading.coins)}`
     : "You've completed every reading milestone today";
 
+  /* --- Mốc thời gian đọc --- */
+  const milestonesCard = (
+    <View style={styles.card}>
+      <View style={styles.cardHead}>
+        <View style={[styles.cardIcon, { backgroundColor: Palette.accentDim }]}>
+          <Ionicons name="time" size={17} color={Palette.accentDeep} />
+        </View>
+        <View style={styles.cardHeadText}>
+          <Text style={styles.cardTitle}>Reading milestones</Text>
+          <Text style={styles.cardSub}>Earn coins as you read</Text>
+        </View>
+        <View style={styles.cardBadge}>
+          <Text style={styles.cardBadgeText}>{readingMinutes} min</Text>
+        </View>
+      </View>
+
+      <MilestoneTrack
+        items={readingItems}
+        position={readingPosition(readingMinutes)}
+        tone="accent"
+      />
+
+      <Pressable
+        onPress={onPrimaryPress}
+        disabled={!ready}
+        accessibilityRole="button"
+        style={({ pressed }) => [
+          styles.primaryWrap,
+          !ready && styles.disabled,
+          pressed && styles.pressed,
+        ]}>
+        <LinearGradient
+          colors={Gradients.accent}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.primary}>
+          <Ionicons
+            name={claimableReading ? 'gift' : 'book'}
+            size={18}
+            color={Palette.onAccent}
+          />
+          <Text style={styles.primaryText}>
+            {claimableReading ? `Get +${formatCoins(claimableReading.coins)}` : 'Read now'}
+          </Text>
+        </LinearGradient>
+      </Pressable>
+
+      <Text style={styles.primaryHint}>
+        You&apos;ve read <Text style={styles.primaryHintStrong}>{readingMinutes} min</Text> today ·{' '}
+        {readHint}
+      </Text>
+    </View>
+  );
+
+  /* --- Điểm danh hằng ngày --- */
+  const checkInTile = (
+    <View style={styles.tileRow}>
+      <Pressable
+        onPress={onCheckIn}
+        disabled={!ready || checkedToday}
+        accessibilityRole="button"
+        style={({ pressed }) => [styles.tile, pressed && styles.pressed]}>
+        <View
+          style={[
+            styles.tileIcon,
+            { backgroundColor: checkedToday ? Palette.freeDim : Palette.accentDim },
+          ]}>
+          <Ionicons
+            name={checkedToday ? 'checkmark-done' : 'calendar'}
+            size={19}
+            color={checkedToday ? Palette.freeDeep : Palette.accentDeep}
+          />
+        </View>
+        <Text style={styles.tileTitle}>Check in</Text>
+        <Text
+          style={[
+            styles.tileStatus,
+            { color: checkedToday ? Palette.freeDeep : Palette.accentDeep },
+          ]}
+          numberOfLines={1}>
+          {checkedToday ? 'Checked in' : `Get +${formatCoins(todayCheckInCoins)}`}
+        </Text>
+      </Pressable>
+    </View>
+  );
+
+  /* --- Nhiệm vụ quảng cáo --- */
+  const adsCard = (
+    <View style={styles.card}>
+      <View style={styles.cardHead}>
+        <View style={[styles.cardIcon, { backgroundColor: Palette.coinDim }]}>
+          <Ionicons name="videocam" size={17} color={Palette.coinDeep} />
+        </View>
+        <View style={styles.cardHeadText}>
+          <Text style={styles.cardTitle}>Daily ad tasks</Text>
+          <Text style={styles.cardSub}>
+            Earned <Text style={styles.cardSubStrong}>{adsCoins}</Text> / {AD_MAX_COINS} coins
+          </Text>
+        </View>
+      </View>
+
+      <MilestoneTrack
+        items={adItems}
+        position={adsWatched > 0 ? adsWatched - 1 : 0}
+        tone="coin"
+      />
+
+      <Pressable
+        onPress={onWatchAd}
+        disabled={!ready || adsDone || watchingAd}
+        accessibilityRole="button"
+        style={({ pressed }) => [
+          styles.adButton,
+          (adsDone || !ready) && styles.adButtonOff,
+          pressed && styles.pressed,
+        ]}>
+        {watchingAd ? (
+          <ActivityIndicator size="small" color={Palette.coinDeep} />
+        ) : (
+          <Ionicons
+            name={adsDone ? 'checkmark-circle' : 'play-circle'}
+            size={19}
+            color={adsDone ? Palette.freeDeep : Palette.coinDeep}
+          />
+        )}
+        <Text
+          style={[styles.adButtonText, adsDone && { color: Palette.freeDeep }]}
+          numberOfLines={1}>
+          {watchingAd
+            ? 'Loading ad…'
+            : adsDone
+              ? 'All done for today'
+              : `Watch ad · +${formatCoins(nextAdCoins)}`}
+        </Text>
+      </Pressable>
+
+      <Text style={styles.adHint}>
+        {Math.max(0, AD_TASK_LIMIT - adsWatched)} left today
+      </Text>
+    </View>
+  );
+
+  /* --- Lịch điểm danh tuần --- */
+  const weekCard = (
+    <View style={styles.card}>
+      <View style={styles.cardHead}>
+        <View style={[styles.cardIcon, { backgroundColor: Palette.accentDim }]}>
+          <Ionicons name="calendar-number" size={17} color={Palette.accentDeep} />
+        </View>
+        <View style={styles.cardHeadText}>
+          <Text style={styles.cardTitle}>This week</Text>
+          <Text style={styles.cardSub}>Checked in {checkedDays.length}/7 days</Text>
+        </View>
+      </View>
+
+      <View style={styles.weekRow}>
+        {weekDays.map((day, i) => {
+          const checked = checkedDays.includes(day);
+          const isToday = day === today;
+          const weekend = i === 0 || i === 6;
+          return (
+            <View key={day} style={styles.dayCell}>
+              <Text style={[styles.dayLabel, isToday && styles.dayLabelToday]} numberOfLines={1}>
+                {WEEKDAY_LABELS[i]}
+              </Text>
+              <View
+                style={[
+                  styles.dayCircle,
+                  weekend && !checked && styles.dayCircleWeekend,
+                  checked && styles.dayCircleChecked,
+                  isToday && !checked && styles.dayCircleToday,
+                ]}>
+                {checked ? (
+                  <Ionicons name="checkmark" size={16} color={Palette.onAccent} />
+                ) : weekend ? (
+                  <Ionicons name="gift" size={16} color={Palette.coinDeep} />
+                ) : (
+                  <Text
+                    style={[styles.dayCoins, isToday && { color: Palette.accentDeep }]}
+                    numberOfLines={1}>
+                    {CHECKIN_COINS[i]}
+                  </Text>
+                )}
+              </View>
+              <Text
+                style={[styles.dayCoinsLabel, checked && { color: Palette.freeDeep }]}
+                numberOfLines={1}>
+                +{CHECKIN_COINS[i]}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
+
+      <Text style={styles.weekHint}>
+        Check in every day to keep your streak. Saturday and Sunday give bigger rewards.
+      </Text>
+    </View>
+  );
+
   return (
     <ScrollView
       style={styles.screen}
       contentContainerStyle={[
         styles.content,
+        split && styles.contentSplit,
         { paddingTop: insets.top + Spacing.sm, paddingBottom: Spacing.huge },
       ]}
       showsVerticalScrollIndicator={false}>
@@ -391,200 +598,31 @@ function RewardsContent() {
         </View>
       ) : null}
 
-      {/* --- Mốc thời gian đọc --- */}
-      <View style={styles.card}>
-        <View style={styles.cardHead}>
-          <View style={[styles.cardIcon, { backgroundColor: Palette.accentDim }]}>
-            <Ionicons name="time" size={17} color={Palette.accentDeep} />
+      {split ? (
+        // Màn rộng (iPad dọc 12,9"/13", iPad xoay ngang): hai cột thẻ thay vì một cột dài
+        // 720pt giữa màn, trang ngắn lại còn non nửa.
+        <View style={styles.split}>
+          <View style={styles.splitCol}>
+            {milestonesCard}
+            {adsCard}
           </View>
-          <View style={styles.cardHeadText}>
-            <Text style={styles.cardTitle}>Reading milestones</Text>
-            <Text style={styles.cardSub}>Earn coins as you read</Text>
-          </View>
-          <View style={styles.cardBadge}>
-            <Text style={styles.cardBadgeText}>{readingMinutes} min</Text>
-          </View>
-        </View>
-
-        <MilestoneTrack
-          items={readingItems}
-          position={readingPosition(readingMinutes)}
-          tone="accent"
-        />
-
-        <Pressable
-          onPress={onPrimaryPress}
-          disabled={!ready}
-          accessibilityRole="button"
-          style={({ pressed }) => [
-            styles.primaryWrap,
-            !ready && styles.disabled,
-            pressed && styles.pressed,
-          ]}>
-          <LinearGradient
-            colors={Gradients.accent}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.primary}>
-            <Ionicons
-              name={claimableReading ? 'gift' : 'book'}
-              size={18}
-              color={Palette.onAccent}
-            />
-            <Text style={styles.primaryText}>
-              {claimableReading ? `Get +${formatCoins(claimableReading.coins)}` : 'Read now'}
-            </Text>
-          </LinearGradient>
-        </Pressable>
-
-        <Text style={styles.primaryHint}>
-          You&apos;ve read <Text style={styles.primaryHintStrong}>{readingMinutes} min</Text> today ·{' '}
-          {readHint}
-        </Text>
-      </View>
-
-      {/* --- Điểm danh hằng ngày --- */}
-      <View style={styles.tileRow}>
-        <Pressable
-          onPress={onCheckIn}
-          disabled={!ready || checkedToday}
-          accessibilityRole="button"
-          style={({ pressed }) => [styles.tile, pressed && styles.pressed]}>
-          <View
-            style={[
-              styles.tileIcon,
-              { backgroundColor: checkedToday ? Palette.freeDim : Palette.accentDim },
-            ]}>
-            <Ionicons
-              name={checkedToday ? 'checkmark-done' : 'calendar'}
-              size={19}
-              color={checkedToday ? Palette.freeDeep : Palette.accentDeep}
-            />
-          </View>
-          <Text style={styles.tileTitle}>Check in</Text>
-          <Text
-            style={[
-              styles.tileStatus,
-              { color: checkedToday ? Palette.freeDeep : Palette.accentDeep },
-            ]}
-            numberOfLines={1}>
-            {checkedToday ? 'Checked in' : `Get +${formatCoins(todayCheckInCoins)}`}
-          </Text>
-        </Pressable>
-      </View>
-
-      {/* --- Nhiệm vụ quảng cáo --- */}
-      <View style={styles.card}>
-        <View style={styles.cardHead}>
-          <View style={[styles.cardIcon, { backgroundColor: Palette.coinDim }]}>
-            <Ionicons name="videocam" size={17} color={Palette.coinDeep} />
-          </View>
-          <View style={styles.cardHeadText}>
-            <Text style={styles.cardTitle}>Daily ad tasks</Text>
-            <Text style={styles.cardSub}>
-              Earned <Text style={styles.cardSubStrong}>{adsCoins}</Text> / {AD_MAX_COINS} coins
-            </Text>
+          <View style={styles.splitCol}>
+            {checkInTile}
+            {weekCard}
+            {/* Link quyền riêng tư / điều khoản / liên hệ — Guideline 5.1.1(i). */}
+            <AboutLinks />
           </View>
         </View>
-
-        <MilestoneTrack
-          items={adItems}
-          position={adsWatched > 0 ? adsWatched - 1 : 0}
-          tone="coin"
-        />
-
-        <Pressable
-          onPress={onWatchAd}
-          disabled={!ready || adsDone || watchingAd}
-          accessibilityRole="button"
-          style={({ pressed }) => [
-            styles.adButton,
-            (adsDone || !ready) && styles.adButtonOff,
-            pressed && styles.pressed,
-          ]}>
-          {watchingAd ? (
-            <ActivityIndicator size="small" color={Palette.coinDeep} />
-          ) : (
-            <Ionicons
-              name={adsDone ? 'checkmark-circle' : 'play-circle'}
-              size={19}
-              color={adsDone ? Palette.freeDeep : Palette.coinDeep}
-            />
-          )}
-          <Text
-            style={[styles.adButtonText, adsDone && { color: Palette.freeDeep }]}
-            numberOfLines={1}>
-            {watchingAd
-              ? 'Loading ad…'
-              : adsDone
-                ? 'All done for today'
-                : `Watch ad · +${formatCoins(nextAdCoins)}`}
-          </Text>
-        </Pressable>
-
-        <Text style={styles.adHint}>
-          {Math.max(0, AD_TASK_LIMIT - adsWatched)} left today
-        </Text>
-      </View>
-
-      {/* --- Lịch điểm danh tuần --- */}
-      <View style={styles.card}>
-        <View style={styles.cardHead}>
-          <View style={[styles.cardIcon, { backgroundColor: Palette.accentDim }]}>
-            <Ionicons name="calendar-number" size={17} color={Palette.accentDeep} />
-          </View>
-          <View style={styles.cardHeadText}>
-            <Text style={styles.cardTitle}>This week</Text>
-            <Text style={styles.cardSub}>Checked in {checkedDays.length}/7 days</Text>
-          </View>
-        </View>
-
-        <View style={styles.weekRow}>
-          {weekDays.map((day, i) => {
-            const checked = checkedDays.includes(day);
-            const isToday = day === today;
-            const weekend = i === 0 || i === 6;
-            return (
-              <View key={day} style={styles.dayCell}>
-                <Text style={[styles.dayLabel, isToday && styles.dayLabelToday]} numberOfLines={1}>
-                  {WEEKDAY_LABELS[i]}
-                </Text>
-                <View
-                  style={[
-                    styles.dayCircle,
-                    weekend && !checked && styles.dayCircleWeekend,
-                    checked && styles.dayCircleChecked,
-                    isToday && !checked && styles.dayCircleToday,
-                  ]}>
-                  {checked ? (
-                    <Ionicons name="checkmark" size={16} color={Palette.onAccent} />
-                  ) : weekend ? (
-                    <Ionicons name="gift" size={16} color={Palette.coinDeep} />
-                  ) : (
-                    <Text
-                      style={[styles.dayCoins, isToday && { color: Palette.accentDeep }]}
-                      numberOfLines={1}>
-                      {CHECKIN_COINS[i]}
-                    </Text>
-                  )}
-                </View>
-                <Text
-                  style={[styles.dayCoinsLabel, checked && { color: Palette.freeDeep }]}
-                  numberOfLines={1}>
-                  +{CHECKIN_COINS[i]}
-                </Text>
-              </View>
-            );
-          })}
-        </View>
-
-        <Text style={styles.weekHint}>
-          Check in every day to keep your streak. Saturday and Sunday give bigger rewards.
-        </Text>
-      </View>
-
-      {/* Link quyền riêng tư / điều khoản / liên hệ — Guideline 5.1.1(i). */}
-      <AboutLinks />
+      ) : (
+        <>
+          {milestonesCard}
+          {checkInTile}
+          {adsCard}
+          {weekCard}
+          {/* Link quyền riêng tư / điều khoản / liên hệ — Guideline 5.1.1(i). */}
+          <AboutLinks />
+        </>
+      )}
     </ScrollView>
   );
 }
@@ -604,6 +642,19 @@ const styles = StyleSheet.create({
     maxWidth: CONTENT_MAX_WIDTH,
     alignSelf: 'center',
     paddingHorizontal: Spacing.screen,
+    gap: Spacing.md,
+  },
+  contentSplit: {
+    maxWidth: REWARDS_SPLIT_MAX_WIDTH,
+  },
+  split: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.lg,
+  },
+  splitCol: {
+    flex: 1,
+    minWidth: 0,
     gap: Spacing.md,
   },
 

@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import type { Href } from 'expo-router';
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   PixelRatio,
@@ -33,7 +33,7 @@ import {
 import { BannerAd, InlineAd, showRewarded } from '@/lib/ads';
 import { API_URL, ApiError, getStory, type Chapter } from '@/lib/api';
 import { formatCoins, plural } from '@/lib/format';
-import { CONTENT_MAX_WIDTH, SHEET_MAX_WIDTH, useResponsive } from '@/lib/responsive';
+import { SHEET_MAX_WIDTH, useResponsive } from '@/lib/responsive';
 import {
   ReaderPrefsProvider,
   useReaderPrefs,
@@ -52,6 +52,17 @@ const storyMetaCache = new Map<string, { chaptersCount: number; thumbnailUrl: st
 
 /** Ô giữa chương phải ra khỏi màn hình thêm chừng này (pt) thì banner trên mới gắn lại. */
 const MID_AD_SLACK = 80;
+
+/**
+ * Bề rộng cột chữ trên màn rộng tính theo CỠ CHỮ (em), không cố định theo pt: chừng
+ * 75 ký tự mỗi dòng ở mọi cỡ — dòng dài hơn thì mắt khó dò về đầu dòng sau. Chữ to
+ * thì cột rộng ra theo, như Apple Books. iPhone hẹp hơn mức này nên không đổi gì.
+ */
+const READER_MEASURE_EM = 32;
+
+function readerColumnWidth(fontSize: number): number {
+  return Math.round(fontSize * READER_MEASURE_EM) + Spacing.xl * 2;
+}
 
 /**
  * Chương kèm `audio_url` (backend đã trả field này; `null` khi chưa có MP3).
@@ -110,7 +121,7 @@ export default function ReaderRoute() {
 function ReaderScreen() {
   const { storyId, number } = useLocalSearchParams<{ storyId: string; number: string }>();
   const insets = useSafeAreaInsets();
-  const { contentInset } = useResponsive();
+  const { width } = useResponsive();
   const router = useRouter();
   const { coins, spendCoins, isUnlocked, unlock } = useWallet();
   // Sổ cái quảng cáo dùng CHUNG với tab Phần thưởng: mọi lượt xem đều phải đếm
@@ -136,6 +147,9 @@ function ReaderScreen() {
     colors: rt,
     ready: prefsReady,
   } = useReaderPrefs();
+  const columnWidth = readerColumnWidth(fontSize);
+  /** lề trái/phải để thanh Previous/Next thẳng hàng với cột chữ */
+  const columnInset = Math.max(Spacing.screen, Math.round((width - columnWidth) / 2));
 
   const chapterNumber = Number(number);
 
@@ -422,11 +436,20 @@ function ReaderScreen() {
       : null;
 
   // Kiểu chữ nội dung dựng từ tùy chọn người dùng (cỡ chữ x hệ số giãn dòng).
-  const bodyTextStyle: TextStyle = {
-    fontSize,
-    lineHeight: Math.round(fontSize * lineHeight),
-    color: rt.text,
-  };
+  // Giữ nguyên tham chiếu giữa các lần render để ChapterBody (memo) khỏi vẽ lại.
+  const bodyTextStyle = useMemo<TextStyle>(
+    () => ({ fontSize, lineHeight: Math.round(fontSize * lineHeight), color: rt.text }),
+    [fontSize, lineHeight, rt.text],
+  );
+
+  const onMidAdFrame = useCallback(
+    ({ y, height }: { y: number; height: number }) => {
+      // Ô không có hàng thì báo cao 0 — banner trên được ở lại.
+      midAdBox.current = { chapter: chapterNumber, y, h: height };
+      syncTopBanner();
+    },
+    [chapterNumber, syncTopBanner],
+  );
 
   return (
     <View style={styles.screen}>
@@ -505,7 +528,7 @@ function ReaderScreen() {
       </View>
 
       {loading ? (
-        <ReaderSkeleton rt={rt} />
+        <ReaderSkeleton rt={rt} columnWidth={columnWidth} />
       ) : !chapter ? (
         <View style={styles.center}>
           {gone && storyMeta ? (
@@ -540,7 +563,7 @@ function ReaderScreen() {
         <ScrollView
           ref={scrollRef}
           style={[styles.flex, { backgroundColor: rt.bg }]}
-          contentContainerStyle={styles.readerContent}
+          contentContainerStyle={[styles.readerContent, { maxWidth: columnWidth }]}
           showsVerticalScrollIndicator={false}
           scrollEventThrottle={32}
           onLayout={(e) => {
@@ -585,25 +608,14 @@ function ReaderScreen() {
           </View>
 
           {/* Nội dung */}
-          {paragraphs.map((text, i) => (
-            <Fragment key={i}>
-              <Text style={[styles.paragraph, bodyTextStyle]} selectable>
-                {text}
-              </Text>
-              {/* key theo số chương: sang chương mới thì ô được dựng lại và xin quảng cáo mới */}
-              {i === midAdAfter ? (
-                <InlineAd
-                  key={`mid-${chapterNumber}`}
-                  labelColor={rt.faint}
-                  onFrame={({ y, height }) => {
-                    // Ô không có hàng thì báo cao 0 — banner trên được ở lại.
-                    midAdBox.current = { chapter: chapterNumber, y, h: height };
-                    syncTopBanner();
-                  }}
-                />
-              ) : null}
-            </Fragment>
-          ))}
+          <ChapterBody
+            paragraphs={paragraphs}
+            textStyle={bodyTextStyle}
+            midAdAfter={midAdAfter}
+            chapterNumber={chapterNumber}
+            labelColor={rt.faint}
+            onMidAdFrame={onMidAdFrame}
+          />
 
           {/* Kết chương */}
           <View style={styles.endMark}>
@@ -756,7 +768,7 @@ function ReaderScreen() {
           style={[
             styles.bottomBar,
             // màn rộng: nút Previous/Next thẳng cột chữ thay vì kéo dài hết bề ngang
-            { paddingHorizontal: contentInset, paddingBottom: Math.max(insets.bottom, Spacing.md) },
+            { paddingHorizontal: columnInset, paddingBottom: Math.max(insets.bottom, Spacing.md) },
           ]}>
           <NavButton
             label="Previous"
@@ -793,6 +805,44 @@ function ReaderScreen() {
 /* Pill nhỏ ở đầu chương — màu bám theo NỀN ĐỌC, không dùng Chip của   */
 /* app (Chip luôn tính màu theo nền sáng, sẽ chìm trên nền Đêm).       */
 /* ------------------------------------------------------------------ */
+
+/**
+ * Thân chương — tách riêng và memo hoá vì màn đọc render lại khá thường: bộ đếm phút
+ * đọc của Rewards cập nhật context mỗi 15 giây, banner gỡ/gắn khi ô giữa chương vào
+ * khung nhìn, số xu đổi... Chương dài cả trăm đoạn mà dựng lại đúng lúc đang cuộn là
+ * rớt khung hình, thấy rõ trên iPad (cột chữ rộng, nhiều dòng mỗi đoạn).
+ */
+const ChapterBody = memo(function ChapterBody({
+  paragraphs,
+  textStyle,
+  midAdAfter,
+  chapterNumber,
+  labelColor,
+  onMidAdFrame,
+}: {
+  paragraphs: string[];
+  textStyle: TextStyle;
+  midAdAfter: number;
+  chapterNumber: number;
+  labelColor: string;
+  onMidAdFrame: (frame: { y: number; height: number }) => void;
+}) {
+  return (
+    <>
+      {paragraphs.map((text, i) => (
+        <Fragment key={i}>
+          <Text style={[styles.paragraph, textStyle]} selectable>
+            {text}
+          </Text>
+          {/* key theo số chương: sang chương mới thì ô được dựng lại và xin quảng cáo mới */}
+          {i === midAdAfter ? (
+            <InlineAd key={`mid-${chapterNumber}`} labelColor={labelColor} onFrame={onMidAdFrame} />
+          ) : null}
+        </Fragment>
+      ))}
+    </>
+  );
+});
 
 function PageTag({
   rt,
@@ -863,10 +913,10 @@ function NavButton({ label, direction, disabled, onPress }: NavButtonProps) {
 /* Khung xương khi đang tải                                            */
 /* ------------------------------------------------------------------ */
 
-function ReaderSkeleton({ rt }: { rt: ReaderTheme }) {
-  // cùng lề với cột chữ `readerContent` (rộng tối đa CONTENT_MAX_WIDTH, nằm giữa)
+function ReaderSkeleton({ rt, columnWidth }: { rt: ReaderTheme; columnWidth: number }) {
+  // cùng lề với cột chữ `readerContent` (rộng tối đa columnWidth, nằm giữa)
   const { width } = useResponsive();
-  const side = Math.max(0, (width - CONTENT_MAX_WIDTH) / 2) + Spacing.xl;
+  const side = Math.max(0, (width - columnWidth) / 2) + Spacing.xl;
   return (
     <View style={[styles.skeletonWrap, { backgroundColor: rt.bg, paddingHorizontal: side }]}>
       <View style={styles.skeletonMeta}>
@@ -982,9 +1032,8 @@ const styles = StyleSheet.create({
 
   // --- Nội dung đọc ---
   readerContent: {
-    // Màn rộng: cột chữ ở giữa, dòng không dài quá ~70 ký tự cho dễ đọc.
+    // Màn rộng: cột chữ ở giữa; maxWidth đặt theo cỡ chữ (readerColumnWidth).
     width: '100%',
-    maxWidth: CONTENT_MAX_WIDTH,
     alignSelf: 'center',
     paddingHorizontal: Spacing.xl,
     paddingTop: Spacing.xl,
