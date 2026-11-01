@@ -236,4 +236,62 @@ class WebSeoTest extends TestCase
         $this->assertSame('New hook.', $s->hook);
         $this->assertSame('a-title-long-enough-that-its-full-slug-runs-well-past-the', $s->slug);
     }
+
+    public function test_truyen_index_dung_truoc_truyen_noindex(): void
+    {
+        $cat = Category::create(['name' => 'Revenge', 'slug' => 'revenge']);
+        $this->story('cu-index', ['views' => 1])->categories()->attach($cat);
+        $moi = $this->story('moi-noindex', ['noindex' => true, 'views' => 999]);
+        $moi->categories()->attach($cat);
+        $moi->forceFill(['updated_at' => now()->addDay()])->saveQuietly();
+
+        foreach (['/browse', '/genre/revenge'] as $url) {
+            $html = $this->get($url)->assertOk()->getContent();
+            $this->assertLessThan(strpos($html, '/story/moi-noindex"'), strpos($html, '/story/cu-index"'), $url);
+        }
+
+        // Trang chủ: xếp hạng chỉ có truyện index; "mới cập nhật" vẫn hiện truyện noindex mới nhất.
+        $home = $this->get('/')->assertOk()->getContent();
+        $this->assertSame(1, substr_count($home, '/story/moi-noindex"'));
+        $this->assertStringContainsString('/story/cu-index"', $home);
+    }
+
+    public function test_trang_truyen_co_doan_mo_dau_chuong_1(): void
+    {
+        $s = $this->story('mo-dau', chapters: 2);
+        $para = fn (int $i) => "Paragraph $i ".str_repeat('word ', 48).'end.';
+        $s->chapters()->where('number', 1)->update(['content' => implode("\n\n", array_map($para, range(1, 6)))]);
+
+        $html = $this->get('/story/mo-dau')->assertOk()
+            ->assertSee('Read the opening')
+            ->assertSee('<p>Paragraph 1 word', false)
+            ->assertSee('<p>Paragraph 3 word', false)
+            ->assertSee('href="'.route('public.chapter', ['mo-dau', 1]).'">Keep reading chapter 1', false)
+            ->getContent();
+        // Dừng khi đủ ~120 từ (mỗi đoạn ~51 từ → 3 đoạn), không chép cả chương.
+        $this->assertStringNotContainsString('Paragraph 4', $html);
+    }
+
+    public function test_doan_mo_dau_dai_qua_thi_cat_o_het_cau(): void
+    {
+        $s = $this->story('dai');
+        $sentence = 'This sentence has exactly ten words in it, all right. ';
+        $s->chapters()->first()->update(['content' => str_repeat($sentence, 40)]);
+
+        $html = $this->get('/story/dai')->assertOk()->getContent();
+        preg_match('#<div class="synopsis opening">\s*<p>(.*?)</p>#s', $html, $m);
+        $this->assertNotEmpty($m);
+        $this->assertStringEndsWith('all right.', $m[1]);
+        $this->assertLessThanOrEqual(220, str_word_count($m[1]));
+    }
+
+    public function test_tua_trang_the_loai(): void
+    {
+        $cat = Category::create(['name' => 'CEO', 'slug' => 'ceo']);
+        for ($i = 1; $i <= 5; $i++) {
+            $this->story("c$i")->categories()->attach($cat);
+        }
+
+        $this->get('/genre/ceo')->assertOk()->assertSee('<title>CEO stories — free to read online — Stories</title>', false);
+    }
 }

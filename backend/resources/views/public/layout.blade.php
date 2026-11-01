@@ -538,6 +538,8 @@ window.StoriesHistory = {
   .story-cols{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:44px;margin-top:6px}
   .story-cols > *{min-width:0}
   .synopsis{font-size:16.5px;line-height:1.75;color:var(--text-2);margin:0}
+  .opening p{margin:0 0 1em}
+  .opening-more{margin:4px 0 0;font-weight:650}
   .story-side .panel{position:sticky;top:88px}
   .chapters{list-style:none;padding:0;margin:0;border:1px solid var(--border);border-radius:18px;overflow:hidden;
             background:var(--surface);box-shadow:var(--shadow)}

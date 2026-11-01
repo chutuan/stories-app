@@ -42,6 +42,11 @@ class ReadController extends Controller
     /** Số truyện mỗi trang ở /browse và /search. */
     private const PER_PAGE = 24;
 
+    /** Độ dài đoạn mở đầu ở trang truyện (số từ) — xem opening(). */
+    private const OPENING_MIN = 120;
+
+    private const OPENING_MAX = 220;
+
     /**
      * Trang chủ, theo bố cục quen thuộc của các web đọc truyện: truyện nổi bật cạnh
      * bảng xếp hạng, rồi lưới "Recently updated", rồi vài hàng cuộn ngang theo thể loại.
@@ -54,8 +59,14 @@ class ReadController extends Controller
     {
         // Nổi bật = truyện nhiều lượt xem nhất 7 ngày qua, giống hệt app (Story::scopeTopThisWeek).
         // Tuần chưa có lượt xem nào (DB mới, dev) thì quay về truyện admin đánh dấu.
-        $featured = $this->cards()->topThisWeek()->first()
-            ?? $this->cards()->where('is_featured', true)->latest('updated_at')->first();
+        //
+        // Nổi bật, xếp hạng và ba hàng thể loại CHỈ lấy truyện được lập chỉ mục (Tuấn chọn
+        // 02/11/2026). Trang chủ là trang Googlebot ghé nhiều nhất; trước đó 27/54 liên kết
+        // truyện ở đây trỏ tới trang noindex, trong khi 160 truyện được phép index còn nằm ở
+        // "Đã phát hiện – chưa lập chỉ mục". Riêng hàng "mới cập nhật" vẫn lấy mọi truyện để
+        // người đọc thấy truyện mới mỗi ngày (kho đăng 10 truyện noindex/ngày).
+        $featured = $this->cards()->where('stories.noindex', false)->topThisWeek()->first()
+            ?? $this->cards()->where('noindex', false)->where('is_featured', true)->latest('updated_at')->first();
 
         $shown = collect($featured ? [$featured->id] : []);
 
@@ -63,6 +74,7 @@ class ReadController extends Controller
         // bao giờ dựng số mồi (xem partials/rating). Cạnh truyện nổi bật chỉ đủ cao cho
         // 5 dòng; không có truyện nổi bật thì bảng chiếm cả hàng, chia hai cột, 10 dòng.
         $ranking = $this->cards()
+            ->where('noindex', false)
             ->whereNotIn('id', $shown)
             ->orderByDesc('views')
             ->orderByDesc('id')
@@ -84,6 +96,7 @@ class ReadController extends Controller
         $topCategories = Category::query()->withWebStoryCount()->orderByDesc('stories_count')->limit(3)->get();
         foreach ($topCategories as $category) {
             $stories = $this->cards()
+                ->where('noindex', false)
                 ->whereHas('categories', fn ($q) => $q->whereKey($category->getKey()))
                 ->whereNotIn('id', $shown)
                 ->orderByDesc('views')
@@ -271,10 +284,14 @@ class ReadController extends Controller
      * mỗi trang một kiểu, nên cùng một truyện hiện ở trang 2 lẫn trang 3 còn truyện khác
      * không ở trang nào — kiểm 01/11 mất 42 truyện khỏi /browse. Mọi lưới phân trang hay
      * cắt `limit` trong file này đều phải có `id` làm khoá phụ.
+     *
+     * Trước cả `updated_at` là `noindex` (truyện được lập chỉ mục đứng trước, Tuấn chọn
+     * 02/11/2026): kho đăng 10 truyện noindex mỗi ngày, xếp thuần theo ngày thì trang 1 của
+     * /browse và thể loại toàn trang noindex (02/11: 24/24), còn truyện index bị đẩy sâu dần.
      */
     public function browse(): View
     {
-        $stories = $this->cards()->orderByDesc('updated_at')->orderByDesc('id')->paginate(self::PER_PAGE);
+        $stories = $this->cards()->orderBy('noindex')->orderByDesc('updated_at')->orderByDesc('id')->paginate(self::PER_PAGE);
         $this->abortOnEmptyPage($stories);
 
         return view('public.browse', [
@@ -298,6 +315,7 @@ class ReadController extends Controller
 
         $stories = $this->cards()
             ->whereHas('categories', fn ($q) => $q->whereKey($category->getKey()))
+            ->orderBy('noindex')
             ->orderByDesc('updated_at')
             ->orderByDesc('id')
             ->paginate(self::PER_PAGE);
@@ -359,6 +377,7 @@ class ReadController extends Controller
         $related = $this->cards()
             ->whereKeyNot($story->getKey())
             ->when($categoryIds, fn ($q) => $q->whereHas('categories', fn ($c) => $c->whereKey($categoryIds)))
+            ->orderBy('noindex')
             ->orderByDesc('views')
             ->orderByDesc('id')
             ->limit(6)
@@ -383,6 +402,7 @@ class ReadController extends Controller
         return view('public.story', [
             'story' => $story,
             'related' => $related,
+            'opening' => $this->opening($story->chapters->first()),
             'readMinutes' => max(1, (int) round($words / 230)),
             // Cắt theo KÝ TỰ ở ranh giới từ (clip), không theo số từ: 26 từ dài có thể
             // vượt xa 155 ký tự và Google cắt ngang câu.
@@ -448,6 +468,7 @@ class ReadController extends Controller
             $related = $this->cards()
                 ->whereKeyNot($story->getKey())
                 ->when($categoryIds, fn ($q) => $q->whereHas('categories', fn ($c) => $c->whereKey($categoryIds)))
+                ->orderBy('noindex')
                 ->orderByDesc('views')
                 ->orderByDesc('id')
                 ->limit(4)
@@ -700,6 +721,57 @@ class ReadController extends Controller
             ->withAvg('reactions', 'score')
             ->withMin('chapters', 'number')
             ->withMax('chapters', 'number');
+    }
+
+    /**
+     * Đoạn mở đầu chương đầu tiên cho mục "Read the opening" ở trang truyện.
+     *
+     * Trang truyện chỉ có ~330 chữ (tóm tắt 76–128 từ + tên chương) trong khi đó là trang
+     * mang câu mồi trong <title> — trang đích từ Google. Lấy trọn đoạn văn, dừng khi đủ
+     * OPENING_MIN từ và không vượt OPENING_MAX; đoạn đầu tiên đã dài quá thì cắt ở hết câu.
+     *
+     * @return list<string>
+     */
+    private function opening(?Chapter $first): array
+    {
+        if (! $first) {
+            return [];
+        }
+
+        $out = [];
+        $words = 0;
+        foreach ($this->paragraphs((string) $first->content) as $p) {
+            $n = str_word_count($p);
+            if ($words + $n > self::OPENING_MAX) {
+                if ($out === []) {
+                    $out[] = $this->sentencesUpTo($p, self::OPENING_MAX);
+                }
+                break;
+            }
+            $out[] = $p;
+            $words += $n;
+            if ($words >= self::OPENING_MIN) {
+                break;
+            }
+        }
+
+        return $out;
+    }
+
+    /** Các câu đầu của đoạn văn, tổng không quá $max từ; câu đầu đã quá thì cắt ở ranh giới từ. */
+    private function sentencesUpTo(string $paragraph, int $max): string
+    {
+        $out = '';
+        foreach (preg_split('/(?<=[.!?…])["”’]?\K\s+/u', $paragraph) ?: [] as $sentence) {
+            if ($out !== '' && str_word_count($out.' '.$sentence) > $max) {
+                break;
+            }
+            $out = ltrim($out.' '.$sentence);
+        }
+
+        return str_word_count($out) > $max
+            ? implode(' ', array_slice(preg_split('/\s+/u', $out) ?: [], 0, $max)).'…'
+            : $out;
     }
 
     /**

@@ -120,6 +120,23 @@
         </section>
       @endif
 
+      {{-- Vài đoạn đầu chương 1 (ReadController::opening): trang truyện có thêm nội dung
+           thật, người đọc thử giọng văn trước khi bấm. Mang class .synopsis để cùng kiểu chữ
+           và cùng lớp chặn sao chép (partials/protect). --}}
+      @if ($opening)
+        <section class="sec" aria-labelledby="opening-title" style="margin-top:36px">
+          <div class="sec-head"><h2 id="opening-title">Read the opening</h2></div>
+          <div class="synopsis opening">
+            @foreach ($opening as $p)
+              <p>{{ $p }}</p>
+            @endforeach
+          </div>
+          <p class="opening-more">
+            <a href="{{ route('public.chapter', [$story, $story->chapters->first()->number]) }}">Keep reading chapter {{ $story->chapters->first()->number }} →</a>
+          </p>
+        </section>
+      @endif
+
       @include('public.partials.ad')
 
       <section class="sec" id="chapters" aria-labelledby="chapters-title" style="scroll-margin-top:84px">

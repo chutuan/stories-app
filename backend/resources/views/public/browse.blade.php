@@ -6,7 +6,9 @@
 @php
     $pageSuffix = $stories->currentPage() > 1 ? ' — page '.$stories->currentPage() : '';
 @endphp
-@section('title', ($category ? $category->name.' stories' : 'Browse all stories').$pageSuffix)
+{{-- Thể loại: thêm "free to read online" — người ta tìm "revenge stories to read online
+     free", còn "Revenge stories" trần thì chỉ khớp với nửa câu. --}}
+@section('title', ($category ? $category->name.' stories — free to read online' : 'Browse all stories').$pageSuffix)
 {{-- KHÔNG strtolower tên thể loại: nó biến "CEO" thành "ceo". Giữ nguyên cách
      viết hoa như trong dữ liệu, và cho mỗi thể loại một câu riêng thay vì một
      khuôn mẫu chỉ khác đúng một từ. --}}
