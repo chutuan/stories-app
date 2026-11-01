@@ -297,9 +297,13 @@ function DiscoverTab({ focusToken, onSeeNewest }: { focusToken: number; onSeeNew
     router.push('/search');
   }, [router]);
 
-  // Truyện người dùng đã đọc hết không mời lại ở trang chủ (kể cả dải nổi bật).
+  // Truyện người dùng đã đọc hết không mời lại ở trang chủ. Nổi bật = truyện xem nhiều nhất
+  // tuần mà người dùng chưa đọc hết; đọc hết rồi thì lấy truyện kế tiếp trong bảng xếp hạng.
   const hideFinished = useHideFinished();
-  const featured = home?.featured && hideFinished([home.featured]).length > 0 ? home.featured : null;
+  const featured = useMemo(() => {
+    const pool = home?.featured_pool ?? (home?.featured ? [home.featured] : []);
+    return hideFinished(pool)[0] ?? null;
+  }, [hideFinished, home]);
   const updated = useMemo(() => hideFinished(home?.updated ?? []), [hideFinished, home]);
   const newest = useMemo(() => hideFinished(home?.newest ?? []), [hideFinished, home]);
   const isEmpty = !loading && !error && !featured && updated.length === 0 && newest.length === 0;

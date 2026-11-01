@@ -81,6 +81,8 @@ export interface Chapter {
 
 export interface HomeData {
   featured: Story | null;
+  /** Ứng viên nổi bật theo lượt xem 7 ngày qua, nhiều nhất trước (featured = phần tử đầu). */
+  featured_pool?: Story[];
   updated: StoryCard[];
   newest: StoryCard[];
 }
