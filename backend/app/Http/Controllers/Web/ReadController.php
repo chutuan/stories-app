@@ -51,10 +51,10 @@ class ReadController extends Controller
      */
     public function home(): View
     {
-        $featured = $this->cards()
-            ->where('is_featured', true)
-            ->latest('updated_at')
-            ->first();
+        // Nổi bật = truyện nhiều lượt xem nhất 7 ngày qua, giống hệt app (Story::scopeTopThisWeek).
+        // Tuần chưa có lượt xem nào (DB mới, dev) thì quay về truyện admin đánh dấu.
+        $featured = $this->cards()->topThisWeek()->first()
+            ?? $this->cards()->where('is_featured', true)->latest('updated_at')->first();
 
         $shown = collect($featured ? [$featured->id] : []);
 

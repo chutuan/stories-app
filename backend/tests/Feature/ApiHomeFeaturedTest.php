@@ -58,6 +58,19 @@ class ApiHomeFeaturedTest extends TestCase
             ->assertJsonPath('featured_pool.*.id', [$week->id, $runnerUp->id]);
     }
 
+    public function test_web_cung_lay_truyen_nhieu_luot_xem_nhat_tuan(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-11-01 10:00:00'));
+
+        $this->story('danh-dau', 9999, featured: true);
+        $week = $this->story('tuan');
+        $this->hits($week, '2026-10-30', 12);
+
+        $html = $this->get('/')->assertOk()->getContent();
+
+        $this->assertMatchesRegularExpression('/id="spot-title"><a href="[^"]*\/story\/tuan">T tuan</', $html);
+    }
+
     public function test_tuan_chua_co_luot_xem_thi_dung_truyen_admin_danh_dau(): void
     {
         $marked = $this->story('danh-dau', featured: true);

@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\StoryCardResource;
 use App\Http\Resources\StoryResource;
 use App\Models\Story;
-use App\Models\StoryView;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 
@@ -56,28 +55,14 @@ class HomeController extends Controller
         ]);
     }
 
-    /**
-     * Truyện nhiều lượt xem nhất 7 ngày qua (hôm nay và 6 ngày trước, mọi nguồn web lẫn app),
-     * nhiều nhất trước. Hoà thì truyện có tổng `views` cao hơn đứng trước.
-     */
+    /** Truyện nhiều lượt xem nhất 7 ngày qua — cùng định nghĩa với web (Story::scopeTopThisWeek). */
     private function weeklyTop(): Collection
     {
-        $weekly = StoryView::query()
-            ->select('story_id')
-            ->selectRaw('sum(hits) as week_hits')
-            ->where('viewed_on', '>=', now()->subDays(6)->toDateString())
-            ->groupBy('story_id');
-
-        // select() phải đứng trước withCount/withMax, nếu không nó xoá mất các cột đếm.
         return Story::query()
-            ->select('stories.*')
-            ->joinSub($weekly, 'week', 'week.story_id', '=', 'stories.id')
             ->with('categories')
             ->withCount('chapters')
             ->withMax('chapters', 'number')
-            ->orderByDesc('week.week_hits')
-            ->orderByDesc('stories.views')
-            ->orderByDesc('stories.id')
+            ->topThisWeek()
             ->limit(self::FEATURED_POOL)
             ->get();
     }

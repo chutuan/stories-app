@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Console\Commands\DeriveCovers;
 use App\Support\PublicFileUrl;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -60,6 +61,34 @@ class Story extends Model
             'completed' => 'Completed',
             default => $this->status,
         });
+    }
+
+    /**
+     * Chỉ những truyện có lượt xem 7 ngày qua (hôm nay và 6 ngày trước, web lẫn app),
+     * nhiều lượt nhất trước; hoà thì truyện có tổng `views` cao hơn đứng trước.
+     *
+     * Đây là định nghĩa "Featured" cho CẢ web lẫn app — sửa ở đây thì hai bên đổi cùng
+     * lúc, đừng viết lại truy vấn riêng ở controller.
+     */
+    public function scopeTopThisWeek(Builder $query): Builder
+    {
+        $weekly = StoryView::query()
+            ->select('story_id')
+            ->selectRaw('sum(hits) as week_hits')
+            ->where('viewed_on', '>=', now()->subDays(6)->toDateString())
+            ->groupBy('story_id');
+
+        // Chưa chọn cột nào thì phải ghim stories.*, nếu không join kéo theo cả cột của
+        // bảng phụ. Gọi SAU withCount/withMax thì cột đã có sẵn, đừng ghi đè.
+        if ($query->getQuery()->columns === null) {
+            $query->select('stories.*');
+        }
+
+        return $query
+            ->joinSub($weekly, 'week', 'week.story_id', '=', 'stories.id')
+            ->orderByDesc('week.week_hits')
+            ->orderByDesc('stories.views')
+            ->orderByDesc('stories.id');
     }
 
     /**
