@@ -28,8 +28,9 @@
     It is not backed up to us and cannot be restored or transferred to another device.</p>
 
   <h2>What our servers receive</h2>
-  <p>The app only reads from our API — it never uploads personal information. When it fetches a
-    story list, a chapter or a cover image, our server receives what any web server receives:</p>
+  <p>The app only reads from our API — it never uploads personal information. The one exception
+    is the optional daily notification described below. When it fetches a story list, a chapter
+    or a cover image, our server receives what any web server receives:</p>
   <ul>
     <li>IP address, device/browser user agent and the time of the request, written to standard
       server logs for security and troubleshooting</li>
@@ -41,6 +42,23 @@
       because the date is part of the input it changes every day — so it is not used to
       recognise you from one day to the next, or to build any profile of you.</li>
   </ul>
+
+  <h2>New-story notifications</h2>
+  <p>The app can send you at most one notification a day, in the evening, about a story that was
+    added to Stories that day. It is off until you turn it on, and iOS asks for your permission
+    first. If you turn it on, the app sends our server two things:</p>
+  <ul>
+    <li>a push token — a random address issued by Apple and Expo that lets us deliver a
+      notification to this app on your device. It does not contain your name, phone number or any
+      advertising identifier;</li>
+    <li>your device's time zone (for example <code>America/Chicago</code>), so the notification
+      arrives in your evening rather than in the middle of your night.</li>
+  </ul>
+  <p>We store the token with that time zone and the date and story of the last notification, and
+    nothing else. Your reading history stays on your device: we do not know which stories you
+    have read. Turning the notification off in the app deletes the token from our server. If you
+    turn notifications off in iOS Settings or uninstall the app instead, the token stops working
+    and we delete it the next time a delivery is attempted.</p>
 
   <h2>Rating a chapter</h2>
   <p>At the end of every chapter on the website there is a one-tap satisfaction scale. If you use
@@ -129,6 +147,10 @@
       Policy</a>.</li>
     <li><strong>DigitalOcean</strong> — hosts our servers, including the server logs described
       above.</li>
+    <li><strong>Expo</strong> (650 Industries, Inc.) and <strong>Apple</strong> — deliver the
+      optional new-story notification. We pass the push token and the notification text to Expo,
+      which hands it to Apple's push notification service for delivery. See the
+      <a href="https://expo.dev/privacy" rel="noopener">Expo Privacy Policy</a>.</li>
   </ul>
   <p>We never sell data, and we share it with no one else.</p>
 
@@ -140,6 +162,9 @@
       and contains no IP address, and we never use it to identify anyone.</li>
     <li>Website ratings are kept as statistics. Clearing your <code>sid</code> cookie permanently
       disconnects them from you.</li>
+    <li>A push token is kept only while the new-story notification is on. It is deleted when you
+      turn the notification off in the app, or at the next delivery attempt after you turn
+      notifications off in iOS Settings or uninstall the app.</li>
     <li>Everything the app stores on your phone is deleted when you uninstall the app.</li>
     <li>Data collected by Google is kept under
       <a href="https://policies.google.com/technologies/retention" rel="noopener">Google's
@@ -158,6 +183,8 @@
   <h2>Your choices</h2>
   <ul>
     <li>Delete everything the app stores about you by uninstalling it.</li>
+    <li>Turn the daily new-story notification on or off at any time under <em>Library →
+      Notifications</em> in the app, or in iOS Settings.</li>
     <li>On iOS the app never asks for tracking permission, so your advertising identifier is never
       available to it. On Android you can reset or delete your advertising ID in
       <em>Settings → Google → Ads</em>.</li>

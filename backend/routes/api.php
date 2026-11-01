@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\ChapterController;
 use App\Http\Controllers\Api\ConfigController;
 use App\Http\Controllers\Api\HomeController;
 use App\Http\Controllers\Api\IngestController;
+use App\Http\Controllers\Api\PushDeviceController;
 use App\Http\Controllers\Api\StoryController;
 use Illuminate\Support\Facades\Route;
 
@@ -14,6 +15,10 @@ Route::get('/categories', [CategoryController::class, 'index']);
 Route::get('/stories', [StoryController::class, 'index']);
 Route::get('/stories/{story}', [StoryController::class, 'show']);
 Route::get('/stories/{story}/chapters/{number}', [ChapterController::class, 'show']);
+
+// Thông báo "truyện mới hôm nay" của app di động (bật/tắt trong app). Xem DailyStoryNotifier.
+Route::post('/push-devices', [PushDeviceController::class, 'store']);
+Route::delete('/push-devices', [PushDeviceController::class, 'destroy']);
 
 /*
  * API GHI cho máy — dành cho AI viết truyện tự đăng bài.

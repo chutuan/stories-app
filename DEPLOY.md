@@ -472,9 +472,9 @@ sudo journalctl -u stories-queue -n 30 --no-pager
 > `--timeout=900` trong unit khớp đúng `public int $timeout = 900` khai báo trong job;
 > `--tries=2` khớp `public int $tries = 2`. Đổi một bên thì phải đổi bên kia.
 >
-> **Về scheduler:** `routes/console.php` hiện **chưa khai báo task định kỳ nào**, nên
-> timer sẽ chạy không tải. Vẫn nên bật sẵn — nó vô hại và sẽ hoạt động ngay khi có task
-> đầu tiên (dọn audio mồ côi, thống kê lượt đọc...).
+> **Về scheduler:** BẮT BUỘC từ 01/11/2026 — `routes/console.php` khai báo
+> `push:daily-story` chạy mỗi giờ (thông báo "truyện mới hôm nay" cho app). Không bật
+> timer thì app không nhận được thông báo nào. Kiểm tra: `php artisan schedule:list`.
 
 Nếu thích cron hơn systemd timer, xem hướng dẫn trong `deploy/stories-scheduler.timer`
 (chỉ dùng **một** trong hai cách).

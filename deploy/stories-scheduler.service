@@ -6,9 +6,9 @@
 # PLACEHOLDER PHẢI THAY: /var/www/stories/backend
 #
 # `schedule:run` phải chạy MỖI PHÚT. Laravel tự quyết định trong phút đó có task
-# nào tới hạn hay không. Hiện routes/console.php chưa khai báo task định kỳ nào,
-# nên lệnh này chạy xong ngay lập tức — bật sẵn để sau này thêm task
-# (dọn audio mồ côi, thống kê lượt đọc...) là chạy được luôn.
+# nào tới hạn hay không. Task định kỳ khai báo ở routes/console.php — hiện có
+# push:daily-story (mỗi giờ, thông báo truyện mới cho app). Thiếu timer này thì
+# app không nhận được thông báo nào.
 # =============================================================================
 
 [Unit]

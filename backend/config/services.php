@@ -44,6 +44,16 @@ return [
         'token' => env('INGEST_TOKEN'),
     ],
 
+    /*
+     * Thông báo đẩy của app di động qua Expo (App\Services\DailyStoryNotifier).
+     * access_token chỉ cần khi bật "Enhanced Security for Push Notifications" trên expo.dev.
+     */
+    'expo' => [
+        'access_token' => env('EXPO_ACCESS_TOKEN'),
+        // Giờ địa phương bắt đầu gửi "truyện mới hôm nay" (gửi trong 3 giờ kể từ đây).
+        'daily_hour' => (int) env('PUSH_DAILY_HOUR', 19),
+    ],
+
     'openai' => [
         'key' => env('OPENAI_API_KEY'),
         'tts_model' => env('OPENAI_TTS_MODEL', 'gpt-4o-mini-tts'),
