@@ -78,7 +78,7 @@ class ReadController extends Controller
         // Ba thể loại đông truyện nhất, mỗi thể loại một hàng cuộn ngang. Hàng nào sau
         // khi loại trùng còn dưới 4 truyện thì bỏ — một hàng ba bìa trông như trang lỗi.
         $shelves = [];
-        $topCategories = Category::query()->withCount('stories')->orderByDesc('stories_count')->limit(3)->get();
+        $topCategories = Category::query()->withWebStoryCount()->orderByDesc('stories_count')->limit(3)->get();
         foreach ($topCategories as $category) {
             $stories = $this->cards()
                 ->whereHas('categories', fn ($q) => $q->whereKey($category->getKey()))
@@ -97,7 +97,7 @@ class ReadController extends Controller
             'ranking' => $ranking,
             'updated' => $updated,
             'shelves' => $shelves,
-            'categories' => Category::query()->withCount('stories')->orderBy('name')->get(),
+            'categories' => $this->webCategories(),
             'jsonLd' => [
                 StructuredData::website(route('public.home'), route('public.search')),
                 StructuredData::organization(
@@ -129,13 +129,14 @@ class ReadController extends Controller
         // Đệm một giờ: truyện mới chỉ thêm vài lần mỗi ngày, và không đáng kéo
         // 146.000 từ ra khỏi cơ sở dữ liệu cho mỗi lượt xem trang About.
         $stats = Cache::remember('about.stats', now()->addHour(), function (): array {
-            $contents = Chapter::query()->pluck('content');
+            $contents = Chapter::query()->whereHas('story', fn ($q) => $q->visibleOnWeb())->pluck('content');
 
             return [
-                'stories' => Story::query()->count(),
+                'stories' => Story::query()->visibleOnWeb()->count(),
                 'chapters' => $contents->count(),
                 'words' => $contents->sum(fn (?string $c) => str_word_count((string) $c)),
                 'audio' => Story::query()
+                    ->visibleOnWeb()
                     ->has('chapters')
                     ->withCount([
                         'chapters',
@@ -151,6 +152,7 @@ class ReadController extends Controller
         // lọc với tab Free trên trang chủ (StoryController::index), giữ một định
         // nghĩa duy nhất cho "free" trên toàn site.
         $freeStories = Story::query()
+            ->visibleOnWeb()
             ->withCount('chapters')
             ->has('chapters')
             ->whereRaw('stories.free_chapters >= (select count(*) from chapters where chapters.story_id = stories.id)')
@@ -228,7 +230,7 @@ class ReadController extends Controller
 
         return view('public.browse', [
             'stories' => $stories,
-            'categories' => Category::query()->orderBy('name')->get(),
+            'categories' => $this->webCategories(),
             'category' => null,
             'jsonLd' => [StructuredData::collection(
                 $stories, null, route('public.browse'), route('public.home'),
@@ -253,8 +255,10 @@ class ReadController extends Controller
 
         return view('public.browse', [
             'stories' => $stories,
-            'categories' => Category::query()->orderBy('name')->get(),
+            'categories' => $this->webCategories(),
             'category' => $category,
+            // Thể loại mỏng vẫn mở được (thẻ truyện có link tới nó) nhưng không cho lập chỉ mục.
+            'thin' => $stories->total() < Category::WEB_MIN_STORIES,
             'jsonLd' => [StructuredData::collection(
                 $stories, $category, route('public.category', $category), route('public.home'),
                 fn (Story $s) => route('public.story', $s),
@@ -278,6 +282,8 @@ class ReadController extends Controller
     /** Trang chi tiết truyện: tóm tắt + danh sách chương. */
     public function story(Story $story): View|RedirectResponse
     {
+        abort_if($story->hidden_on_web, 404);
+
         if ($r = $this->canonicalOr(route('public.story', $story))) {
             return $r;
         }
@@ -323,6 +329,8 @@ class ReadController extends Controller
      */
     public function chapter(Story $story, int $number): View|RedirectResponse
     {
+        abort_if($story->hidden_on_web, 404);
+
         if ($r = $this->canonicalOr(route('public.chapter', [$story, $number]))) {
             return $r;
         }
@@ -433,7 +441,7 @@ class ReadController extends Controller
             ['loc' => route('public.terms'), 'priority' => '0.3', 'freq' => 'yearly'],
         ];
 
-        foreach (Category::query()->orderBy('name')->get() as $category) {
+        foreach ($this->webCategories() as $category) {
             $urls[] = [
                 'loc' => route('public.category', $category),
                 'priority' => '0.6',
@@ -444,6 +452,7 @@ class ReadController extends Controller
         // Truyện noindex không vào sitemap: khai một URL rồi bảo Google đừng lập chỉ
         // mục là hai tín hiệu ngược nhau, Search Console sẽ báo lỗi.
         $stories = Story::query()
+            ->visibleOnWeb()
             ->where('noindex', false)
             ->with(['chapters' => fn ($q) => $q->orderBy('number')])
             ->get();
@@ -493,6 +502,8 @@ class ReadController extends Controller
      */
     public function socialCard(Story $story, SocialCardGenerator $cards): \Symfony\Component\HttpFoundation\Response
     {
+        abort_if($story->hidden_on_web, 404);
+
         $path = $cards->forStory($story);
 
         return response(Storage::disk('public')->get($path), 200, [
@@ -568,10 +579,25 @@ class ReadController extends Controller
         return rtrim($space !== false ? mb_substr($cut, 0, $space) : $cut, ' ,.;:—-').'…';
     }
 
+    /**
+     * Thể loại lên menu, ô lọc và sitemap của web: đủ Category::WEB_MIN_STORIES truyện
+     * hiện trên web. `stories_count` đã trừ truyện ẩn trên web.
+     */
+    private function webCategories()
+    {
+        return Category::query()
+            ->withWebStoryCount()
+            ->orderBy('name')
+            ->get()
+            ->filter(fn (Category $c) => $c->stories_count >= Category::WEB_MIN_STORIES)
+            ->values();
+    }
+
     /** Truy vấn dùng chung cho mọi lưới truyện — giữ một chỗ để khỏi lệch nhau. */
     private function cards()
     {
         return Story::query()
+            ->visibleOnWeb()
             ->with('categories')
             ->withCount(['chapters', 'reactions'])
             ->withAvg('reactions', 'score')

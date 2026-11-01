@@ -36,6 +36,12 @@
             <label class="form-check-label" for="noindex">Không cho Google lập chỉ mục (noindex)</label>
             <div class="form-text">Dùng cho truyện đã đăng ở site khác: vẫn đọc được trên web và app, nhưng có thẻ noindex và không nằm trong sitemap.</div>
         </div>
+        <div class="form-check mb-3">
+            <input type="hidden" name="hidden_on_web" value="0">
+            <input type="checkbox" name="hidden_on_web" value="1" class="form-check-input" id="hidden_on_web" @checked(old('hidden_on_web', $story->hidden_on_web))>
+            <label class="form-check-label" for="hidden_on_web">Ẩn trên web (app vẫn hiện)</label>
+            <div class="form-text">Dùng cho truyện có nội dung nhà quảng cáo chặn: web trả 404, không ở danh sách, tìm kiếm hay sitemap. App không đổi.</div>
+        </div>
     </div>
 
     <div class="col-md-4">

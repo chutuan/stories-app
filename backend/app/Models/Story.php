@@ -25,6 +25,7 @@ class Story extends Model
         'views',
         'is_featured',
         'noindex',
+        'hidden_on_web',
     ];
 
     protected $casts = [
@@ -32,6 +33,7 @@ class Story extends Model
         'views' => 'integer',
         'is_featured' => 'boolean',
         'noindex' => 'boolean',
+        'hidden_on_web' => 'boolean',
     ];
 
     public function categories(): BelongsToMany
@@ -54,6 +56,15 @@ class Story extends Model
     public function chapters(): HasMany
     {
         return $this->hasMany(Chapter::class)->orderBy('number', 'asc');
+    }
+
+    /**
+     * Truyện hiện trên web — mọi truy vấn của bản web đi qua đây. API cho app KHÔNG dùng:
+     * truyện ẩn trên web vẫn hiện bình thường trong app. Xem migration add_hidden_on_web.
+     */
+    public function scopeVisibleOnWeb(Builder $query): Builder
+    {
+        return $query->where('stories.hidden_on_web', false);
     }
 
     protected function statusLabel(): Attribute

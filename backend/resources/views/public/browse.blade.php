@@ -8,6 +8,9 @@
     ? $stories->total().' free '.$category->name.' serials on Stories — every chapter readable on the web, no account and no payment.'
     : 'Browse all '.$stories->total().' stories on Stories: short serials about hidden wealth, secret identities and overdue revenge, free to read on the web.')
 @section('wide', '1')
+@if (! empty($thin))
+@section('robots', 'noindex, follow')
+@endif
 
 @push('head')
 @foreach ($jsonLd as $block)

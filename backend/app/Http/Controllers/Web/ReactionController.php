@@ -36,6 +36,8 @@ class ReactionController extends Controller
 
     public function store(Request $request, Story $story, int $number): RedirectResponse|JsonResponse
     {
+        abort_if($story->hidden_on_web, 404);
+
         $data = $request->validate([
             'score' => ['required', 'integer', 'between:1,5'],
         ]);

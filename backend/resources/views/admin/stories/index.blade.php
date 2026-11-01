@@ -47,6 +47,9 @@
                                 @if ($story->noindex)
                                     <span class="badge bg-light text-muted border" title="Không cho Google lập chỉ mục">noindex</span>
                                 @endif
+                                @if ($story->hidden_on_web)
+                                    <span class="badge bg-warning-subtle text-warning-emphasis border" title="Ẩn trên web, app vẫn hiện">ẩn web</span>
+                                @endif
                             </div>
                         </td>
                         <td>

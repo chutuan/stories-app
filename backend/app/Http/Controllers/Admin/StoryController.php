@@ -119,6 +119,7 @@ class StoryController extends Controller
             'free_chapters' => ['required', 'integer', 'min:0'],
             'is_featured' => ['nullable', 'boolean'],
             'noindex' => ['nullable', 'boolean'],
+            'hidden_on_web' => ['nullable', 'boolean'],
             'categories' => ['nullable', 'array'],
             'categories.*' => ['integer', 'exists:categories,id'],
             'thumbnail' => ['nullable', 'image', 'max:4096'],
@@ -134,6 +135,7 @@ class StoryController extends Controller
         $story->free_chapters = $data['free_chapters'];
         $story->is_featured = (bool) ($data['is_featured'] ?? false);
         $story->noindex = (bool) ($data['noindex'] ?? false);
+        $story->hidden_on_web = (bool) ($data['hidden_on_web'] ?? false);
     }
 
     protected function uniqueSlug(string $title, ?int $ignoreId = null): string

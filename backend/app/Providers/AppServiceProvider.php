@@ -33,8 +33,10 @@ class AppServiceProvider extends ServiceProvider
 
         // Menu "Genres" ở đầu mọi trang công khai. Một truy vấn nhỏ (vài chục dòng);
         // trang công khai đã được Cloudflare cache 10 phút nên không đáng dựng thêm cache.
+        // Chỉ đếm truyện hiện trên web, và bỏ thể loại mỏng (Category::WEB_MIN_STORIES).
         View::composer('public.layout', function ($view): void {
-            $view->with('navCategories', Category::query()->withCount('stories')->orderBy('name')->get());
+            $view->with('navCategories', Category::query()->withWebStoryCount()->orderBy('name')->get()
+                ->filter(fn (Category $c) => $c->stories_count >= Category::WEB_MIN_STORIES)->values());
         });
     }
 
