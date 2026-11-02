@@ -24,3 +24,8 @@ Schedule::command('stories:release-queued', ['--count' => ReleaseQueuedStories::
 // Mỗi giờ báo URL mới/sửa cho Bing & co. qua IndexNow. Phút 05 để lượt đăng truyện 13:00
 // (cùng covers:derive chạy sau nó) xong trước. Xem App\Console\Commands\SubmitIndexNow.
 Schedule::command('seo:indexnow')->hourlyAt(5)->withoutOverlapping();
+
+// Mỗi giờ một truyện lên Page Facebook TunaStory (Tuấn chọn 24 bài/ngày, 02/11/2026). Phút 30 để
+// không chạy cùng IndexNow (phút 05) và lượt đăng truyện 13:00. Tắt khi chưa có token — xem
+// App\Services\FacebookPublisher.
+Schedule::command('facebook:post-next')->hourlyAt(30)->withoutOverlapping();

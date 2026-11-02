@@ -65,6 +65,19 @@ return [
         'site' => env('INDEXNOW_SITE', 'https://tunastory.com'),
     ],
 
+    /*
+     * Page Facebook TunaStory (App\Services\FacebookPublisher, lệnh facebook:post-next mỗi giờ).
+     * page_token là Page access token DÀI HẠN — chỉ đặt trong .env trên server, không commit.
+     * exclude: id truyện không đăng (dấu phẩy).
+     */
+    'facebook' => [
+        'enabled' => (bool) env('FACEBOOK_ENABLED', false),
+        'page_id' => env('FACEBOOK_PAGE_ID'),
+        'page_token' => env('FACEBOOK_PAGE_TOKEN'),
+        'graph_version' => env('FACEBOOK_GRAPH_VERSION', 'v23.0'),
+        'exclude' => array_filter(explode(',', (string) env('FACEBOOK_EXCLUDE_IDS', '419'))),
+    ],
+
     'openai' => [
         'key' => env('OPENAI_API_KEY'),
         'tts_model' => env('OPENAI_TTS_MODEL', 'gpt-4o-mini-tts'),

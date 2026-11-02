@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Facades\Storage;
@@ -116,6 +117,12 @@ class Story extends Model
     public function reactions(): HasManyThrough
     {
         return $this->hasManyThrough(ChapterReaction::class, Chapter::class);
+    }
+
+    /** Bài đã đăng lên Page Facebook (mỗi truyện tối đa một) — xem App\Services\FacebookPublisher. */
+    public function facebookPost(): HasOne
+    {
+        return $this->hasOne(FacebookPost::class);
     }
 
     public function chapters(): HasMany
