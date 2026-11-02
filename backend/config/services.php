@@ -54,6 +54,17 @@ return [
         'daily_hour' => (int) env('PUSH_DAILY_HOUR', 19),
     ],
 
+    /*
+     * IndexNow (App\Services\IndexNow): báo Bing & co. khi có URL mới. Khoá để trống thì suy
+     * ra từ APP_KEY; khoá là thứ công khai (/<khoá>.txt), không phải bí mật.
+     * site = tên miền bản web, KHÁC APP_URL (api.tunastory.com).
+     */
+    'indexnow' => [
+        'enabled' => (bool) env('INDEXNOW_ENABLED', env('APP_ENV') === 'production'),
+        'key' => env('INDEXNOW_KEY'),
+        'site' => env('INDEXNOW_SITE', 'https://tunastory.com'),
+    ],
+
     'openai' => [
         'key' => env('OPENAI_API_KEY'),
         'tts_model' => env('OPENAI_TTS_MODEL', 'gpt-4o-mini-tts'),

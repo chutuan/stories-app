@@ -82,7 +82,7 @@ class StoryHiddenOnWebTest extends TestCase
         $this->get('/genre/mecha')->assertOk()
             ->assertSee('<meta name="robots" content="noindex, follow">', false);
         $this->get('/genre/revenge')->assertOk()
-            ->assertSee('<meta name="robots" content="index, follow">', false);
+            ->assertSee('<meta name="robots" content="index, follow, max-image-preview:large">', false);
     }
 
     public function test_admin_bat_tat_an_tren_web(): void

@@ -38,9 +38,9 @@ class StoryNoindexTest extends TestCase
         $this->story('rieng', false);
 
         $this->get('/story/rieng')->assertOk()
-            ->assertSee('<meta name="robots" content="index, follow">', false);
+            ->assertSee('<meta name="robots" content="index, follow, max-image-preview:large">', false);
         $this->get('/story/rieng/chapter/1')->assertOk()
-            ->assertSee('<meta name="robots" content="index, follow">', false);
+            ->assertSee('<meta name="robots" content="index, follow, max-image-preview:large">', false);
     }
 
     public function test_sitemap_bo_truyen_noindex_ca_cac_chuong(): void

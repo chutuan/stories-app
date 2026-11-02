@@ -142,6 +142,8 @@
     @endif
   @endif
 
+  @include('public.partials.share', ['story' => $story])
+
   <nav class="pager" aria-label="Chapter navigation">
     @if ($prev)
       <a href="{{ route('public.chapter', [$story, $prev->number]) }}" rel="prev">‹ Chapter {{ $prev->number }}</a>

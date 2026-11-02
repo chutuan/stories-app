@@ -119,6 +119,10 @@ class StructuredData
             'publisher' => ['@type' => 'Organization', 'name' => 'Stories'],
             'description' => $story->description ?: null,
             'image' => $image,
+            // Ngày lên web và ngày sửa: Google dùng để biết truyện còn mới (Discover chỉ đẩy
+            // nội dung mới) và để hiện ngày cạnh kết quả.
+            'datePublished' => $story->created_at?->toAtomString(),
+            'dateModified' => $story->updated_at?->toAtomString(),
             // KHÔNG dùng numberOfPages cho số chương: thuộc tính đó có nghĩa là số
             // TRANG giấy. Số chương diễn đạt đúng bằng hasPart.
             'numberOfPages' => null,

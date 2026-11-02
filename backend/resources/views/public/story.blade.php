@@ -104,6 +104,8 @@
               <a class="btn glass" href="#chapters">All chapters</a>
             </div>
           @endif
+
+          @include('public.partials.share', ['story' => $story, 'dark' => true])
         </div>
       </div>
     </div>

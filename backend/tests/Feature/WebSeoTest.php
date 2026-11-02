@@ -294,4 +294,118 @@ class WebSeoTest extends TestCase
 
         $this->get('/genre/ceo')->assertOk()->assertSee('<title>CEO stories — free to read online — Stories</title>', false);
     }
+
+    // --- Đợt 02/11/2026: Discover, RSS, IndexNow, nút chia sẻ ---
+
+    public function test_robots_cho_google_dung_anh_lon(): void
+    {
+        $this->story('anh');
+
+        $this->get('/story/anh')->assertOk()
+            ->assertSee('<meta name="robots" content="index, follow, max-image-preview:large">', false);
+    }
+
+    public function test_json_ld_book_co_ngay_dang_va_ngay_sua(): void
+    {
+        $s = $this->story('ngay');
+        $s->forceFill(['created_at' => '2026-10-01 08:00:00', 'updated_at' => '2026-10-05 09:30:00'])->saveQuietly();
+
+        $this->get('/story/ngay')->assertOk()
+            ->assertSee('"datePublished":"2026-10-01T08:00:00', false)
+            ->assertSee('"dateModified":"2026-10-05T09:30:00', false);
+    }
+
+    public function test_feed_rss_chi_co_truyen_index_moi_nhat_truoc(): void
+    {
+        $cat = Category::create(['name' => 'Revenge', 'slug' => 'revenge']);
+        $this->story('cu', ['hook' => 'She kept the receipt.', 'description' => 'Old one.'])
+            ->forceFill(['created_at' => '2026-10-01 08:00:00'])->saveQuietly();
+        $this->story('moi', ['description' => 'New & shiny.'])->categories()->attach($cat);
+        $this->story('trung', ['noindex' => true]);
+        $this->story('an', ['hidden_on_web' => true]);
+
+        $res = $this->get('/feed.xml')->assertOk();
+        $this->assertStringStartsWith('application/rss+xml', $res->headers->get('Content-Type'));
+
+        $xml = simplexml_load_string($res->getContent());
+        $this->assertNotFalse($xml, 'feed phải là XML hợp lệ');
+        $links = array_map('strval', $xml->xpath('//item/link'));
+        $this->assertSame([route('public.story', 'moi'), route('public.story', 'cu')], $links);
+
+        $res->assertSee('<category>Revenge</category>', false)
+            ->assertSee('New &amp; shiny.', false)
+            ->assertSee("She kept the receipt.\n\nOld one.", false)
+            ->assertSee('<atom:link href="'.route('public.feed').'" rel="self"', false);
+
+        $this->get('/story/moi')->assertSee('type="application/rss+xml"', false);
+    }
+
+    public function test_file_khoa_indexnow(): void
+    {
+        $key = \App\Services\IndexNow::key();
+        $this->assertMatchesRegularExpression('/^[a-f0-9]{32}$/', $key);
+
+        $this->get("/{$key}.txt")->assertOk()->assertSeeText($key);
+        $this->get('/'.str_repeat('a', 32).'.txt')->assertNotFound();
+    }
+
+    public function test_lenh_indexnow_gui_url_tren_ten_mien_web(): void
+    {
+        config(['services.indexnow.enabled' => true, 'services.indexnow.site' => 'https://tunastory.com']);
+        \Illuminate\Support\Facades\Http::fake(['api.indexnow.org/*' => \Illuminate\Support\Facades\Http::response('', 200)]);
+
+        $this->story('gui', chapters: 2);
+        $this->story('khong-gui', ['noindex' => true]);
+        $this->story('cu-qua')->forceFill(['updated_at' => now()->subDays(3)])->saveQuietly();
+        \App\Models\Chapter::query()->whereHas('story', fn ($q) => $q->where('slug', 'cu-qua'))
+            ->update(['updated_at' => now()->subDays(3)]);
+
+        // Mốc so sánh tính tới giây và gồm cả giây đó (gửi trùng thì vô hại, sót mới hại),
+        // nên tách lượt chạy khỏi giây tạo truyện để lượt sau thật sự không còn gì mới.
+        $this->travel(1)->minutes();
+        $this->artisan('seo:indexnow')->assertSuccessful();
+
+        \Illuminate\Support\Facades\Http::assertSent(function ($request) {
+            $key = \App\Services\IndexNow::key();
+
+            return $request['host'] === 'tunastory.com'
+                && $request['key'] === $key
+                && $request['keyLocation'] === "https://tunastory.com/{$key}.txt"
+                && $request['urlList'] === [
+                    'https://tunastory.com/story/gui',
+                    'https://tunastory.com/story/gui/chapter/1',
+                    'https://tunastory.com/story/gui/chapter/2',
+                ];
+        });
+
+        // Lần sau chỉ gửi những gì sửa từ lần trước — không có gì mới thì không gọi API.
+        $this->travel(1)->hours();
+        $this->artisan('seo:indexnow')->assertSuccessful();
+        \Illuminate\Support\Facades\Http::assertSentCount(1);
+    }
+
+    public function test_lenh_indexnow_tat_thi_khong_gui(): void
+    {
+        config(['services.indexnow.enabled' => false]);
+        \Illuminate\Support\Facades\Http::fake();
+        $this->story('tat');
+
+        $this->artisan('seo:indexnow')->assertSuccessful();
+        \Illuminate\Support\Facades\Http::assertNothingSent();
+    }
+
+    public function test_nut_chia_se_tro_ve_trang_truyen(): void
+    {
+        $this->story('chia-se', ['hook' => 'He sold the house.']);
+        $story = route('public.story', 'chia-se');
+
+        $this->get('/story/chia-se')->assertOk()
+            ->assertSee('https://www.facebook.com/sharer/sharer.php?u='.urlencode($story), false)
+            ->assertSee('https://www.pinterest.com/pin/create/button/?url='.urlencode($story), false);
+
+        // Cuối chương vẫn chia sẻ trang truyện, không phải trang chương.
+        $this->get('/story/chia-se/chapter/1')->assertOk()
+            ->assertSee('sharer.php?u='.urlencode($story).'"', false)
+            ->assertSee('data-share-url="'.$story.'"', false);
+    }
 }

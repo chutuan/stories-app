@@ -20,3 +20,7 @@ Schedule::command('stories:release-queued', ['--count' => ReleaseQueuedStories::
     ->dailyAt('13:00')
     ->when(fn () => now()->gte('2026-11-02'))
     ->withoutOverlapping();
+
+// Mỗi giờ báo URL mới/sửa cho Bing & co. qua IndexNow. Phút 05 để lượt đăng truyện 13:00
+// (cùng covers:derive chạy sau nó) xong trước. Xem App\Console\Commands\SubmitIndexNow.
+Schedule::command('seo:indexnow')->hourlyAt(5)->withoutOverlapping();

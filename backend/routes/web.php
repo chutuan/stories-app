@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\StoryController;
 use App\Http\Controllers\Web\ReactionController;
 use App\Http\Controllers\Web\ReadController;
+use App\Services\IndexNow;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -52,6 +53,15 @@ Route::post('/story/{story:slug}/chapter/{number}/react', [ReactionController::c
     ->name('public.react');
 Route::get('/og/{story:slug}.jpg', [ReadController::class, 'socialCard'])->name('public.og');
 Route::get('/sitemap.xml', [ReadController::class, 'sitemap'])->name('public.sitemap');
+// RSS truyện mới: nguồn cho Pinterest/Facebook tự đăng và trình đọc RSS. Xem ReadController::feed.
+Route::get('/feed.xml', [ReadController::class, 'feed'])->name('public.feed');
+// File khoá IndexNow: máy tìm kiếm tải về để xác nhận lời báo URL đúng là từ chủ site.
+// Ràng buộc 32 ký tự hex để không nuốt /ads.txt, /app-ads.txt. Xem App\Services\IndexNow.
+Route::get('/{key}.txt', function (string $key) {
+    abort_unless(hash_equals(IndexNow::key(), $key), 404);
+
+    return response($key, 200, ['Content-Type' => 'text/plain; charset=UTF-8']);
+})->where('key', '[a-f0-9]{32}')->name('public.indexnow-key');
 
 
 // app-ads.txt cho AdMob: xác thực app là của mình, chống gian lận mạo danh kho

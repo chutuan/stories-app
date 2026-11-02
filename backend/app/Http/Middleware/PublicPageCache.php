@@ -65,6 +65,8 @@ class PublicPageCache
         'public.privacy',
         'public.terms',
         'public.sitemap',
+        'public.feed',
+        'public.indexnow-key',
         // Script nhúng ở trang khác: mỗi lượt xem trang bên đó là một lần tải, nên
         // phải để Cloudflare trả thay origin.
         'public.embed.app-prompt',

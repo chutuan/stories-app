@@ -45,7 +45,10 @@
     $seoImageH = trim($__env->yieldContent('og_image_h', '630'));
     $seoImageAlt = trim($__env->yieldContent('og_image_alt', 'Stories — free short serialised fiction'));
     $seoType = trim($__env->yieldContent('og_type', 'website'));
-    $seoRobots = trim($__env->yieldContent('robots', 'index, follow'));
+    // max-image-preview:large: cho Google dùng ảnh LỚN (bìa/ảnh chia sẻ 1200 px) ở kết quả
+    // tìm kiếm và Google Discover. Thiếu chỉ thị này Discover chỉ hiện ảnh nhỏ cạnh tiêu đề,
+    // lượt nhấp kém hẳn — mà Discover là nguồn người đọc lớn nhất cho truyện kiểu này.
+    $seoRobots = trim($__env->yieldContent('robots', 'index, follow, max-image-preview:large'));
     $isWide = trim($__env->yieldContent('wide', '')) !== '';
 @endphp
 <!DOCTYPE html>
@@ -62,6 +65,8 @@
 {{-- Ép kiểu số TRƯỚC khi so sánh: so chuỗi "abc" > 1 trong PHP 8 là so chuỗi, ra true,
      rồi in thành ?page=0 — một canonical trỏ vào trang không tồn tại. --}}
 <link rel="canonical" href="{{ url()->current() }}{{ (int) request()->query('page') > 1 ? '?page='.(int) request()->query('page') : '' }}">
+{{-- Cho trình đọc RSS và tiện ích "Follow" của trình duyệt tự tìm ra feed. --}}
+<link rel="alternate" type="application/rss+xml" title="Stories — new free short fiction" href="{{ route('public.feed') }}">
 
 <meta property="og:site_name" content="Stories">
 <meta property="og:type" content="{{ $seoType }}">

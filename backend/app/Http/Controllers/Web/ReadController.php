@@ -47,6 +47,9 @@ class ReadController extends Controller
 
     private const OPENING_MAX = 220;
 
+    /** Số truyện trong /feed.xml — đủ cho công cụ tự đăng đọc vài ngày một lần mà không sót. */
+    private const FEED_ITEMS = 50;
+
     /**
      * Trang chủ, theo bố cục quen thuộc của các web đọc truyện: truyện nổi bật cạnh
      * bảng xếp hạng, rồi lưới "Recently updated", rồi vài hàng cuộn ngang theo thể loại.
@@ -606,6 +609,30 @@ class ReadController extends Controller
         return response()
             ->view('public.sitemap', ['urls' => $urls])
             ->header('Content-Type', 'application/xml; charset=UTF-8');
+    }
+
+    /**
+     * RSS truyện mới lên web — đầu vào cho những nơi tự đăng theo feed: Pinterest (tự ghim
+     * từ RSS, cần ảnh trong từng mục), Facebook/X qua công cụ hẹn giờ, Feedly, và nút
+     * "Follow" của Chrome/Google Discover.
+     *
+     * Cùng điều kiện với sitemap: truyện noindex (bản còn đăng ở site khác của mình) không
+     * vào feed, để mạng xã hội chỉ dẫn người đọc về trang mà Google được phép xếp hạng.
+     */
+    public function feed(): Response
+    {
+        $stories = Story::query()
+            ->visibleOnWeb()
+            ->where('noindex', false)
+            ->with('categories')
+            ->latest()
+            ->orderByDesc('id')
+            ->limit(self::FEED_ITEMS)
+            ->get();
+
+        return response()
+            ->view('public.feed', ['stories' => $stories])
+            ->header('Content-Type', 'application/rss+xml; charset=UTF-8');
     }
 
     /**
