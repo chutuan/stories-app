@@ -59,6 +59,8 @@ class StoryIngestor
             'slug' => ['nullable', 'string', 'max:255', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/'],
             'author' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:5000'],
+            // Câu mồi hiện dưới tựa và nối vào <title> — xem migration add_hook_to_stories_table.
+            'hook' => ['nullable', 'string', 'max:255'],
             'status' => ['nullable', Rule::in(['ongoing', 'completed'])],
             'is_featured' => ['nullable', 'boolean'],
             'categories' => ['nullable', 'array', 'max:5'],
@@ -149,6 +151,7 @@ class StoryIngestor
             'slug' => $slug,
             'author' => $data['author'] ?? $story->author,
             'description' => $data['description'] ?? $story->description,
+            'hook' => $data['hook'] ?? $story->hook,
             // Truyện đang ra tiếp thì để 'ongoing' rồi nạp thêm chương sau; xong hẳn
             // thì gửi 'completed'. Lấy danh sách truyện chưa xong ở
             // GET /api/ingest/stories?status=ongoing.

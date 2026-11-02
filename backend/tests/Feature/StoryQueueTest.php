@@ -122,6 +122,18 @@ class StoryQueueTest extends TestCase
         $this->assertSame(1, QueuedStory::where('status', 'pending')->count());
     }
 
+    public function test_cau_moi_trong_goi_duoc_dang_cung_truyen(): void
+    {
+        $withHook = $this->bundle('a', 'story-a');
+        $withHook['story']['hook'] = 'He brought his mistress to our anniversary dinner…';
+        $this->queue([$withHook, $this->bundle('b', 'story-b')]);
+
+        $this->artisan('stories:release-queued', ['--count' => 2])->assertSuccessful();
+
+        $this->assertSame('He brought his mistress to our anniversary dinner…', Story::where('slug', 'story-a')->value('hook'));
+        $this->assertNull(Story::where('slug', 'story-b')->value('hook'));
+    }
+
     public function test_slug_da_bi_chiem_thi_doi_slug_khong_ghi_de_truyen_cu(): void
     {
         $old = Story::create(['title' => 'Old', 'slug' => 'story-a', 'status' => 'completed']);
