@@ -13,7 +13,8 @@
  *   - chỉ iPhone/iPad/iPod; máy khác thì script thoát ngay, không thêm gì vào trang;
  *   - vào từ máy tìm kiếm thì không hiện ở trang đó;
  *   - là bottom sheet hiện sau vài giây, không che kín màn hình ngay khi vào;
- *   - đóng hay bấm tải thì 1 ngày sau mới hiện lại (nhớ theo từng trang nhúng);
+ *   - đóng hay bấm tải thì 1 giờ sau mới hiện lại (nhớ theo từng trang nhúng; Tuấn đổi từ
+ *     1 ngày xuống 1 giờ, 03/11/2026 — bản trên tunastory.com vẫn 1 ngày);
  *     không bấm gì mà rời trang thì chưa tính, trang sau vẫn có thể hiện.
  *
  * Giao diện nằm trong Shadow DOM: CSS của trang nhúng không làm vỡ hộp mời, và CSS của
@@ -43,12 +44,12 @@
   if (location.origin === BASE) return;
 
   var KEY = 'stories.appPrompt';
-  var DAY = 864e5;
+  var HOUR = 36e5;
   function snoozedUntil() {
     try { return JSON.parse(localStorage.getItem(KEY) || '{}').until || 0; } catch (e) { return 0; }
   }
-  function snooze(days) {
-    try { localStorage.setItem(KEY, JSON.stringify({ until: Date.now() + days * DAY })); } catch (e) {}
+  function snooze(hours) {
+    try { localStorage.setItem(KEY, JSON.stringify({ until: Date.now() + hours * HOUR })); } catch (e) {}
   }
   if (snoozedUntil() > Date.now()) return;
 
@@ -156,8 +157,8 @@
     var prevOverflow = html.style.overflow;
 
     function onKey(e) { if (e.key === 'Escape') close(1); }
-    function close(days) {
-      snooze(days);
+    function close(hours) {
+      snooze(hours);
       root.classList.remove('open');
       html.style.overflow = prevOverflow;
       document.removeEventListener('keydown', onKey);
