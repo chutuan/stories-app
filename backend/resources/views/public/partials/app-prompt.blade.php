@@ -21,7 +21,7 @@
   <div class="ap-sheet" role="dialog" aria-modal="true" aria-labelledby="ap-title" tabindex="-1">
     <button class="ap-x" type="button" aria-label="Close" data-ap-close>&times;</button>
     <div class="ap-head">
-      <img src="{{ asset('icons/icon-180.png') }}" width="60" height="60" alt="">
+      <img src="{{ asset('icons/icon-180.png') }}" width="60" height="60" alt="Stories app icon">
       <div>
         <strong id="ap-title">Read Stories in the app</strong>
         <span>Free on the App Store</span>
