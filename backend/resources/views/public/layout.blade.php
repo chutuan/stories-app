@@ -56,6 +56,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+{{-- Xác minh quyền sở hữu site với Bing Webmaster Tools (Tuấn thêm 04/11/2026). Không xoá: gỡ là mất quyền. --}}
+<meta name="msvalidate.01" content="C4F4B85BED73D4F437D5672FA3B9F45C" />
 
 <title>{!! $seo($seoTitle) !!} — Stories</title>
 <meta name="description" content="{!! $seo($seoDescription) !!}">

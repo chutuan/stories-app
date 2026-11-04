@@ -26,6 +26,12 @@ class WebSeoTest extends TestCase
         return $s;
     }
 
+    public function test_trang_chu_co_the_xac_minh_bing_webmaster(): void
+    {
+        $this->get('/')->assertOk()
+            ->assertSee('<meta name="msvalidate.01" content="C4F4B85BED73D4F437D5672FA3B9F45C" />', false);
+    }
+
     public function test_phan_trang_khong_mat_truyen_khi_trung_gio_cap_nhat(): void
     {
         for ($i = 1; $i <= 30; $i++) {
