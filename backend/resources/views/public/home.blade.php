@@ -156,7 +156,9 @@
         · <a href="{{ route('public.contact') }}">Contact</a>
         · <a href="{{ route('public.editorial') }}">Editorial standards</a></p>
     </div>
-    <a class="btn" href="{{ route('public.app') }}">Get the free app</a>
+    <a class="store-badge" href="{{ route('public.app') }}">
+      <img src="{{ asset('images/app-store-badge.svg') }}" width="156" height="52" alt="Download on the App Store">
+    </a>
   </section>
 
 <script>

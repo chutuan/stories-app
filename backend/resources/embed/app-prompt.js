@@ -18,7 +18,7 @@
  *     không bấm gì mà rời trang thì chưa tính, trang sau vẫn có thể hiện.
  *
  * Giao diện nằm trong Shadow DOM: CSS của trang nhúng không làm vỡ hộp mời, và CSS của
- * hộp mời không lọt ra làm hỏng trang nhúng. Không gọi mạng gì ngoài ảnh icon.
+ * hộp mời không lọt ra làm hỏng trang nhúng. Không gọi mạng gì ngoài ảnh icon và badge App Store.
  */
 (function () {
   'use strict';
@@ -82,8 +82,9 @@
     '.hd span{color:#6E635C;font-size:14px}' +
     'ul{margin:0 0 18px;padding-left:20px}' +
     'li{margin:0}' +
-    '.get{display:block;box-sizing:border-box;width:100%;padding:12px 22px;border-radius:999px;background:#F2703A;' +
-      'color:#fff;text-align:center;text-decoration:none;font-weight:650}' +
+    // Badge gốc của Apple: chỉ được đổi kích thước (xem ghi chú .store-badge trong layout).
+    '.get{display:block;width:max-content;margin:0 auto;line-height:0;border-radius:8px}' +
+    '.get img{display:block;width:auto;height:56px}' +
     '.later{display:block;width:100%;margin-top:8px;padding:12px;border:0;background:transparent;' +
       'color:#6E635C;font:inherit;cursor:pointer}' +
     '@media (prefers-reduced-motion:reduce){.bd,.sh{transition:none}}';
@@ -102,7 +103,9 @@
           '<li>Listen to narrated stories</li>' +
           '<li>Keep a library on your phone, no account needed</li>' +
         '</ul>' +
-        '<a class="get" href="">Get the free app</a>' +
+        '<a class="get" href="">' +
+          '<img src="' + BASE + '/images/app-store-badge.svg" width="168" height="56" alt="Download on the App Store">' +
+        '</a>' +
         '<button class="later" type="button" data-close>Continue in browser</button>' +
       '</div>' +
     '</div>';

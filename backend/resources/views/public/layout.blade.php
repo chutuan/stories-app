@@ -354,13 +354,17 @@ window.StoriesHistory = {
   .app-promo .qr{flex:none;line-height:0;margin:0;padding:0}
   .app-promo .qr img{width:88px;height:88px;padding:6px;background:#fff;border:1px solid var(--border);border-radius:10px}
   .app-promo strong{display:block;color:var(--text);font-size:15px;margin-bottom:2px}
-  .app-promo div > a{display:inline;padding:0;color:var(--accent-ink)}
+  .app-promo .qr-hint{display:block}
+  .foot-grid a.store-badge{display:inline-block;padding:0;margin-top:8px}
   @media (max-width:600px), (hover:none) and (pointer:coarse){
     .app-promo .qr, .app-promo .qr-hint{display:none}
-    /* Mất câu dẫn "Scan…, or" thì link đứng đầu câu: viết hoa chữ đầu. */
-    .app-promo div > a{display:inline-block}
-    .app-promo div > a::first-letter{text-transform:uppercase}
   }
+  /* Badge "Download on the App Store" là ảnh gốc của Apple (public/images/app-store-badge.svg,
+     tải từ toolbox.marketingtools.apple.com 04/11/2026): quy định của Apple là không sửa màu,
+     không vẽ lại, không làm chuyển động, cao tối thiểu 40px trên màn hình. Chỉ đổi kích thước. */
+  a.store-badge{display:inline-block;flex:none;line-height:0;border-radius:8px}
+  a.store-badge img{display:block;width:auto;height:52px}
+  .foot-grid a.store-badge img{height:40px}
   .disclosure{margin:14px 0 0;font-size:13px;line-height:1.6;color:var(--muted);max-width:80ch}
   .disclosure a{color:var(--muted);text-decoration:underline;margin:0;display:inline;padding:0}
   /* Trên trang truyện và trang đọc, dòng khai đứng riêng trong khung nhạt */
@@ -897,8 +901,10 @@ window.StoriesHistory = {
         </a>
         <div>
           <strong>Read Stories on iPhone</strong>
-          <span class="qr-hint">Scan with your phone's camera, or</span>
-          <a href="{{ route('public.app') }}">download it on the App Store</a>
+          <span class="qr-hint">Scan with your phone's camera</span>
+          <a class="store-badge" href="{{ route('public.app') }}">
+            <img src="{{ asset('images/app-store-badge.svg') }}" width="120" height="40" loading="lazy" alt="Download on the App Store">
+          </a>
         </div>
       </div>
       @endunless

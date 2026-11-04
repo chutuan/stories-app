@@ -70,7 +70,8 @@ class AppDownloadTest extends TestCase
 
     public function test_modal_moi_tai_app_co_tren_trang_thuong_khong_co_tren_trang_phap_ly(): void
     {
-        $this->get('/about')->assertOk()->assertSee('id="app-prompt"', false)->assertSee('Get the free app');
+        $this->get('/about')->assertOk()->assertSee('id="app-prompt"', false)
+            ->assertSee('images/app-store-badge.svg', false)->assertSee('alt="Download on the App Store"', false);
         foreach (['/privacy', '/terms', '/contact'] as $url) {
             $this->get($url)->assertOk()->assertDontSee('id="app-prompt"', false);
         }

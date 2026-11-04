@@ -32,7 +32,9 @@
       <li>Listen to narrated stories</li>
       <li>Keep a library on your phone, no account needed</li>
     </ul>
-    <a class="btn ap-get" href="{{ route('public.app') }}">Get the free app</a>
+    <a class="store-badge ap-get" href="{{ route('public.app') }}">
+      <img src="{{ asset('images/app-store-badge.svg') }}" width="168" height="56" alt="Download on the App Store">
+    </a>
     <button class="ap-later" type="button" data-ap-close>Continue in browser</button>
   </div>
 </div>
@@ -53,7 +55,8 @@
   .ap-head strong{display:block;font-size:18px;line-height:1.25}
   .ap-head span{color:var(--muted);font-size:14px}
   .ap-list{margin:0 0 18px;padding-left:20px;font-size:15px;line-height:1.55}
-  .ap-get{display:block;text-align:center;width:100%;box-sizing:border-box}
+  .ap-get.store-badge{display:block;width:max-content;margin:0 auto}
+  .ap-get.store-badge img{height:56px}
   .ap-later{display:block;width:100%;margin-top:8px;padding:12px;border:0;background:transparent;
             color:var(--muted);font-size:15px;cursor:pointer}
   @media (prefers-reduced-motion:reduce){.ap-backdrop,.ap-sheet{transition:none}}
