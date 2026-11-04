@@ -78,6 +78,9 @@ const NETWORK_ERROR = 'Could not load data. Check your connection and try again.
 /** 4 tab ngang dưới header — đổi tab là đổi nguồn dữ liệu. */
 type TabKey = 'discover' | 'newest' | 'ranking' | 'free';
 
+/** Tab Xếp hạng: theo lượt xem 7 ngày qua hay từ trước tới giờ. */
+type RankPeriod = 'week' | 'all';
+
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'discover', label: 'Discover' },
   { key: 'newest', label: 'New' },
@@ -93,6 +96,8 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [tab, setTab] = useState<TabKey>('discover');
+  /** Giữ ở màn hình (không ở RankFeed) để "More" của hàng tuần mở sẵn "This week". */
+  const [rankPeriod, setRankPeriod] = useState<RankPeriod>('all');
   /** Tăng lên mỗi lần bấm icon "Thể loại" -> tab Khám phá cuộn tới mục Thể loại. */
   const [categoryFocus, setCategoryFocus] = useState(0);
 
@@ -109,7 +114,8 @@ export default function HomeScreen() {
     setTab('newest');
   }, []);
 
-  const showRanking = useCallback(() => {
+  const showWeeklyRanking = useCallback(() => {
+    setRankPeriod('week');
     setTab('ranking');
   }, []);
 
@@ -132,9 +138,9 @@ export default function HomeScreen() {
       {/* ---------- Nội dung theo tab ---------- */}
       <View style={styles.body}>
         {tab === 'discover' ? (
-          <DiscoverTab focusToken={categoryFocus} onSeeNewest={showNewest} onSeeRanking={showRanking} />
+          <DiscoverTab focusToken={categoryFocus} onSeeNewest={showNewest} onSeeRanking={showWeeklyRanking} />
         ) : tab === 'ranking' ? (
-          <RankFeed key="ranking" />
+          <RankFeed key="ranking" period={rankPeriod} onPeriodChange={setRankPeriod} />
         ) : (
           <GridFeed
             key={tab}
@@ -1000,8 +1006,40 @@ function GridFeed({
 /* TAB "XẾP HẠNG" — sort=views, hiện thứ hạng + lượt xem               */
 /* ------------------------------------------------------------------ */
 
-function RankFeed() {
-  const feed = useStoryFeed({ sort: 'views' });
+function RankFeed({
+  period,
+  onPeriodChange,
+}: {
+  period: RankPeriod;
+  onPeriodChange: (period: RankPeriod) => void;
+}) {
+  return (
+    <View style={styles.flex}>
+      <View style={styles.periodBar}>
+        <Chip
+          label="This week"
+          icon="flame-outline"
+          selected={period === 'week'}
+          onPress={() => onPeriodChange('week')}
+          style={[styles.periodChip, period !== 'week' && styles.periodChipIdle]}
+        />
+        <Chip
+          label="All time"
+          icon="trophy-outline"
+          selected={period === 'all'}
+          onPress={() => onPeriodChange('all')}
+          style={[styles.periodChip, period !== 'all' && styles.periodChipIdle]}
+        />
+      </View>
+      {/* key theo kỳ: đổi kỳ thì dựng lại từ đầu (skeleton) thay vì hiện tạm danh sách kỳ cũ */}
+      <RankList key={period} period={period} />
+    </View>
+  );
+}
+
+function RankList({ period }: { period: RankPeriod }) {
+  const weekly = period === 'week';
+  const feed = useStoryFeed({ sort: weekly ? 'weekly' : 'views' });
   // Màn rộng: bảng xếp hạng 2 cột (1 2 / 3 4…), một hàng trải hết bề ngang iPad thì thưa.
   const { width, wide, gap } = useResponsive();
   const rankColumns = wide ? 2 : 1;
@@ -1039,8 +1077,12 @@ function RankFeed() {
       <View style={styles.stateFlex}>
         <EmptyState
           icon="trophy-outline"
-          title="No ranking yet"
-          description="Not enough view data to rank stories yet. Check back soon."
+          title={weekly ? 'No ranking this week yet' : 'No ranking yet'}
+          description={
+            weekly
+              ? 'No one has read a story in the last 7 days yet. Try All time, or check back soon.'
+              : 'Not enough view data to rank stories yet. Check back soon.'
+          }
           actionLabel="Reload"
           onAction={feed.retry}
         />
@@ -1059,7 +1101,11 @@ function RankFeed() {
       showsVerticalScrollIndicator={false}
       onEndReached={feed.loadMore}
       onEndReachedThreshold={0.4}
-      ListHeaderComponent={<Text style={styles.countText}>Ranked by most views</Text>}
+      ListHeaderComponent={
+        <Text style={styles.countText}>
+          {weekly ? 'Ranked by views in the last 7 days' : 'Ranked by most views of all time'}
+        </Text>
+      }
       ListFooterComponent={
         <FeedFooter
           loadingMore={feed.loadingMore}
@@ -1076,14 +1122,28 @@ function RankFeed() {
           progressBackgroundColor={Palette.surface}
         />
       }
-      renderItem={({ item, index }) => <RankRow story={item} rank={index + 1} style={cell} />}
+      renderItem={({ item, index }) => (
+        <RankRow story={item} rank={index + 1} weekly={weekly} style={cell} />
+      )}
     />
   );
 }
 
-function RankRow({ story, rank, style }: { story: StoryCard; rank: number; style?: ViewStyle }) {
+function RankRow({
+  story,
+  rank,
+  weekly,
+  style,
+}: {
+  story: StoryCard;
+  rank: number;
+  /** danh sách tuần: hiện lượt xem 7 ngày qua (thứ tự xếp theo số này), không phải tổng */
+  weekly: boolean;
+  style?: ViewStyle;
+}) {
   const router = useRouter();
   const top = rank <= 3;
+  const views = weekly ? (story.week_views ?? story.views) : story.views;
 
   const open = useCallback(() => {
     router.push(`/story/${story.id}`);
@@ -1122,7 +1182,8 @@ function RankRow({ story, rank, style }: { story: StoryCard; rank: number; style
         <View style={styles.rankMeta}>
           <Ionicons name="eye-outline" size={12} color={Palette.accentDeep} />
           <Text style={styles.rankViews}>
-            {formatViews(story.views)} {story.views === 1 ? 'view' : 'views'}
+            {formatViews(views)} {views === 1 ? 'view' : 'views'}
+            {weekly ? ' this week' : ''}
           </Text>
           <Text style={styles.rankSep}>·</Text>
           <Text style={styles.rankChapters}>{plural(story.chapters_count, 'chapter', 'chapters')}</Text>
@@ -1572,6 +1633,19 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.md,
     paddingBottom: Spacing.xxxl,
     gap: Spacing.md,
+  },
+  periodBar: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.screen,
+    paddingTop: Spacing.md,
+  },
+  periodChip: {
+    ...Shadow.sm,
+  },
+  // chip chưa chọn: khối trắng nổi nhẹ trên nền kem — giống bộ lọc thể loại ở Search
+  periodChipIdle: {
+    backgroundColor: Palette.surface,
   },
   rankSkeletonWrap: {
     paddingHorizontal: Spacing.screen,

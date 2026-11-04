@@ -110,6 +110,47 @@ class ApiHomeFeaturedTest extends TestCase
             ->assertJsonCount(4, 'updated'); // app ≤ 1.0.2 vẫn có hàng cũ
     }
 
+    public function test_tab_xep_hang_this_week_phan_trang_theo_luot_xem_7_ngay(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-11-01 10:00:00'));
+
+        $allTime = $this->story('lau-nam', 9999);
+        $this->hits($allTime, '2026-10-31', 3);
+        $this->hits($allTime, '2026-10-20', 800); // ngoài 7 ngày
+        $week = $this->story('tuan', 10);
+        $this->hits($week, '2026-10-31', 40);
+        $this->hits($week, '2026-11-01', 2, 'b');
+        $hidden = $this->story('an');
+        $hidden->forceFill(['hidden_on_web' => true])->save();
+        $this->hits($hidden, '2026-10-31', 999);
+        $this->story('khong-ai-doc', 500);
+        for ($i = 0; $i < 21; $i++) {
+            $this->hits($this->story("s$i"), '2026-10-30', 1);
+        }
+
+        $first = $this->getJson('/api/stories?sort=weekly')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $week->id)
+            ->assertJsonPath('data.0.week_views', 42)
+            ->assertJsonPath('data.0.views', 10)
+            ->assertJsonPath('data.0.chapters_count', 1)
+            ->assertJsonPath('data.1.id', $allTime->id)
+            ->assertJsonPath('data.1.week_views', 3)
+            ->assertJsonPath('total', 23)
+            ->assertJsonPath('last_page', 2);
+        $ids = collect($first->json('data'))->pluck('id');
+        $this->assertNotContains($hidden->id, $ids);
+
+        $second = $this->getJson('/api/stories?sort=weekly&page=2')->assertOk()->assertJsonCount(3, 'data');
+        $this->assertEmpty($ids->intersect(collect($second->json('data'))->pluck('id')));
+
+        // All time giữ nguyên và không có week_views.
+        $this->getJson('/api/stories?sort=views')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $allTime->id)
+            ->assertJsonMissingPath('data.0.week_views');
+    }
+
     public function test_weekly_rong_khi_tuan_chua_co_luot_xem(): void
     {
         $this->story('danh-dau', featured: true);

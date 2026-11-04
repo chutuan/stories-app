@@ -19,6 +19,11 @@ class StoryCardResource extends JsonResource
             'status_label' => $this->status_label,
             'categories' => CategoryResource::collection($this->whenLoaded('categories')),
             'views' => (int) $this->views,
+            // Chỉ có khi danh sách xếp theo tuần (sort=weekly): lượt xem 7 ngày qua.
+            'week_views' => $this->when(
+                array_key_exists('week_hits', $this->resource->getAttributes()),
+                fn () => (int) $this->week_hits,
+            ),
             'chapters_count' => (int) ($this->chapters_count ?? $this->chapters()->count()),
             'latest_chapter_number' => $this->resolveLatestChapterNumber(),
             'updated_at' => optional($this->updated_at)->toISOString(),

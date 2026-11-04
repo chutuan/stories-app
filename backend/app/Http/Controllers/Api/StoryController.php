@@ -47,8 +47,13 @@ class StoryController extends Controller
         }
 
         if ($sort === 'views') {
-            // Tab "Xếp hạng": nhiều lượt xem nhất trước.
+            // Tab "Xếp hạng" → "All time": nhiều lượt xem nhất trước.
             $query->orderByDesc('views')->orderByDesc('updated_at');
+        } elseif ($sort === 'weekly') {
+            // Tab "Xếp hạng" → "This week" (app ≥ 1.0.3): nối tiếp hàng "Most read this week" ở
+            // trang chủ nên cùng định nghĩa — lượt xem 7 ngày qua, không có truyện ẩn trên web.
+            // Truyện tuần này chưa ai đọc thì không có mặt. week_hits → week_views.
+            $query->visibleOnWeb()->topThisWeek()->addSelect('week.week_hits');
         } elseif ($sort === 'newest') {
             $query->orderByDesc('created_at');
         } else {

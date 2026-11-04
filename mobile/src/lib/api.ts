@@ -45,6 +45,8 @@ export interface StoryCard {
   categories: CategoryRef[];
   /** lượt xem — dùng cho tab "Xếp hạng" */
   views: number;
+  /** lượt xem 7 ngày qua — chỉ có trong danh sách sort=weekly */
+  week_views?: number;
   chapters_count: number;
   latest_chapter_number: number | null;
   updated_at: string;
@@ -118,9 +120,11 @@ export interface Paginated<T> {
  * Kiểu sắp xếp của `GET /api/stories`:
  * - `updated` (mặc định): truyện vừa có chương mới lên trước
  * - `newest`: truyện mới lên kệ trước
- * - `views`: lượt xem giảm dần (tab "Xếp hạng")
+ * - `views`: lượt xem giảm dần (tab "Xếp hạng" → All time)
+ * - `weekly`: lượt xem 7 ngày qua giảm dần, không có truyện ẩn trên web (tab "Xếp hạng" →
+ *   This week); mỗi thẻ có thêm `week_views`. Server từ 04/11/2026.
  */
-export type StorySort = 'updated' | 'newest' | 'views';
+export type StorySort = 'updated' | 'newest' | 'views' | 'weekly';
 
 export interface StoriesParams {
   search?: string;
