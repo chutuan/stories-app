@@ -1137,13 +1137,16 @@ function RankRow({
 }: {
   story: StoryCard;
   rank: number;
-  /** danh sách tuần: hiện lượt xem 7 ngày qua (thứ tự xếp theo số này), không phải tổng */
+  /**
+   * Danh sách tuần: KHÔNG hiện số lượt xem. Thứ tự tuần đếm cả lượt đọc trên web, còn
+   * `views` (All time) chỉ đếm lượt đọc chương trong app — để cạnh nhau thì có truyện
+   * "79 views this week" mà All time "1 view", trông như lỗi.
+   */
   weekly: boolean;
   style?: ViewStyle;
 }) {
   const router = useRouter();
   const top = rank <= 3;
-  const views = weekly ? (story.week_views ?? story.views) : story.views;
 
   const open = useCallback(() => {
     router.push(`/story/${story.id}`);
@@ -1180,12 +1183,15 @@ function RankRow({
           </Text>
         ) : null}
         <View style={styles.rankMeta}>
-          <Ionicons name="eye-outline" size={12} color={Palette.accentDeep} />
-          <Text style={styles.rankViews}>
-            {formatViews(views)} {views === 1 ? 'view' : 'views'}
-            {weekly ? ' this week' : ''}
-          </Text>
-          <Text style={styles.rankSep}>·</Text>
+          {weekly ? null : (
+            <>
+              <Ionicons name="eye-outline" size={12} color={Palette.accentDeep} />
+              <Text style={styles.rankViews}>
+                {formatViews(story.views)} {story.views === 1 ? 'view' : 'views'}
+              </Text>
+              <Text style={styles.rankSep}>·</Text>
+            </>
+          )}
           <Text style={styles.rankChapters}>{plural(story.chapters_count, 'chapter', 'chapters')}</Text>
         </View>
       </View>

@@ -45,7 +45,10 @@ export interface StoryCard {
   categories: CategoryRef[];
   /** lượt xem — dùng cho tab "Xếp hạng" */
   views: number;
-  /** lượt xem 7 ngày qua — chỉ có trong danh sách sort=weekly */
+  /**
+   * Lượt xem 7 ngày qua, cả web lẫn app — chỉ có trong danh sách sort=weekly. Khác thước đo
+   * với `views` (chỉ lượt đọc chương trong app) nên app không hiện hai số cạnh nhau.
+   */
   week_views?: number;
   chapters_count: number;
   latest_chapter_number: number | null;
