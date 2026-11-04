@@ -14,12 +14,19 @@ class HomeController extends Controller
     /** Số ứng viên nổi bật gửi về app: app bỏ qua truyện người dùng đã đọc hết rồi lấy truyện kế. */
     private const FEATURED_POOL = 10;
 
-    /** Số truyện mỗi hàng "Recently updated"/"Newest" của app. */
+    /** Số truyện mỗi hàng "Most read this week"/"Newest" của app. */
     private const SHELF_SIZE = 14;
+
+    /**
+     * Hàng "Most read this week" gửi dư: app bỏ truyện đang nằm ở dải nổi bật và truyện người dùng
+     * đã đọc hết, rồi mới cắt còn SHELF_SIZE.
+     */
+    private const WEEKLY_SIZE = self::SHELF_SIZE + self::FEATURED_POOL;
 
     public function index(): JsonResponse
     {
-        $pool = $this->weeklyTop();
+        $weekly = $this->weeklyTop(self::WEEKLY_SIZE);
+        $pool = $weekly->take(self::FEATURED_POOL)->values();
 
         // Tuần chưa có lượt xem nào (DB mới, dev) thì quay về truyện admin đánh dấu nổi bật.
         if ($pool->isEmpty()) {
@@ -35,6 +42,7 @@ class HomeController extends Controller
         }
 
         // SHELF_SIZE 14 = 7 cột x 2 dòng: hàng lấp kín iPad xoay ngang; iPhone vẫn cuộn ngang.
+        // `updated` chỉ còn cho app ≤ 1.0.2; từ 1.0.3 app đọc `weekly` (rỗng thì quay về `updated`).
         $updated = Story::query()
             ->with('categories')
             ->withCount('chapters')
@@ -57,15 +65,17 @@ class HomeController extends Controller
             'featured_pool' => StoryResource::collection($pool)->resolve(),
             'updated' => StoryCardResource::collection($updated)->resolve(),
             'newest' => StoryCardResource::collection($newest)->resolve(),
+            'weekly' => StoryCardResource::collection($weekly)->resolve(),
         ]);
     }
 
     /**
      * Truyện nhiều lượt xem nhất 7 ngày qua — cùng định nghĩa với web (Story::scopeTopThisWeek).
      * Truyện ẩn trên web (nội dung nhà quảng cáo chặn) vẫn đọc được trong app nhưng không được
-     * đặt lên dải nổi bật: đó là thứ đầu tiên người mới cài — và người duyệt App Store — nhìn thấy.
+     * đặt lên dải nổi bật hay hàng "Most read this week" ngay dưới: đó là thứ đầu tiên người mới
+     * cài — và người duyệt App Store — nhìn thấy.
      */
-    private function weeklyTop(): Collection
+    private function weeklyTop(int $limit): Collection
     {
         return Story::query()
             ->with('categories')
@@ -73,7 +83,7 @@ class HomeController extends Controller
             ->withMax('chapters', 'number')
             ->visibleOnWeb()
             ->topThisWeek()
-            ->limit(self::FEATURED_POOL)
+            ->limit($limit)
             ->get();
     }
 }

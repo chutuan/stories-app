@@ -89,6 +89,37 @@ class ApiHomeFeaturedTest extends TestCase
             ->assertJsonFragment(['slug' => 'an']); // vẫn nằm trong kệ Newest/Recently updated
     }
 
+    public function test_hang_weekly_la_bang_xep_hang_tuan_khong_co_truyen_an(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-11-01 10:00:00'));
+
+        $top = $this->story('nhat');
+        $this->hits($top, '2026-10-31', 50);
+        $second = $this->story('nhi');
+        $this->hits($second, '2026-10-30', 20);
+        $hidden = $this->story('an');
+        $hidden->forceFill(['hidden_on_web' => true])->save();
+        $this->hits($hidden, '2026-10-31', 999);
+        $this->story('khong-ai-doc', 9999); // tuần này 0 lượt: không lên hàng tuần
+
+        $this->getJson('/api/home')
+            ->assertOk()
+            ->assertJsonPath('weekly.*.id', [$top->id, $second->id])
+            ->assertJsonPath('weekly.0.chapters_count', 1)
+            ->assertJsonPath('featured_pool.*.id', [$top->id, $second->id])
+            ->assertJsonCount(4, 'updated'); // app ≤ 1.0.2 vẫn có hàng cũ
+    }
+
+    public function test_weekly_rong_khi_tuan_chua_co_luot_xem(): void
+    {
+        $this->story('danh-dau', featured: true);
+
+        $this->getJson('/api/home')
+            ->assertOk()
+            ->assertJsonPath('weekly', [])
+            ->assertJsonCount(1, 'featured_pool');
+    }
+
     public function test_truyen_danh_dau_noi_bat_ma_an_tren_web_thi_khong_dung(): void
     {
         $marked = $this->story('danh-dau', featured: true);

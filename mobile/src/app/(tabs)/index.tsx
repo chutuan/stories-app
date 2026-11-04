@@ -63,6 +63,8 @@ const CATEGORY_TILE_MIN = 200;
 /** Số dòng thẻ của mỗi hàng ngang: thẻ xếp theo cột (1–2 ở cột đầu, 3–4 ở cột hai…)
  *  để truyện đứng đầu danh sách luôn nằm trong phần nhìn thấy, cuộn ngang theo từng cột. */
 const ROW_LINES = 2;
+/** Số truyện tối đa một hàng ngang — khớp SHELF_SIZE của backend (7 cột x 2 dòng). */
+const SHELF_SIZE = 14;
 /** Khoảng cách dọc giữa các dòng thẻ — bằng khoảng cách hàng của lưới truyện. */
 const ROW_LINE_GAP = Spacing.xl;
 
@@ -107,6 +109,10 @@ export default function HomeScreen() {
     setTab('newest');
   }, []);
 
+  const showRanking = useCallback(() => {
+    setTab('ranking');
+  }, []);
+
   return (
     <View style={[styles.screen, { paddingTop: insets.top + Spacing.xs }]}>
       {/* ---------- Header: logo + tìm kiếm + thể loại ---------- */}
@@ -126,7 +132,7 @@ export default function HomeScreen() {
       {/* ---------- Nội dung theo tab ---------- */}
       <View style={styles.body}>
         {tab === 'discover' ? (
-          <DiscoverTab focusToken={categoryFocus} onSeeNewest={showNewest} />
+          <DiscoverTab focusToken={categoryFocus} onSeeNewest={showNewest} onSeeRanking={showRanking} />
         ) : tab === 'ranking' ? (
           <RankFeed key="ranking" />
         ) : (
@@ -212,7 +218,15 @@ function TabRow({ value, onChange }: { value: TabKey; onChange: (key: TabKey) =>
 /* TAB "KHÁM PHÁ" — /api/home + /api/categories                        */
 /* ------------------------------------------------------------------ */
 
-function DiscoverTab({ focusToken, onSeeNewest }: { focusToken: number; onSeeNewest: () => void }) {
+function DiscoverTab({
+  focusToken,
+  onSeeNewest,
+  onSeeRanking,
+}: {
+  focusToken: number;
+  onSeeNewest: () => void;
+  onSeeRanking: () => void;
+}) {
   const router = useRouter();
   const { width, height, wide } = useResponsive();
   const [home, setHome] = useState<HomeData | null>(null);
@@ -302,9 +316,20 @@ function DiscoverTab({ focusToken, onSeeNewest }: { focusToken: number; onSeeNew
     const pool = home?.featured_pool ?? (home?.featured ? [home.featured] : []);
     return hideFinished(pool)[0] ?? null;
   }, [hideFinished, home]);
+  // Hàng ngay dưới nổi bật: xem nhiều nhất tuần, bỏ truyện đang nổi bật cho khỏi lặp lại.
+  // Tuần chưa có lượt xem (hoặc server chưa có `weekly`) thì quay về "Recently updated".
+  const weekly = useMemo(
+    () =>
+      hideFinished(home?.weekly ?? [])
+        .filter((story) => story.id !== featured?.id)
+        .slice(0, SHELF_SIZE),
+    [hideFinished, home, featured],
+  );
   const updated = useMemo(() => hideFinished(home?.updated ?? []), [hideFinished, home]);
   const newest = useMemo(() => hideFinished(home?.newest ?? []), [hideFinished, home]);
-  const isEmpty = !loading && !error && !featured && updated.length === 0 && newest.length === 0;
+  const showWeekly = weekly.length > 0;
+  const isEmpty =
+    !loading && !error && !featured && weekly.length === 0 && updated.length === 0 && newest.length === 0;
 
   return (
     <ScrollView
@@ -354,13 +379,23 @@ function DiscoverTab({ focusToken, onSeeNewest }: { focusToken: number; onSeeNew
             )
           ) : null}
 
-          <Row
-            title="Recently updated"
-            subtitle="Stories with new chapters"
-            icon="flame"
-            stories={updated}
-            onSeeMore={openSearch}
-          />
+          {showWeekly ? (
+            <Row
+              title="Most read this week"
+              subtitle="Top stories of the last 7 days"
+              icon="flame"
+              stories={weekly}
+              onSeeMore={onSeeRanking}
+            />
+          ) : (
+            <Row
+              title="Recently updated"
+              subtitle="Stories with new chapters"
+              icon="flame"
+              stories={updated}
+              onSeeMore={openSearch}
+            />
+          )}
           <Row
             title="Newest"
             subtitle="Just added to the shelf"

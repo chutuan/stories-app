@@ -85,6 +85,11 @@ export interface HomeData {
   featured_pool?: Story[];
   updated: StoryCard[];
   newest: StoryCard[];
+  /**
+   * Nhiều lượt xem nhất 7 ngày qua, nhiều nhất trước, không có truyện ẩn trên web. Gửi dư so
+   * với một hàng để app bỏ truyện đang nổi bật/đã đọc hết. Server cũ chưa có thì undefined.
+   */
+  weekly?: StoryCard[];
 }
 
 /**
