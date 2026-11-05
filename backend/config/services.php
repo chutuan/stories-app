@@ -76,6 +76,8 @@ return [
         'page_token' => env('FACEBOOK_PAGE_TOKEN'),
         'graph_version' => env('FACEBOOK_GRAPH_VERSION', 'v23.0'),
         'exclude' => array_filter(explode(',', (string) env('FACEBOOK_EXCLUDE_IDS', '419'))),
+        // Địa chỉ công khai của Page — khai trong `sameAs` của JSON-LD (StructuredData::organization).
+        'page_url' => env('FACEBOOK_PAGE_URL', 'https://www.facebook.com/tunastorycom'),
     ],
 
     'openai' => [

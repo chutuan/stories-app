@@ -19,7 +19,7 @@
     <source type="image/webp" srcset="{{ $srcset }}" sizes="{{ $sizes ?? '250px' }}">
   @endif
   <img src="{{ $story->thumbnail_url }}"
-       alt="Cover art for {{ $story->title }}"
+       alt="{{ $alt ?? 'Cover art for '.$story->title }}"
        width="{{ $w ?? 300 }}" height="{{ $h ?? 450 }}"
        @if ($lazy) loading="lazy" decoding="async" @else fetchpriority="high" @endif>
 </picture>

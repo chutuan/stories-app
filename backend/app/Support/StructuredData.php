@@ -39,11 +39,22 @@ class StructuredData
         );
     }
 
+    /**
+     * Tên khác của site cho Google chọn làm "tên trang web" trên kết quả tìm kiếm.
+     *
+     * Kiểm 05/11/2026: Google KHÔNG dùng "Stories" (quá chung chung) mà hiện tên miền
+     * "tunastory.com". Page Facebook và đường dẫn đều mang tên TunaStory, nên khai tên
+     * đó làm phương án để Google có thứ hiện thay vì tên miền. Giữ `name` = "Stories"
+     * vì đó vẫn là tên app và tên trên mọi trang.
+     */
+    private const ALTERNATE_NAMES = ['TunaStory', 'tunastory.com'];
+
     public static function website(string $home, string $searchUrl): string
     {
         return self::encode([
             '@type' => 'WebSite',
             'name' => 'Stories',
+            'alternateName' => self::ALTERNATE_NAMES,
             'url' => $home,
             'description' => 'Free short serialised fiction you can finish in one sitting.',
             'inLanguage' => 'en',
@@ -87,11 +98,19 @@ class StructuredData
         return self::encode(array_filter([
             '@type' => 'Organization',
             'name' => 'Stories',
+            'alternateName' => self::ALTERNATE_NAMES,
             'url' => $home,
             'logo' => $logo,
             'email' => $email,
             'publishingPrinciples' => $publishingPrinciples,
             'founder' => self::editor(),
+            // Những nơi khác cũng là của chính site này: Page Facebook và app trên App
+            // Store. Google gộp chúng thành một thực thể (cùng tên, cùng logo) thay vì
+            // coi tunastory.com là một site vô danh.
+            'sameAs' => array_values(array_filter([
+                config('services.facebook.page_url'),
+                config('app.ios_app_id') ? 'https://apps.apple.com/app/id'.config('app.ios_app_id') : null,
+            ])),
         ]));
     }
 
@@ -118,7 +137,7 @@ class StructuredData
             'author' => self::editor(),
             'publisher' => ['@type' => 'Organization', 'name' => 'Stories'],
             'description' => $story->description ?: null,
-            'image' => $image,
+            'image' => self::images($story, $image),
             // Ngày lên web và ngày sửa: Google dùng để biết truyện còn mới (Discover chỉ đẩy
             // nội dung mới) và để hiện ngày cạnh kết quả.
             'datePublished' => $story->created_at?->toAtomString(),
@@ -136,6 +155,25 @@ class StructuredData
         ]);
     }
 
+    /**
+     * Ảnh khai cho trang truyện/chương: ảnh chia sẻ 1200×630 TRƯỚC (khổ ngang Google cần
+     * cho kết quả có hình), rồi ẢNH BÌA GỐC.
+     *
+     * Vì sao thêm ảnh bìa (05/11/2026): GSC có những truy vấn kiểu "where can i read
+     * this online", "full story", "name" — dấu vết của Google Lens: người ta chụp bài
+     * Facebook (chính ảnh bìa này) rồi hỏi Google đọc ở đâu. Trong khi đó tìm kiếm hình
+     * ảnh 28 ngày chỉ có 1 lượt hiển thị. Khai ảnh bìa ở đây để Google gắn đúng tấm ảnh
+     * mà người đọc đang cầm với trang của mình.
+     *
+     * @return list<string>|string
+     */
+    private static function images(Story $story, string $card): array|string
+    {
+        $cover = $story->thumbnail_url;
+
+        return $cover && $cover !== $card ? [$card, $cover] : $card;
+    }
+
     /** Trang đọc một chương. */
     public static function article(
         Story $story,
@@ -151,7 +189,7 @@ class StructuredData
             'headline' => $heading.' — '.$story->title,
             'url' => $url,
             'description' => $excerpt ?: null,
-            'image' => $image,
+            'image' => self::images($story, $image),
             'inLanguage' => 'en',
             'datePublished' => $chapter->created_at?->toAtomString(),
             'dateModified' => $chapter->updated_at?->toAtomString(),

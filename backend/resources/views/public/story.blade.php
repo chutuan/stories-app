@@ -54,8 +54,20 @@
       <div class="sh-main">
         <div class="sh-cover">
           @if ($story->thumbnail_url)
-            {{-- Không lazy: ảnh này ở ngay đầu trang, lazy chỉ làm nó hiện chậm hơn. --}}
-            @include('public.partials.cover', ['story' => $story, 'sizes' => '(max-width:600px) 116px, 220px', 'w' => 220, 'h' => 330, 'lazy' => false])
+            {{-- Không lazy: ảnh này ở ngay đầu trang, lazy chỉ làm nó hiện chậm hơn.
+                 Alt kèm câu mồi: đây là ảnh người đọc thấy trên bài Facebook, và câu mồi là
+                 điều họ gõ khi tìm bằng Google Lens/Hình ảnh. Các thẻ truyện khác giữ alt
+                 ngắn — chỉ ảnh của chính trang này mới nên mang câu đó. --}}
+            @include('public.partials.cover', [
+                'story' => $story,
+                'sizes' => '(max-width:600px) 116px, 220px',
+                'w' => 220,
+                'h' => 330,
+                'lazy' => false,
+                'alt' => $story->hook
+                    ? Str::limit('Cover art for '.$story->title.': '.rtrim($story->hook, '.'), 200)
+                    : null,
+            ])
           @else
             <span class="noart">{{ $story->title }}</span>
           @endif

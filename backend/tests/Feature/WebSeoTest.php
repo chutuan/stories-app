@@ -414,4 +414,42 @@ class WebSeoTest extends TestCase
             ->assertSee('sharer.php?u='.urlencode($story).'"', false)
             ->assertSee('data-share-url="'.$story.'"', false);
     }
+
+    /** Đợt 6 (05/11/2026): Google hiện "tunastory.com" thay cho tên site "Stories". */
+    public function test_ten_khac_cua_site_va_same_as(): void
+    {
+        $this->get('/')->assertOk()
+            ->assertSee('"alternateName":["TunaStory","tunastory.com"]', false)
+            ->assertSee('"sameAs":["https://www.facebook.com/tunastorycom","https://apps.apple.com/app/id6810302346"]', false);
+    }
+
+    /** Đợt 6: ảnh bìa gốc (ảnh của bài Facebook) khai cạnh ảnh chia sẻ, cho Google Lens/Hình ảnh. */
+    public function test_json_ld_truyen_va_chuong_khai_ca_anh_bia(): void
+    {
+        $this->story('bia', ['thumbnail' => 'stories/bia.jpg']);
+        $this->story('khong-bia');
+        $card = json_encode(route('public.og', 'bia'), JSON_UNESCAPED_SLASHES);
+
+        $this->get('/story/bia')->assertOk()
+            ->assertSee('"image":['.$card.',"', false)
+            ->assertSee('/storage/stories/bia.jpg', false);
+        $this->get('/story/bia/chapter/1')->assertOk()
+            ->assertSee('"image":['.$card.',"', false);
+
+        // Không có bìa thì vẫn là một chuỗi như trước, không phải mảng một phần tử.
+        $this->get('/story/khong-bia')->assertOk()
+            ->assertSee('"image":'.json_encode(route('public.og', 'khong-bia'), JSON_UNESCAPED_SLASHES).',', false);
+    }
+
+    public function test_alt_anh_bia_trang_truyen_kem_cau_moi(): void
+    {
+        $this->story('alt', ['title' => 'One Floor Above Me', 'thumbnail' => 'stories/alt.jpg',
+            'hook' => 'My husband left me screaming in labor for his mistress.']);
+        $this->story('alt-khac', ['title' => 'Other', 'thumbnail' => 'stories/alt-khac.jpg']);
+
+        $this->get('/story/alt')->assertOk()
+            ->assertSee('alt="Cover art for One Floor Above Me: My husband left me screaming in labor for his mistress"', false);
+        $this->get('/story/alt-khac')->assertOk()
+            ->assertSee('alt="Cover art for Other"', false);
+    }
 }
