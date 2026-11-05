@@ -21,6 +21,26 @@ Allow: /
 User-agent: AdsBot-Google
 Allow: /
 
+# --- Bot TÌM KIẾM AI: mời vào (Tuấn quyết 05/11/2026) ---
+#
+# Khác hẳn bot huấn luyện ở dưới: những con này lấy trang để TRẢ LỜI người dùng và
+# dẫn link về đây (ChatGPT search, Perplexity, Claude), giống Googlebot chứ không
+# giống GPTBot. OpenAI và Perplexity tách hai việc ra hai tên bot riêng chính là để
+# site chọn được "cho tìm kiếm, không cho huấn luyện".
+#
+# Một nhóm riêng THAY HẲN nhóm "*" với bot khớp tên, nên phải nhắc lại các dòng
+# Disallow ở trên — không thì chúng vào được /admin, /search và file audio.
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: Claude-SearchBot
+User-agent: Claude-User
+Disallow: /admin
+Disallow: /search
+Disallow: /storage/audio/
+Allow: /
+
 # --- Bot thu thập dữ liệu huấn luyện AI: không ---
 #
 # Truyện ở đây do chúng tôi viết và là tài sản của chúng tôi. Cho Google index để
@@ -36,8 +56,6 @@ Allow: /
 # nhưng đừng dùng nội dung này để huấn luyện". Vì vậy chặn hai mã này không hề
 # ảnh hưởng thứ hạng tìm kiếm.
 User-agent: GPTBot
-User-agent: OAI-SearchBot
-User-agent: ChatGPT-User
 User-agent: ClaudeBot
 User-agent: Claude-Web
 User-agent: anthropic-ai
@@ -45,7 +63,6 @@ User-agent: Google-Extended
 User-agent: Applebot-Extended
 User-agent: CCBot
 User-agent: Bytespider
-User-agent: PerplexityBot
 User-agent: Amazonbot
 User-agent: meta-externalagent
 User-agent: FacebookBot
