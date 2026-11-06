@@ -60,9 +60,9 @@ class AdminVotesAndViewsTest extends TestCase
     {
         $story = $this->story();
 
-        // Web: trình duyệt desktop
+        // Web: trình duyệt desktop gửi tín hiệu "đã đọc" (partials/view-beacon)
         $this->withHeader('User-Agent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/153.0 Safari/537.36')
-            ->get("/story/{$story->slug}")->assertOk();
+            ->post("/api/stories/{$story->id}/seen")->assertNoContent();
 
         // App: gọi API
         $this->withHeader('User-Agent', 'Stories/3 CFNetwork/1494.0.7 Darwin/23.4.0')
@@ -75,12 +75,64 @@ class AdminVotesAndViewsTest extends TestCase
         $this->assertSame(2, $sum['total']);
     }
 
+    public function test_mo_trang_web_khong_tu_dem_luot_xem(): void
+    {
+        $story = $this->story();
+        $ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36';
+
+        // Đúng kiểu máy cào nội dung đội lốt Chrome: tải HTML rồi đi, không chạy JavaScript.
+        $this->withHeader('User-Agent', $ua)->get("/story/{$story->slug}")->assertOk();
+        $this->withHeader('User-Agent', $ua)->get("/story/{$story->slug}/chapter/1")->assertOk();
+
+        $this->assertDatabaseCount('story_views', 0);
+    }
+
+    public function test_trang_truyen_va_chuong_co_tin_hieu_da_doc_dung_duong_dan(): void
+    {
+        $story = $this->story();
+
+        $this->get("/story/{$story->slug}")->assertOk()
+            ->assertSee('"\/api\/stories\/'.$story->id.'\/seen"', false);
+        $this->get("/story/{$story->slug}/chapter/2")->assertOk()
+            ->assertSee('"\/api\/stories\/'.$story->id.'\/seen?chapter=2"', false);
+    }
+
+    public function test_tin_hieu_da_doc_ghi_dung_chuong(): void
+    {
+        $story = $this->story();
+        $ch2 = $story->chapters()->where('number', 2)->first();
+
+        $this->withHeader('User-Agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile/15E148 Safari/604.1')
+            ->post("/api/stories/{$story->id}/seen?chapter=2")
+            ->assertNoContent()
+            ->assertHeader('Cache-Control', 'no-store, private');
+
+        $this->assertSame($ch2->id, (int) StoryView::first()->chapter_id);
+        $this->assertSame('mobile', StoryView::first()->device);
+    }
+
+    public function test_tin_hieu_da_doc_tu_chuong_khong_co_hay_tu_trang_khac_bi_bo_qua(): void
+    {
+        $story = $this->story();
+        $ua = 'Mozilla/5.0 (Macintosh) Chrome/153.0 Safari/537.36';
+
+        $this->withHeader('User-Agent', $ua)->post("/api/stories/{$story->id}/seen?chapter=9")->assertNotFound();
+        $this->withHeader('User-Agent', $ua)->post("/api/stories/{$story->id}/seen?chapter=abc")->assertStatus(422);
+        $this->withHeaders(['User-Agent' => $ua, 'Origin' => 'https://evil.example'])
+            ->post("/api/stories/{$story->id}/seen")->assertForbidden();
+
+        $story->forceFill(['hidden_on_web' => true])->save();
+        $this->withHeader('User-Agent', $ua)->post("/api/stories/{$story->id}/seen")->assertNotFound();
+
+        $this->assertDatabaseCount('story_views', 0);
+    }
+
     public function test_bot_khong_duoc_tinh_la_luot_xem_web(): void
     {
         $story = $this->story();
 
         $this->withHeader('User-Agent', 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)')
-            ->get("/story/{$story->slug}")->assertOk();
+            ->post("/api/stories/{$story->id}/seen")->assertNoContent();
 
         $this->assertDatabaseCount('story_views', 0);
     }
@@ -91,7 +143,8 @@ class AdminVotesAndViewsTest extends TestCase
         $ua = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1';
 
         foreach (range(1, 3) as $ignored) {
-            $this->withHeader('User-Agent', $ua)->get("/story/{$story->slug}")->assertOk();
+            $this->withHeaders(['User-Agent' => $ua, 'Origin' => 'http://localhost'])
+                ->post("/api/stories/{$story->id}/seen")->assertNoContent();
         }
 
         $this->assertDatabaseCount('story_views', 1);
@@ -133,7 +186,7 @@ class AdminVotesAndViewsTest extends TestCase
     {
         $story = $this->story();
         $this->withHeader('User-Agent', 'Mozilla/5.0 (Macintosh) Chrome/153.0 Safari/537.36')
-            ->get("/story/{$story->slug}")->assertOk();
+            ->post("/api/stories/{$story->id}/seen")->assertNoContent();
 
         $this->actingAs(User::factory()->create())
             ->get('/admin/stories')

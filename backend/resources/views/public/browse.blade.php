@@ -56,9 +56,11 @@
   @if ($stories->isEmpty())
     <p class="empty">No stories here yet. <a href="{{ route('public.browse') }}">Browse everything</a>.</p>
   @else
+    {{-- Hàng đầu (2 ô trên điện thoại) nằm ngay màn hình đầu: tải ngay, không lazy. Trang thể
+         loại là nơi Google đưa người đọc vào nhiều nhất, và lazy làm bìa hiện chậm hơn chữ. --}}
     <ul class="grid">
       @foreach ($stories as $story)
-        <li>@include('public.partials.story-card', ['story' => $story])</li>
+        <li>@include('public.partials.story-card', ['story' => $story, 'lazy' => $loop->index >= 2])</li>
       @endforeach
     </ul>
 

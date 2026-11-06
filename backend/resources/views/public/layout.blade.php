@@ -630,6 +630,15 @@ window.StoriesHistory = {
   .next-card strong{display:block;font-size:18px;line-height:1.3;margin-top:3px}
   .next-card svg{width:26px;height:26px;flex:none}
   .next-card.end{background:var(--surface);color:var(--text);border:1px solid var(--border);box-shadow:var(--shadow)}
+  /* Cuối truyện: mời theo dõi Page Facebook. Màu xanh của Facebook để nhận ra ngay, nhưng nhỏ
+     hơn thẻ "chương sau" — đây là lời mời phụ, không tranh với lối đọc tiếp. */
+  .follow-card{display:flex;align-items:center;gap:14px;margin:24px 0 0;padding:14px 18px;border-radius:14px;
+        background:var(--surface);border:1px solid var(--border);color:var(--text);text-decoration:none;
+        transition:border-color .15s}
+  .follow-card:hover{border-color:#1877F2}
+  .follow-card svg{width:30px;height:30px;flex:none;color:#1877F2}
+  .follow-card strong{display:block;font-size:15px}
+  .follow-card small{display:block;font-size:13px;color:var(--muted);margin-top:2px}
   .pager{display:flex;justify-content:space-between;gap:10px;margin:16px 0 0}
   .pager a{flex:1;text-align:center;padding:12px 14px;border-radius:12px;background:var(--surface);
            border:1px solid var(--border);text-decoration:none;font-size:14px;color:var(--text);font-weight:600;
@@ -924,6 +933,9 @@ window.StoriesHistory = {
       <a href="{{ route('public.about') }}">About</a>
       <a href="{{ route('public.editorial') }}">Editorial standards</a>
       <a href="{{ route('public.contact') }}">Contact</a>
+      @if ($fbPage = config('services.facebook.page_url'))
+        <a href="{{ $fbPage }}" target="_blank" rel="noopener">Facebook</a>
+      @endif
       <a href="mailto:{{ config('app.support_email') }}">{{ config('app.support_email') }}</a>
     </div>
     <div>

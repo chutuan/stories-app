@@ -20,6 +20,7 @@
           'story' => $story,
           'sizes' => '(max-width:600px) 45vw, (max-width:1000px) 30vw, (max-width:1400px) 23vw, 200px',
           'w' => 300, 'h' => 450,
+          'lazy' => $lazy ?? true,
       ])
     @else
       <span class="noart">{{ $story->title }}</span>

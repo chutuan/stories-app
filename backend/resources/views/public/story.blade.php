@@ -213,4 +213,9 @@
   });
 })();
 </script>
+{{-- Tải sẵn chương sẽ mở khi con trỏ dừng trên nút đọc (hoặc lúc bắt đầu chạm): trang truyện có
+     cache ở biên nhưng trang chương thì không, nên đây là cú chờ dài nhất trên đường vào truyện.
+     Chỉ prefetch HTML; trình duyệt không hiểu speculationrules thì bỏ qua. --}}
+<script type="speculationrules">{"prefetch":[{"source":"document","where":{"selector_matches":"#read-btn, .opening-more a"},"eagerness":"moderate"}]}</script>
+@include('public.partials.view-beacon', ['story' => $story, 'chapter' => null])
 @endsection

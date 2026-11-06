@@ -11,7 +11,6 @@ use App\Models\Story;
 use App\Services\SocialCardGenerator;
 use App\Support\GenreIntros;
 use App\Support\StructuredData;
-use App\Support\ViewCounter;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -372,7 +371,9 @@ class ReadController extends Controller
         $story->load(['categories', 'chapters' => fn ($q) => $q->orderBy('number')]);
         $story->loadCount('reactions')->loadAvg('reactions', 'score');
 
-        ViewCounter::record(request(), $story, null, ViewCounter::SOURCE_WEB);
+        // Lượt xem KHÔNG đếm ở đây mà do trang gửi về khi người đọc đã ở lại (partials/view-beacon,
+        // Api\WebSeenController): trang này được cache ở biên nên dòng này hiếm khi chạy, và lúc
+        // chạy thì phần lớn là máy cào nội dung.
 
         // "You may also like": cùng thể loại, đọc nhiều nhất trước. Truyện không có thể
         // loại nào thì lấy truyện đọc nhiều nhất của cả kho, để mục này không bao giờ trống.
@@ -441,7 +442,7 @@ class ReadController extends Controller
 
         $chapter->setRelation('story', $story);
 
-        ViewCounter::record(request(), $story, $chapter, ViewCounter::SOURCE_WEB);
+        // Lượt xem do trang gửi về sau khi người đọc ở lại — xem partials/view-beacon.
 
         // Chương liền kề: lấy `number` gần nhất hai phía thay vì number±1, vì kho
         // có thể khuyết chương (đăng dở, hoặc chương bị gỡ) và number+1 khi đó

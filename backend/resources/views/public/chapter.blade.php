@@ -140,6 +140,18 @@
         </ul>
       </section>
     @endif
+    {{-- Người vừa đọc hết một truyện là người dễ theo dõi nhất. Page Facebook là kênh đưa
+         truyện mới tới người đọc (mỗi bài một truyện, link ở bình luận), nên mời ở đây chứ
+         không mời giữa chương: đang đọc mà bấm ra Facebook là mất người đọc. --}}
+    @if ($fbPage = config('services.facebook.page_url'))
+      <a class="follow-card" href="{{ $fbPage }}" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M24 12.07C24 5.4 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.96.93-1.96 1.89v2.25h3.33l-.53 3.49h-2.8V24C19.61 23.1 24 18.1 24 12.07z"/></svg>
+        <span>
+          <strong>Follow us on Facebook</strong>
+          <small>Get our next story right in your feed.</small>
+        </span>
+      </a>
+    @endif
   @endif
 
   @include('public.partials.share', ['story' => $story])
@@ -193,8 +205,27 @@
   var ticking = false;
   function update() {
     var max = document.documentElement.scrollHeight - innerHeight;
-    bar.style.width = (max > 0 ? Math.min(1, scrollY / max) * 100 : 0) + '%';
+    var ratio = max > 0 ? Math.min(1, scrollY / max) : 0;
+    bar.style.width = ratio * 100 + '%';
+    if (ratio > 0.6) prefetchNext();
     ticking = false;
+  }
+
+  // Tải sẵn chương sau khi người đọc đã qua 60% chương này: bấm "Next" là trang hiện ngay.
+  // Không tải từ lúc mở trang — một chương đọc mất 4–9 phút mà Chrome chỉ giữ bản tải sẵn
+  // 5 phút, tải sớm là tải phí. Chỉ prefetch (lấy HTML), KHÔNG prerender: prerender chạy cả
+  // quảng cáo và GA4 cho một trang chưa ai xem. Trình duyệt không hiểu speculationrules
+  // (Safari, Firefox) thì bỏ qua, mọi thứ vẫn như cũ.
+  var prefetched = false;
+  function prefetchNext() {
+    if (prefetched) return;
+    prefetched = true;
+    var next = document.querySelector('.next-card[rel="next"]');
+    if (!next || !window.HTMLScriptElement || !HTMLScriptElement.supports || !HTMLScriptElement.supports('speculationrules')) return;
+    var s = document.createElement('script');
+    s.type = 'speculationrules';
+    s.textContent = JSON.stringify({ prefetch: [{ source: 'list', urls: [next.getAttribute('href')] }] });
+    document.head.appendChild(s);
   }
   addEventListener('scroll', function () {
     if (!ticking) { ticking = true; requestAnimationFrame(update); }
@@ -283,4 +314,5 @@
   });
 })();
 </script>
+@include('public.partials.view-beacon', ['story' => $story, 'chapter' => $chapter])
 @endsection
