@@ -1,7 +1,7 @@
 @extends('public.layout')
 
-@section('title', 'About Stories')
-@section('description', 'What Stories is, who runs it, how the stories are made, and how the site pays for itself.')
+@section('title', 'About '.config('app.site_name'))
+@section('description', 'What '.config('app.site_name').' is, who runs it, how the stories are made, and how the site pays for itself.')
 
 @push('head')
 @foreach ($jsonLd as $block)
@@ -10,10 +10,10 @@
 @endpush
 
 @section('content')
-  <h1>About Stories</h1>
+  <h1>About {{ config('app.site_name') }}</h1>
   <p class="updated">Short serialised fiction, free to read on the web.</p>
 
-  <p>Stories publishes short serials you can finish in one sitting — drama about people who
+  <p>{{ config('app.site_name') }} publishes short serials you can finish in one sitting — drama about people who
     are underestimated, betrayed or written off, and what happens when the truth comes out.
     Right now the library holds <strong>{{ $storyCount }} stories</strong> across
     <strong>{{ $chapterCount }} chapters</strong>, about
@@ -38,8 +38,8 @@
       reading column, type size and line spacing are tuned for that first.</li>
   </ul>
 
-  <h2>Who runs Stories</h2>
-  <p>Stories is run by <a href="{{ route('public.editor') }}">{{ config('app.editor_name') }}</a>,
+  <h2>Who runs {{ config('app.site_name') }}</h2>
+  <p>{{ config('app.site_name') }} is run by <a href="{{ route('public.editor') }}">{{ config('app.editor_name') }}</a>,
     who sets the brief for each story, decides what is published and reads the contact address.
     The line <em>Edited by {{ config('app.editor_name') }}</em> on every story page refers to
     that person — a real name, not a pen name.</p>

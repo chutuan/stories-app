@@ -43,17 +43,23 @@ class StructuredData
      * Tên khác của site cho Google chọn làm "tên trang web" trên kết quả tìm kiếm.
      *
      * Kiểm 05/11/2026: Google KHÔNG dùng "Stories" (quá chung chung) mà hiện tên miền
-     * "tunastory.com". Page Facebook và đường dẫn đều mang tên TunaStory, nên khai tên
-     * đó làm phương án để Google có thứ hiện thay vì tên miền. Giữ `name` = "Stories"
-     * vì đó vẫn là tên app và tên trên mọi trang.
+     * "tunastory.com". Từ 06/11/2026 tên chính là config('app.site_name') = "TunaStory"
+     * (khớp tên miền và Page Facebook); "Stories" lùi xuống làm tên khác vì đó vẫn là tên
+     * app trên App Store.
      */
-    private const ALTERNATE_NAMES = ['TunaStory', 'tunastory.com'];
+    private const ALTERNATE_NAMES = ['Stories', 'tunastory.com'];
+
+    /** Tên website — một nguồn duy nhất, xem config/app.php `site_name`. */
+    private static function siteName(): string
+    {
+        return (string) config('app.site_name');
+    }
 
     public static function website(string $home, string $searchUrl): string
     {
         return self::encode([
             '@type' => 'WebSite',
-            'name' => 'Stories',
+            'name' => self::siteName(),
             'alternateName' => self::ALTERNATE_NAMES,
             'url' => $home,
             'description' => 'Free short serialised fiction you can finish in one sitting.',
@@ -97,7 +103,7 @@ class StructuredData
     ): string {
         return self::encode(array_filter([
             '@type' => 'Organization',
-            'name' => 'Stories',
+            'name' => self::siteName(),
             'alternateName' => self::ALTERNATE_NAMES,
             'url' => $home,
             'logo' => $logo,
@@ -135,7 +141,7 @@ class StructuredData
             // đặt brief và duyệt đăng ("Edited by …"), trang /editor nói rõ truyện
             // soạn với công cụ AI. Không dùng lại cột `author`: cột đó vẫn còn bút danh.
             'author' => self::editor(),
-            'publisher' => ['@type' => 'Organization', 'name' => 'Stories'],
+            'publisher' => ['@type' => 'Organization', 'name' => self::siteName()],
             'description' => $story->description ?: null,
             'image' => self::images($story, $image),
             // Ngày lên web và ngày sửa: Google dùng để biết truyện còn mới (Discover chỉ đẩy
@@ -195,7 +201,7 @@ class StructuredData
             'dateModified' => $chapter->updated_at?->toAtomString(),
             // Cùng lý do với Book::author — xem chú thích ở trên.
             'author' => self::editor(),
-            'publisher' => ['@type' => 'Organization', 'name' => 'Stories'],
+            'publisher' => ['@type' => 'Organization', 'name' => self::siteName()],
             'isPartOf' => ['@type' => 'Book', 'name' => $story->title, 'url' => $storyUrl],
         ]);
     }
@@ -204,11 +210,11 @@ class StructuredData
     {
         return self::encode([
             '@type' => 'AboutPage',
-            'name' => 'About Stories',
+            'name' => 'About '.self::siteName(),
             'url' => $url,
             'inLanguage' => 'en',
-            'isPartOf' => ['@type' => 'WebSite', 'name' => 'Stories', 'url' => $home],
-            'about' => ['@type' => 'Organization', 'name' => 'Stories', 'url' => $home],
+            'isPartOf' => ['@type' => 'WebSite', 'name' => self::siteName(), 'url' => $home],
+            'about' => ['@type' => 'Organization', 'name' => self::siteName(), 'url' => $home],
         ]);
     }
 
@@ -223,13 +229,13 @@ class StructuredData
     {
         return self::encode([
             '@type' => 'ContactPage',
-            'name' => 'Contact Stories',
+            'name' => 'Contact '.self::siteName(),
             'url' => $url,
             'inLanguage' => 'en',
-            'isPartOf' => ['@type' => 'WebSite', 'name' => 'Stories', 'url' => $home],
+            'isPartOf' => ['@type' => 'WebSite', 'name' => self::siteName(), 'url' => $home],
             'about' => array_filter([
                 '@type' => 'Organization',
-                'name' => 'Stories',
+                'name' => self::siteName(),
                 'url' => $home,
                 'email' => $email,
             ]),
@@ -250,8 +256,8 @@ class StructuredData
             'name' => 'Editorial standards',
             'url' => $url,
             'inLanguage' => 'en',
-            'isPartOf' => ['@type' => 'WebSite', 'name' => 'Stories', 'url' => $home],
-            'about' => ['@type' => 'Organization', 'name' => 'Stories', 'url' => $home],
+            'isPartOf' => ['@type' => 'WebSite', 'name' => self::siteName(), 'url' => $home],
+            'about' => ['@type' => 'Organization', 'name' => self::siteName(), 'url' => $home],
         ]);
     }
 
@@ -266,14 +272,14 @@ class StructuredData
             'name' => $name.' — editor',
             'url' => $url,
             'inLanguage' => 'en',
-            'isPartOf' => ['@type' => 'WebSite', 'name' => 'Stories', 'url' => $home],
+            'isPartOf' => ['@type' => 'WebSite', 'name' => self::siteName(), 'url' => $home],
             'mainEntity' => array_filter([
                 '@type' => 'Person',
                 'name' => $name,
                 'url' => $url,
                 'jobTitle' => 'Editor',
                 'email' => $email,
-                'worksFor' => ['@type' => 'Organization', 'name' => 'Stories', 'url' => $home],
+                'worksFor' => ['@type' => 'Organization', 'name' => self::siteName(), 'url' => $home],
             ]),
         ]);
     }
@@ -309,7 +315,7 @@ class StructuredData
             'name' => $category ? $category->name.' stories' : 'All stories',
             'url' => $url,
             'inLanguage' => 'en',
-            'isPartOf' => ['@type' => 'WebSite', 'name' => 'Stories', 'url' => $home],
+            'isPartOf' => ['@type' => 'WebSite', 'name' => self::siteName(), 'url' => $home],
             'mainEntity' => [
                 '@type' => 'ItemList',
                 'numberOfItems' => $stories->total(),

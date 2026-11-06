@@ -4,7 +4,7 @@
      CHỈ ghi điều đúng — không thêm tiểu sử, nơi ở, nghề nghiệp nếu Tuấn chưa xác nhận.
      Không dùng đại từ he/she cho người biên tập: gọi bằng tên. --}}
 @section('title', config('app.editor_name').', editor')
-@section('description', config('app.editor_name').' runs Stories and decides what is published on it. What the editor does, what the AI tools do, and how to get in touch.')
+@section('description', config('app.editor_name').' runs '.config('app.site_name').' and decides what is published on it. What the editor does, what the AI tools do, and how to get in touch.')
 
 @push('head')
 @foreach ($jsonLd as $block)
@@ -20,10 +20,10 @@
   </p>
 
   <h1>{{ config('app.editor_name') }}</h1>
-  <p class="updated">Editor of Stories</p>
+  <p class="updated">Editor of {{ config('app.site_name') }}</p>
 
-  <p>{{ config('app.editor_name') }} runs Stories — this website and the mobile app of the same
-    name — and is the person responsible for everything published here. Every story page says
+  <p>{{ config('app.editor_name') }} runs {{ config('app.site_name') }} — this website and the Stories app for iPhone and iPad
+    — and is the person responsible for everything published here. Every story page says
     <em>Edited by {{ config('app.editor_name') }}</em> and links to this page, so you know who
     that is and what it means.</p>
 

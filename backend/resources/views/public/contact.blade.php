@@ -1,7 +1,7 @@
 @extends('public.layout')
 
-@section('title', 'Contact Stories')
-@section('description', 'How to reach the people who publish Stories — corrections, takedown requests, story suggestions, privacy questions and advertising enquiries.')
+@section('title', 'Contact '.config('app.site_name'))
+@section('description', 'How to reach the people who publish '.config('app.site_name').' — corrections, takedown requests, story suggestions, privacy questions and advertising enquiries.')
 
 @push('head')
 @foreach ($jsonLd as $block)
@@ -54,7 +54,7 @@
   <p>The link to the page you are writing about, what you expected to happen, and what happened
     instead. A screenshot never hurts.</p>
 
-  <h2>Who publishes Stories</h2>
+  <h2>Who publishes {{ config('app.site_name') }}</h2>
   {{-- Tên và địa điểm lấy từ config: PUBLISHER_LOCATION bỏ trống thì mệnh đề
        "based in ..." biến mất hoàn toàn. Đừng viết cứng một địa chỉ ở đây — khai
        sai nơi đặt trụ sở là lỗi khai gian thông tin website, nặng hơn không khai. --}}

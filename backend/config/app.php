@@ -104,6 +104,15 @@ return [
     'editor_name' => env('EDITOR_NAME', 'Tuan Chu'),
 
     /*
+     | Tên của WEBSITE — đuôi mọi <title>, og:site_name, RSS, tên WebSite/Organization trong
+     | JSON-LD. Đổi từ "Stories" sang "TunaStory" ngày 06/11/2026 (Tuấn quyết): Google không
+     | chịu hiện "Stories" làm tên site vì quá chung chung, cứ hiện tên miền thay. Khớp với tên
+     | miền và Page Facebook @tunastorycom. App trên App Store VẪN tên "Stories" — chỗ nào nói
+     | về app thì giữ "Stories".
+     */
+    'site_name' => env('SITE_NAME', 'TunaStory'),
+
+    /*
     | Publisher ID của AdMob (dạng pub-XXXXXXXXXXXXXXXX), dùng để phục vụ
     | /app-ads.txt. Để trống -> route trả 404.
     */

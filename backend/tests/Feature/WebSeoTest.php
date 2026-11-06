@@ -133,7 +133,7 @@ class WebSeoTest extends TestCase
         }
 
         $this->get('/browse?page=2')->assertOk()
-            ->assertSee('<title>Browse all stories — page 2 — Stories</title>', false)
+            ->assertSee('<title>Browse all stories — page 2 — TunaStory</title>', false)
             ->assertSee('Page 2 of 2.')
             ->assertSee('<a href="'.route('public.browse').'" rel="prev">', false)
             ->assertDontSee('page=1"', false)
@@ -215,18 +215,18 @@ class WebSeoTest extends TestCase
         $this->story('plain', ['title' => 'Plain']);
 
         $this->get('/story/office')->assertOk()
-            ->assertSee('<title>The Office My Mother Kept — Twelve hours after my husband slapped me in a crowded restaurant to defend his first love… — Stories</title>', false)
+            ->assertSee('<title>The Office My Mother Kept — Twelve hours after my husband slapped me in a crowded restaurant to defend his first love… — TunaStory</title>', false)
             ->assertSee('<p class="sh-hook">Twelve hours after my husband slapped me', false)
             ->assertSee('<h1>The Office My Mother Kept</h1>', false)
             ->assertSee('"alternateName":"Twelve hours after', false);
         // Dấu chấm cuối câu không lọt vào <title>.
-        $this->get('/story/suit')->assertOk()->assertSee('<title>The Suit — My boss fired me after five years — Stories</title>', false);
+        $this->get('/story/suit')->assertOk()->assertSee('<title>The Suit — My boss fired me after five years — TunaStory</title>', false);
         $this->get('/story/plain')->assertOk()
-            ->assertSee('<title>Plain — Stories</title>', false)
+            ->assertSee('<title>Plain — TunaStory</title>', false)
             ->assertDontSee('<p class="sh-hook">', false)
             ->assertDontSee('alternateName', false);
         // Trang chương giữ tựa ngắn.
-        $this->get('/story/office/chapter/1')->assertOk()->assertSee('<title>The Office My Mother Kept · Chapter 1 — Stories</title>', false);
+        $this->get('/story/office/chapter/1')->assertOk()->assertSee('<title>The Office My Mother Kept · Chapter 1 — TunaStory</title>', false);
     }
 
     public function test_admin_sua_cau_moi_khong_doi_slug(): void
@@ -298,7 +298,7 @@ class WebSeoTest extends TestCase
             $this->story("c$i")->categories()->attach($cat);
         }
 
-        $this->get('/genre/ceo')->assertOk()->assertSee('<title>CEO stories — free to read online — Stories</title>', false);
+        $this->get('/genre/ceo')->assertOk()->assertSee('<title>CEO stories — free to read online — TunaStory</title>', false);
     }
 
     // --- Đợt 02/11/2026: Discover, RSS, IndexNow, nút chia sẻ ---
@@ -419,8 +419,21 @@ class WebSeoTest extends TestCase
     public function test_ten_khac_cua_site_va_same_as(): void
     {
         $this->get('/')->assertOk()
-            ->assertSee('"alternateName":["TunaStory","tunastory.com"]', false)
+            ->assertSee('"alternateName":["Stories","tunastory.com"]', false)
             ->assertSee('"sameAs":["https://www.facebook.com/tunastorycom","https://apps.apple.com/app/id6810302346"]', false);
+    }
+
+    /** 06/11/2026: tên website đổi thành TunaStory ở mọi chỗ Google đọc tên site. */
+    public function test_ten_website_la_tunastory_o_moi_cho_google_doc(): void
+    {
+        $this->get('/')->assertOk()
+            ->assertSee('— TunaStory</title>', false)
+            ->assertSee('<meta property="og:site_name" content="TunaStory">', false)
+            ->assertSee('{"@context":"https://schema.org","@type":"WebSite","name":"TunaStory"', false)
+            ->assertSee('"@type":"Organization","name":"TunaStory"', false)
+            ->assertDontSee('— Stories</title>', false);
+
+        $this->get('/feed.xml')->assertOk()->assertSee('<title>TunaStory — new free short fiction</title>', false);
     }
 
     /** Đợt 6: ảnh bìa gốc (ảnh của bài Facebook) khai cạnh ảnh chia sẻ, cho Google Lens/Hình ảnh. */

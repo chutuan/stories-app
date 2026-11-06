@@ -5,7 +5,7 @@
      xmlns:atom="http://www.w3.org/2005/Atom"
      xmlns:media="http://search.yahoo.com/mrss/">
   <channel>
-    <title>Stories — new free short fiction</title>
+    <title>{{ config('app.site_name') }} — new free short fiction</title>
     <link>{{ route('public.home') }}</link>
     <atom:link href="{{ route('public.feed') }}" rel="self" type="application/rss+xml"/>
     <description>Free short serialised fiction you can finish in one sitting. New stories every day.</description>
@@ -15,7 +15,7 @@
 @endif
     <image>
       <url>{{ asset('icons/icon-180.png') }}</url>
-      <title>Stories — new free short fiction</title>
+      <title>{{ config('app.site_name') }} — new free short fiction</title>
       <link>{{ route('public.home') }}</link>
     </image>
 @foreach ($stories as $story)

@@ -8,7 +8,7 @@
    - thẻ AdSense
 
   Trang con điều khiển bằng:
-   - @section('title')        tiêu đề, KHÔNG kèm "— Stories" (layout tự nối)
+   - @section('title')        tiêu đề, KHÔNG kèm "— TunaStory" (layout tự nối config('app.site_name'))
    - @section('description')  mô tả cho <meta description> và OpenGraph
    - @section('og_image')     ảnh chia sẻ mạng xã hội (mặc định: icon app)
    - @section('og_type')      'website' (mặc định) hoặc 'article' cho trang chương
@@ -30,7 +30,8 @@
      */
     $seo = static fn (string $v): string => e(html_entity_decode($v, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
 
-    $seoTitle = trim($__env->yieldContent('title', 'Stories'));
+    $siteName = (string) config('app.site_name');
+    $seoTitle = trim($__env->yieldContent('title', $siteName));
     $seoDescription = trim($__env->yieldContent(
         'description',
         'Short serialised fiction you can finish in one sitting — family drama, revenge, mystery and second chances.'
@@ -43,7 +44,7 @@
     // không có ảnh, tới lần thứ hai mới hiện.
     $seoImageW = trim($__env->yieldContent('og_image_w', '1200'));
     $seoImageH = trim($__env->yieldContent('og_image_h', '630'));
-    $seoImageAlt = trim($__env->yieldContent('og_image_alt', 'Stories — free short serialised fiction'));
+    $seoImageAlt = trim($__env->yieldContent('og_image_alt', $siteName.' — free short serialised fiction'));
     $seoType = trim($__env->yieldContent('og_type', 'website'));
     // max-image-preview:large: cho Google dùng ảnh LỚN (bìa/ảnh chia sẻ 1200 px) ở kết quả
     // tìm kiếm và Google Discover. Thiếu chỉ thị này Discover chỉ hiện ảnh nhỏ cạnh tiêu đề,
@@ -59,7 +60,7 @@
 {{-- Xác minh quyền sở hữu site với Bing Webmaster Tools (Tuấn thêm 04/11/2026). Không xoá: gỡ là mất quyền. --}}
 <meta name="msvalidate.01" content="C4F4B85BED73D4F437D5672FA3B9F45C" />
 
-<title>{!! $seo($seoTitle) !!} — Stories</title>
+<title>{!! $seo($seoTitle) !!} — {{ $siteName }}</title>
 <meta name="description" content="{!! $seo($seoDescription) !!}">
 <meta name="robots" content="{{ $seoRobots }}">
 {{-- Canonical bỏ chuỗi truy vấn: trang danh sách có ?page= vẫn phải trỏ về
@@ -68,9 +69,9 @@
      rồi in thành ?page=0 — một canonical trỏ vào trang không tồn tại. --}}
 <link rel="canonical" href="{{ url()->current() }}{{ (int) request()->query('page') > 1 ? '?page='.(int) request()->query('page') : '' }}">
 {{-- Cho trình đọc RSS và tiện ích "Follow" của trình duyệt tự tìm ra feed. --}}
-<link rel="alternate" type="application/rss+xml" title="Stories — new free short fiction" href="{{ route('public.feed') }}">
+<link rel="alternate" type="application/rss+xml" title="{{ $siteName }} — new free short fiction" href="{{ route('public.feed') }}">
 
-<meta property="og:site_name" content="Stories">
+<meta property="og:site_name" content="{{ $siteName }}">
 <meta property="og:type" content="{{ $seoType }}">
 <meta property="og:title" content="{!! $seo($seoTitle) !!}">
 <meta property="og:description" content="{!! $seo($seoDescription) !!}">
@@ -929,7 +930,7 @@ window.StoriesHistory = {
       @endforeach
     </div>
     <div>
-      <h2>Stories</h2>
+      <h2>{{ $siteName }}</h2>
       <a href="{{ route('public.about') }}">About</a>
       <a href="{{ route('public.editorial') }}">Editorial standards</a>
       <a href="{{ route('public.contact') }}">Contact</a>
@@ -946,7 +947,7 @@ window.StoriesHistory = {
   </div>
   <div class="foot-bottom">
     @include('public.partials.disclosure')
-    <div style="margin-top:10px">&copy; {{ date('Y') }} Stories</div>
+    <div style="margin-top:10px">&copy; {{ date('Y') }} {{ $siteName }}</div>
   </div>
 </div></footer>
 @include('public.partials.protect')

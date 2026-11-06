@@ -13,8 +13,8 @@
      viết hoa như trong dữ liệu, và cho mỗi thể loại một câu riêng thay vì một
      khuôn mẫu chỉ khác đúng một từ. --}}
 @section('description', ($category
-    ? $stories->total().' free '.$category->name.' serials on Stories — every chapter readable on the web, no account and no payment.'
-    : 'Browse all '.$stories->total().' stories on Stories: short serials about betrayal, family secrets, second chances and overdue revenge, free to read on the web.')
+    ? $stories->total().' free '.$category->name.' serials on '.config('app.site_name').' — every chapter readable on the web, no account and no payment.'
+    : 'Browse all '.$stories->total().' stories on '.config('app.site_name').': short serials about betrayal, family secrets, second chances and overdue revenge, free to read on the web.')
     .($stories->currentPage() > 1 ? ' Page '.$stories->currentPage().' of '.$stories->lastPage().'.' : ''))
 @section('wide', '1')
 @if (! empty($thin))

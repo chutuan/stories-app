@@ -8,7 +8,7 @@
 
 {{-- Tiêu đề bỏ tên chương dài dòng: 47/75 trang từng vượt 60 ký tự nên bị
      Google cắt cụt trên trang kết quả. Tên truyện đứng trước vì đó mới là thứ
-     người ta tìm; layout tự nối ' — Stories'. --}}
+     người ta tìm; layout tự nối ' — TunaStory'. --}}
 @section('title', $story->title.' · Chapter '.$chapter->number)
 @section('description', $metaDescription)
 @section('og_image', route('public.og', $story))
