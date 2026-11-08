@@ -149,7 +149,7 @@ class StoryIngestor
         $story->fill([
             'title' => $data['title'],
             'slug' => $slug,
-            'author' => $data['author'] ?? $story->author,
+            'author' => self::author($data['author'] ?? $story->author),
             'description' => $data['description'] ?? $story->description,
             'hook' => $data['hook'] ?? $story->hook,
             // Truyện đang ra tiếp thì để 'ongoing' rồi nạp thêm chương sau; xong hẳn
@@ -167,6 +167,20 @@ class StoryIngestor
         }
 
         return [$story, $created];
+    }
+
+    /**
+     * Tác giả hiện trong app: bút danh riêng của truyện nếu có (vd. "Nora Calloway"), không thì
+     * bút danh chung `config('app.pen_name')`. "Tuan" là chữ ghi tạm của các gói cũ
+     * (tools/blogbio-sync, 1.221 truyện trong kho chờ đăng) — coi như chưa khai.
+     */
+    private static function author(?string $author): string
+    {
+        $author = trim((string) $author);
+
+        return $author === '' || strcasecmp($author, 'Tuan') === 0
+            ? (string) config('app.pen_name')
+            : $author;
     }
 
     /**

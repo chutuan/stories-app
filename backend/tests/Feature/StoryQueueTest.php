@@ -73,6 +73,23 @@ class StoryQueueTest extends TestCase
         ])->assertSuccessful();
     }
 
+    public function test_goi_cu_ghi_tuan_hoac_khong_khai_tac_gia_thi_app_hien_but_danh_chung(): void
+    {
+        config(['app.pen_name' => 'Ethan Caldwell']);
+        $noAuthor = $this->bundle('b', 'story-b');
+        unset($noAuthor['story']['author']);
+        $ownPen = $this->bundle('c', 'story-c');
+        $ownPen['story']['author'] = 'Nora Calloway';
+        $this->queue([$this->bundle('a', 'story-a'), $noAuthor, $ownPen]);
+
+        $this->artisan('stories:release-queued', ['--count' => 3])->assertSuccessful();
+
+        $this->assertSame(
+            ['story-a' => 'Ethan Caldwell', 'story-b' => 'Ethan Caldwell', 'story-c' => 'Nora Calloway'],
+            Story::orderBy('id')->pluck('author', 'slug')->all(),
+        );
+    }
+
     public function test_xep_hang_khong_dang_ngay_va_giu_thu_tu(): void
     {
         $this->queue([$this->bundle('a', 'story-a'), $this->bundle('b', 'story-b')]);

@@ -219,7 +219,8 @@ def main():
                 if len(content) < 500:
                     problems.append(f'{slug} chương {n}: chỉ {len(content)} ký tự')
                 chapters.append({'number': n, 'title': ch_title, 'content': content})
-        story = {'title': title[:255], 'slug': slug, 'author': 'Tuan', 'status': 'completed'}
+        # Không khai 'author': server tự điền bút danh chung (config app.pen_name).
+        story = {'title': title[:255], 'slug': slug, 'status': 'completed'}
         if sid in meta:
             story['categories'] = meta[sid]['categories']
             story['description'] = meta[sid]['description']
