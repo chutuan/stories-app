@@ -164,7 +164,7 @@ return [
     /*
     | Ngày cập nhật văn bản pháp lý, hiện trên trang Privacy và Terms.
     */
-    'legal_updated' => env('LEGAL_UPDATED', '1 November 2026'),
+    'legal_updated' => env('LEGAL_UPDATED', '8 November 2026'),
 
     /*
     |--------------------------------------------------------------------------

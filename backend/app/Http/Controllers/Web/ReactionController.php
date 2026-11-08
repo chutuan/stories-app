@@ -99,12 +99,8 @@ class ReactionController extends Controller
      */
     public static function summary(Chapter $chapter, Request $request, ?string $visitorId = null): array
     {
-        $rows = ChapterReaction::query()
-            ->where('chapter_id', $chapter->getKey())
-            ->selectRaw('COUNT(*) AS c, AVG(score) AS a')
-            ->first();
-
-        $count = (int) ($rows->c ?? 0);
+        $totals = self::totals($chapter);
+        $count = $totals['count'];
 
         // Người bấm lần đầu: cookie mới chỉ ĐANG được đặt trong response, request
         // hiện tại chưa có nó. Đọc lại từ request lúc này sẽ sinh ra một mã mới
@@ -116,13 +112,30 @@ class ReactionController extends Controller
             ->where('visitor_hash', self::hash($visitorId))
             ->value('score');
 
+        return $totals + ['mine' => $mine ? (int) $mine : null];
+    }
+
+    /**
+     * Số phiếu và điểm trung bình của một chương — dùng chung cho web và app (phiếu của hai
+     * bên nằm chung bảng chapter_reactions).
+     *
+     * @return array{count: int, average: float|null}
+     */
+    public static function totals(Chapter $chapter): array
+    {
+        $rows = ChapterReaction::query()
+            ->where('chapter_id', $chapter->getKey())
+            ->selectRaw('COUNT(*) AS c, AVG(score) AS a')
+            ->first();
+
+        $count = (int) ($rows->c ?? 0);
+
         return [
             'count' => $count,
             // Trung bình chỉ hiện khi đã có từ 3 phiếu: một phiếu duy nhất không
             // nói lên điều gì, mà hiện "1,0/5" dưới một chương vừa đăng thì vừa
             // gây hiểu nhầm vừa làm nản người đọc tiếp theo.
             'average' => $count >= 3 ? round((float) $rows->a, 1) : null,
-            'mine' => $mine ? (int) $mine : null,
         ];
     }
 }

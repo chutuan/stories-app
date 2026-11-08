@@ -26,6 +26,9 @@ class ChapterResource extends JsonResource
             'audio_url' => $this->audio_url,
             'prev' => $this->prev,
             'next' => $this->next,
+            // Năm khuôn mặt cuối chương (app ≥ 1.0.4): số phiếu + điểm trung bình (null khi < 3
+            // phiếu). Phiếu của chính máy này app tự nhớ, không hỏi server.
+            'reaction' => $this->reaction_totals,
             'story' => [
                 'id' => $this->story->id,
                 'title' => $this->story->title,

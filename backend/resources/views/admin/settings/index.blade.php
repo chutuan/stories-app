@@ -10,7 +10,7 @@
     <div class="card-body">
         <h2 class="h5">Khi không có quảng cáo thưởng</h2>
         <p class="text-muted">
-            Người đọc bấm <strong>Watch ad · +90 coins</strong> nhưng AdMob không trả quảng cáo
+            Người đọc bấm <strong>Watch ad</strong> (app ≥ 1.0.4: +60 coins; bản cũ hơn: +90) nhưng AdMob không trả quảng cáo
             (hết hàng, chặn quảng cáo, lỗi mạng tới Google).
         </p>
         <div class="alert alert-info small">
@@ -29,7 +29,8 @@
         <ul class="small text-muted mb-4">
             <li>Chỉ cấp vừa đủ để mở <strong>một</strong> chương (tối đa 30 xu), và chỉ khi số dư dưới 30.</li>
             <li>Ở tab Rewards, không có quảng cáo thì <strong>không bao giờ</strong> cấp xu.</li>
-            <li>Tắt đi thì người thiếu xu mà không có quảng cáo chỉ còn điểm danh và mốc thời gian đọc.
+            <li>Tắt đi thì người thiếu xu mà không có quảng cáo chỉ còn mốc thời gian đọc (app ≥ 1.0.4 đã bỏ điểm danh).
+                Mốc 10 phút chỉ cho 15 xu, chưa đủ một chương.
                 Đây là tình huống làm Apple từ chối bản 1.0(3) (Guideline 2.1(a)), nên chỉ tắt khi đã
                 chắc AdMob có đủ quảng cáo.</li>
         </ul>
@@ -39,7 +40,7 @@
                name="ad_fallback_daily_limit" min="0" max="{{ $limitMax }}" required
                value="{{ old('ad_fallback_daily_limit', $settings['ad_fallback_daily_limit']) }}">
         <div class="form-text">0 – {{ $limitMax }}. Mặc định 2 = tối đa 2 chương mỗi ngày không cần quảng cáo.
-            Lượt xem quảng cáo thật vẫn +90 xu, 4 lượt/ngày như cũ.</div>
+            Lượt xem quảng cáo thật: app ≥ 1.0.4 +60 xu, không giới hạn lượt; app ≤ 1.0.3 +90 xu, 4 lượt/ngày.</div>
 
         <div class="alert alert-warning small mt-4 mb-0">
             <p class="mb-2">Đây là chính sách chung cho <strong>mọi người dùng, kể cả Apple</strong>.

@@ -11,8 +11,12 @@ use Illuminate\Http\JsonResponse;
 
 class HomeController extends Controller
 {
-    /** Số ứng viên nổi bật gửi về app: app bỏ qua truyện người dùng đã đọc hết rồi lấy truyện kế. */
-    private const FEATURED_POOL = 10;
+    /**
+     * Số ứng viên nổi bật gửi về app. App ≥ 1.0.4 bỏ qua truyện người dùng đã MỞ (dù chỉ một
+     * chương) rồi lấy truyện kế; bản cũ chỉ bỏ truyện đã đọc hết. 20 để người đọc nhiều vẫn
+     * còn truyện mới trên dải nổi bật.
+     */
+    private const FEATURED_POOL = 20;
 
     /** Số truyện mỗi hàng "Most read this week"/"Newest" của app. */
     private const SHELF_SIZE = 14;

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Web\ReactionController;
 use App\Http\Resources\ChapterResource;
 use App\Models\Chapter;
 use App\Models\Story;
@@ -43,6 +44,7 @@ class ChapterController extends Controller
         $chapter->setRelation('story', $story);
         $chapter->prev = $prev !== null ? (int) $prev : null;
         $chapter->next = $next !== null ? (int) $next : null;
+        $chapter->reaction_totals = ReactionController::totals($chapter);
 
         return new ChapterResource($chapter);
     }

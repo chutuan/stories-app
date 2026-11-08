@@ -8,11 +8,16 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Một phiếu hài lòng cho một chương. Chỉ dùng ở bản web.
+ * Một phiếu hài lòng (1–5, năm khuôn mặt) cho một chương, từ web hoặc app.
  *
- * KHÔNG bao giờ phơi qua API cho ứng dụng di động: hồ sơ gửi Apple khai app không
- * có bình luận và không có tính năng xã hội. Phiếu này tuy chỉ là một con số,
- * nhưng để nguyên ranh giới đó cho sạch.
+ * Web: Web\ReactionController, người bấm nhận diện bằng cookie `sid`.
+ * App (từ 1.0.4, Tuấn yêu cầu 08/11/2026): Api\ChapterReactionController, nhận diện bằng
+ * mã ngẫu nhiên app tự sinh và giữ trong máy — băm với tiền tố "app:" nên không lẫn với
+ * cookie web. Cả hai chỉ lưu bản băm HMAC, không lưu mã gốc.
+ *
+ * Chỉ là một con số, KHÔNG có chữ người dùng viết: không phải bình luận hay nội dung do
+ * người dùng tạo theo nghĩa Guideline 1.2, nên không cần báo cáo/chặn. Đừng thêm ô chữ
+ * vào đây mà không tính lại chuyện đó.
  */
 class ChapterReaction extends Model
 {
