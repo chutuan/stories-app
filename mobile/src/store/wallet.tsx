@@ -3,12 +3,12 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 
 // ---- Kinh tế xu (SPEC §8) ----
 /**
- * Xu của LƯỢT xem quảng cáo ĐẦU TIÊN trong ngày. Các lượt sau trả theo bậc
- * `AD_TASKS` trong `store/rewards` (30/30/40/50) — hằng số này chỉ là mức nền,
- * mọi khoản thưởng thật đều do `recordAdWatch()` quyết định.
+ * Xu cho MỖI lượt xem hết một quảng cáo có thưởng. Không giới hạn lượt trong ngày (từ
+ * 1.0.4); 60 = 2 chương. Bản ≤ 1.0.3 là 90 xu × tối đa 4 lượt/ngày. Cộng xu thật luôn đi
+ * qua `recordAdWatch()` trong store/rewards.
  */
-export const COIN_PER_REWARD = 90;
-/** Giá mở 1 chương. Bằng đúng 1 lượt quảng cáo -> xem 1 quảng cáo mở 1 chương. */
+export const COIN_PER_REWARD = 60;
+/** Giá mở 1 chương. Một lượt quảng cáo (COIN_PER_REWARD) mở được 2 chương. */
 export const COIN_PER_CHAPTER = 30;
 /**
  * Xu tặng khi cài mới. 90 = đúng 3 chương (COIN_PER_CHAPTER = 30).

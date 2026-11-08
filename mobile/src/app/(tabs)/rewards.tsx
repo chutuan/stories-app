@@ -27,18 +27,10 @@ import {
 } from '@/constants/theme';
 import { AboutLinks } from '@/components/about-links';
 import { showRewarded } from '@/lib/ads';
-import { formatCoins } from '@/lib/format';
+import { formatCoins, plural } from '@/lib/format';
 import { CONTENT_MAX_WIDTH, useResponsive } from '@/lib/responsive';
-import {
-  AD_MAX_COINS,
-  AD_TASKS,
-  AD_TASK_LIMIT,
-  CHECKIN_COINS,
-  READING_MILESTONES,
-  WEEKDAY_LABELS,
-  useRewards,
-} from '@/store/rewards';
-import { useWallet } from '@/store/wallet';
+import { AD_REWARD, READING_MILESTONES, useRewards } from '@/store/rewards';
+import { COIN_PER_CHAPTER, useWallet } from '@/store/wallet';
 
 /**
  * TRANG PHẦN THƯỞNG.
@@ -52,7 +44,7 @@ import { useWallet } from '@/store/wallet';
 /* ------------------------------------------------------------------ */
 
 /** Cửa sổ rộng từ chừng này (iPad 12,9"/13" dọc, mọi iPad xoay ngang) thì chia hai cột thẻ,
- *  mỗi cột ~470pt — vừa đủ cho thanh 4 mốc và hàng 7 ngày điểm danh. */
+ *  mỗi cột ~470pt — vừa đủ cho thanh 4 mốc thời gian đọc. */
 const REWARDS_SPLIT_MIN = 960;
 const REWARDS_SPLIT_MAX_WIDTH = 1040;
 /** bề rộng 1 ô mốc (vòng tròn + nhãn dưới) */
@@ -62,11 +54,8 @@ const NODE_SIZE = 38;
 /** độ dày đường ray */
 const RAIL_HEIGHT = 6;
 
-type TrackTone = 'accent' | 'coin';
+type TrackTone = 'accent';
 type NodeState = 'done' | 'ready' | 'todo';
-
-/** Màu vàng xu cho thanh tiến trình — tuple readonly cho LinearGradient SDK 57. */
-const COIN_FILL = [Palette.coinSoft, Palette.coin] as const;
 
 const TRACK_TONES = {
   accent: {
@@ -74,12 +63,6 @@ const TRACK_TONES = {
     on: Palette.onAccent,
     deep: Palette.accentDeep,
     fill: Gradients.accent,
-  },
-  coin: {
-    solid: Palette.coin,
-    on: Palette.onLight,
-    deep: Palette.coinDeep,
-    fill: COIN_FILL,
   },
 } as const;
 
@@ -226,12 +209,6 @@ function RewardsContent() {
   const { coins } = useWallet();
   const {
     ready,
-    today,
-    weekDays,
-    checkedDays,
-    checkedToday,
-    todayCheckInCoins,
-    checkIn,
     readingMinutes,
     readingClaimed,
     claimableReading,
@@ -239,7 +216,6 @@ function RewardsContent() {
     claimReading,
     adsWatched,
     adsCoins,
-    nextAdCoins,
     recordAdWatch,
   } = useRewards();
 
@@ -290,32 +266,9 @@ function RewardsContent() {
     router.navigate('/');
   }, [claimableReading, claimReading, notify, router]);
 
-  // --- Điểm danh ---
-  const onCheckIn = useCallback(() => {
-    const got = checkIn();
-    if (got > 0) {
-      notify(`Checked in, +${formatCoins(got)}!`, true);
-    } else {
-      notify("You've already checked in today. Come back tomorrow!", false);
-    }
-  }, [checkIn, notify]);
-
-  // --- Nhiệm vụ quảng cáo ---
-  const adItems = useMemo<TrackItem[]>(
-    () =>
-      AD_TASKS.map((coinValue, i) => ({
-        key: `ad-${i}`,
-        value: `+${coinValue}`,
-        label: `Task ${i + 1}`,
-        state: i < adsWatched ? 'done' : i === adsWatched ? 'ready' : 'todo',
-      })),
-    [adsWatched],
-  );
-
-  const adsDone = adsWatched >= AD_TASK_LIMIT;
-
+  // --- Xem quảng cáo: không giới hạn lượt ---
   const onWatchAd = useCallback(async () => {
-    if (watchingAd || adsDone) return;
+    if (watchingAd) return;
     setWatchingAd(true);
     try {
       const { rewarded, unavailable } = await showRewarded();
@@ -324,7 +277,7 @@ function RewardsContent() {
       //
       // Bản 1.0(4)–(7) cấp +90 cả khi không có quảng cáo, để không ai bị kẹt (lỗi
       // Guideline 2.1(a) của bản 1.0(3)). Nhưng ở tab này không ai đang kẹt cả, và
-      // thế là ai chặn quảng cáo cũng bấm 4 lần/ngày lấy 360 xu. Việc chống kẹt giờ
+      // thế là ai chặn quảng cáo cũng bấm liên tục lấy xu không. Việc chống kẹt giờ
       // nằm ở màn chương bị khoá: thiếu xu mà không có quảng cáo thì cấp bù vừa đủ
       // một chương (xem handleWatchAd trong reader và store/config).
       if (unavailable) {
@@ -336,17 +289,13 @@ function RewardsContent() {
         return;
       }
       const got = recordAdWatch();
-      if (got > 0) {
-        notify(`Got +${formatCoins(got)} from the ad!`, true);
-      } else {
-        notify("You've earned all ad coins for today.", false);
-      }
+      if (got > 0) notify(`Got +${formatCoins(got)} from the ad!`, true);
     } catch {
       notify('Could not load the ad, please try again later.', false);
     } finally {
       setWatchingAd(false);
     }
-  }, [watchingAd, adsDone, recordAdWatch, notify]);
+  }, [watchingAd, recordAdWatch, notify]);
 
   // --- Chữ phụ dưới nút lớn ---
   const readHint = nextReading
@@ -407,39 +356,8 @@ function RewardsContent() {
     </View>
   );
 
-  /* --- Điểm danh hằng ngày --- */
-  const checkInTile = (
-    <View style={styles.tileRow}>
-      <Pressable
-        onPress={onCheckIn}
-        disabled={!ready || checkedToday}
-        accessibilityRole="button"
-        style={({ pressed }) => [styles.tile, pressed && styles.pressed]}>
-        <View
-          style={[
-            styles.tileIcon,
-            { backgroundColor: checkedToday ? Palette.freeDim : Palette.accentDim },
-          ]}>
-          <Ionicons
-            name={checkedToday ? 'checkmark-done' : 'calendar'}
-            size={19}
-            color={checkedToday ? Palette.freeDeep : Palette.accentDeep}
-          />
-        </View>
-        <Text style={styles.tileTitle}>Check in</Text>
-        <Text
-          style={[
-            styles.tileStatus,
-            { color: checkedToday ? Palette.freeDeep : Palette.accentDeep },
-          ]}
-          numberOfLines={1}>
-          {checkedToday ? 'Checked in' : `Get +${formatCoins(todayCheckInCoins)}`}
-        </Text>
-      </Pressable>
-    </View>
-  );
-
-  /* --- Nhiệm vụ quảng cáo --- */
+  /* --- Xem quảng cáo (không giới hạn) --- */
+  const chaptersPerAd = Math.floor(AD_REWARD / COIN_PER_CHAPTER);
   const adsCard = (
     <View style={styles.card}>
       <View style={styles.cardHead}>
@@ -447,108 +365,44 @@ function RewardsContent() {
           <Ionicons name="videocam" size={17} color={Palette.coinDeep} />
         </View>
         <View style={styles.cardHeadText}>
-          <Text style={styles.cardTitle}>Daily ad tasks</Text>
+          <Text style={styles.cardTitle}>Watch ads</Text>
           <Text style={styles.cardSub}>
-            Earned <Text style={styles.cardSubStrong}>{adsCoins}</Text> / {AD_MAX_COINS} coins
+            <Text style={styles.cardSubStrong}>+{AD_REWARD}</Text> coins for every ad · no daily limit
           </Text>
         </View>
+        {adsWatched > 0 ? (
+          <View style={[styles.cardBadge, styles.cardBadgeCoin]}>
+            <Text style={[styles.cardBadgeText, styles.cardBadgeTextCoin]}>
+              {adsWatched} today
+            </Text>
+          </View>
+        ) : null}
       </View>
-
-      <MilestoneTrack
-        items={adItems}
-        position={adsWatched > 0 ? adsWatched - 1 : 0}
-        tone="coin"
-      />
 
       <Pressable
         onPress={onWatchAd}
-        disabled={!ready || adsDone || watchingAd}
+        disabled={!ready || watchingAd}
         accessibilityRole="button"
+        accessibilityLabel={`Watch an ad to get ${formatCoins(AD_REWARD)}`}
         style={({ pressed }) => [
           styles.adButton,
-          (adsDone || !ready) && styles.adButtonOff,
+          !ready && styles.adButtonOff,
           pressed && styles.pressed,
         ]}>
         {watchingAd ? (
           <ActivityIndicator size="small" color={Palette.coinDeep} />
         ) : (
-          <Ionicons
-            name={adsDone ? 'checkmark-circle' : 'play-circle'}
-            size={19}
-            color={adsDone ? Palette.freeDeep : Palette.coinDeep}
-          />
+          <Ionicons name="play-circle" size={19} color={Palette.coinDeep} />
         )}
-        <Text
-          style={[styles.adButtonText, adsDone && { color: Palette.freeDeep }]}
-          numberOfLines={1}>
-          {watchingAd
-            ? 'Loading ad…'
-            : adsDone
-              ? 'All done for today'
-              : `Watch ad · +${formatCoins(nextAdCoins)}`}
+        <Text style={styles.adButtonText} numberOfLines={1}>
+          {watchingAd ? 'Loading ad…' : `Watch ad · +${formatCoins(AD_REWARD)}`}
         </Text>
       </Pressable>
 
       <Text style={styles.adHint}>
-        {Math.max(0, AD_TASK_LIMIT - adsWatched)} left today
-      </Text>
-    </View>
-  );
-
-  /* --- Lịch điểm danh tuần --- */
-  const weekCard = (
-    <View style={styles.card}>
-      <View style={styles.cardHead}>
-        <View style={[styles.cardIcon, { backgroundColor: Palette.accentDim }]}>
-          <Ionicons name="calendar-number" size={17} color={Palette.accentDeep} />
-        </View>
-        <View style={styles.cardHeadText}>
-          <Text style={styles.cardTitle}>This week</Text>
-          <Text style={styles.cardSub}>Checked in {checkedDays.length}/7 days</Text>
-        </View>
-      </View>
-
-      <View style={styles.weekRow}>
-        {weekDays.map((day, i) => {
-          const checked = checkedDays.includes(day);
-          const isToday = day === today;
-          const weekend = i === 0 || i === 6;
-          return (
-            <View key={day} style={styles.dayCell}>
-              <Text style={[styles.dayLabel, isToday && styles.dayLabelToday]} numberOfLines={1}>
-                {WEEKDAY_LABELS[i]}
-              </Text>
-              <View
-                style={[
-                  styles.dayCircle,
-                  weekend && !checked && styles.dayCircleWeekend,
-                  checked && styles.dayCircleChecked,
-                  isToday && !checked && styles.dayCircleToday,
-                ]}>
-                {checked ? (
-                  <Ionicons name="checkmark" size={16} color={Palette.onAccent} />
-                ) : weekend ? (
-                  <Ionicons name="gift" size={16} color={Palette.coinDeep} />
-                ) : (
-                  <Text
-                    style={[styles.dayCoins, isToday && { color: Palette.accentDeep }]}
-                    numberOfLines={1}>
-                    {CHECKIN_COINS[i]}
-                  </Text>
-                )}
-              </View>
-              <Text
-                style={[styles.dayCoinsLabel, checked && { color: Palette.freeDeep }]}
-                numberOfLines={1}>
-                +{CHECKIN_COINS[i]}
-              </Text>
-            </View>
-          );
-        })}
-      </View>
-
-      <Text style={styles.weekHint}>
-        Check in every day to keep your streak. Saturday and Sunday give bigger rewards.
+        {adsCoins > 0
+          ? `You've earned +${formatCoins(adsCoins)} from ads today`
+          : `Each ad unlocks ${plural(chaptersPerAd, 'chapter', 'chapters')}`}
       </Text>
     </View>
   );
@@ -604,11 +458,9 @@ function RewardsContent() {
         <View style={styles.split}>
           <View style={styles.splitCol}>
             {milestonesCard}
-            {adsCard}
           </View>
           <View style={styles.splitCol}>
-            {checkInTile}
-            {weekCard}
+            {adsCard}
             {/* Link quyền riêng tư / điều khoản / liên hệ — Guideline 5.1.1(i). */}
             <AboutLinks />
           </View>
@@ -616,9 +468,7 @@ function RewardsContent() {
       ) : (
         <>
           {milestonesCard}
-          {checkInTile}
           {adsCard}
-          {weekCard}
           {/* Link quyền riêng tư / điều khoản / liên hệ — Guideline 5.1.1(i). */}
           <AboutLinks />
         </>
@@ -795,6 +645,13 @@ const styles = StyleSheet.create({
     fontSize: FontSize.tiny,
     fontWeight: FontWeight.bold,
   },
+  cardBadgeCoin: {
+    backgroundColor: Palette.coinDim,
+    borderColor: Palette.coinBorder,
+  },
+  cardBadgeTextCoin: {
+    color: Palette.coinDeep,
+  },
 
   // --- Thanh mốc ---
   track: {
@@ -879,42 +736,6 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.bold,
   },
 
-  // --- Hai ô nhỏ ---
-  tileRow: {
-    flexDirection: 'row',
-    gap: Spacing.gutter,
-  },
-  tile: {
-    flex: 1,
-    backgroundColor: Palette.surface,
-    borderRadius: Radius.card,
-    paddingVertical: Spacing.lg,
-    paddingHorizontal: Spacing.md,
-    alignItems: 'center',
-    gap: Spacing.sm,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Palette.border,
-    ...Shadow.card,
-  },
-  tileIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: Radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tileTitle: {
-    color: Palette.text,
-    fontSize: FontSize.small,
-    fontWeight: FontWeight.bold,
-    textAlign: 'center',
-  },
-  tileStatus: {
-    fontSize: FontSize.tiny,
-    fontWeight: FontWeight.semibold,
-    textAlign: 'center',
-  },
-
   // --- Nút quảng cáo ---
   adButton: {
     flexDirection: 'row',
@@ -942,68 +763,6 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.medium,
     textAlign: 'center',
     marginTop: -Spacing.md,
-  },
-
-  // --- Lịch tuần ---
-  weekRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: Spacing.xs,
-  },
-  dayCell: {
-    flex: 1,
-    alignItems: 'center',
-    gap: Spacing.xs,
-  },
-  dayLabel: {
-    color: Palette.muted,
-    fontSize: FontSize.tiny,
-    fontWeight: FontWeight.semibold,
-  },
-  dayLabelToday: {
-    color: Palette.accentDeep,
-    fontWeight: FontWeight.bold,
-  },
-  dayCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: Radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Palette.surfaceAlt,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Palette.border,
-  },
-  dayCircleWeekend: {
-    backgroundColor: Palette.coinDim,
-    borderColor: Palette.coinBorder,
-  },
-  dayCircleChecked: {
-    backgroundColor: Palette.accentDeep,
-    borderColor: Palette.accentDeep,
-  },
-  dayCircleToday: {
-    borderWidth: 2,
-    borderColor: Palette.accentDeep,
-    backgroundColor: Palette.accentDim,
-  },
-  dayCoins: {
-    color: Palette.faint,
-    fontSize: FontSize.tiny,
-    fontWeight: FontWeight.bold,
-  },
-  dayCoinsLabel: {
-    color: Palette.faint,
-    fontSize: 10,
-    fontWeight: FontWeight.semibold,
-  },
-  weekHint: {
-    color: Palette.faint,
-    fontSize: FontSize.tiny,
-    fontWeight: FontWeight.medium,
-    lineHeight: LineHeight.caption,
-    textAlign: 'center',
-    marginTop: -Spacing.sm,
   },
 
   // --- Chung ---

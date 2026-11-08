@@ -180,8 +180,8 @@ const INLINE_W = 300;
 const INLINE_H = 250;
 
 /**
- * Ô quảng cáo 300×250 chen trong nội dung chương: một ô khoảng 40% chương (chương
- * đủ dài) và một ô sau dòng "End of Chapter" — xem màn đọc.
+ * Ô quảng cáo 300×250 chen trong nội dung chương: một hoặc hai ô trong thân chương tuỳ độ
+ * dài (inContentAdSlots ở màn đọc) và một ô sau dòng "End of Chapter".
  *
  * GIỮ CHỖ ĐỦ 250pt ngay từ đầu, không để ô nở ra khi quảng cáo về: chữ bên dưới mà
  * nhảy xuống đúng lúc người đọc chạm màn hình là bấm nhầm vào quảng cáo — AdMob tính

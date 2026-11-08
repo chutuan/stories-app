@@ -82,6 +82,14 @@ export interface Chapter {
   prev: number | null;
   next: number | null;
   story: { id: number; title: string; free_chapters: number };
+  /** Năm khuôn mặt cuối chương. Server trước 08/11/2026 không có trường này. */
+  reaction?: ReactionTotals;
+}
+
+/** Số phiếu chấm chương (thang 1–5) và điểm trung bình — null khi chưa đủ 3 phiếu. */
+export interface ReactionTotals {
+  count: number;
+  average: number | null;
 }
 
 export interface HomeData {
@@ -209,4 +217,24 @@ export function getConfig(): Promise<AppConfig> {
 
 export function getChapter(storyId: number | string, number: number | string): Promise<Chapter> {
   return request<Chapter>(`/stories/${storyId}/chapters/${number}`);
+}
+
+/**
+ * Chấm một chương (1 = Hated it … 5 = Loved it). Bấm lại là đổi phiếu, không nhân đôi.
+ * `readerId`: mã ngẫu nhiên app tự sinh và giữ trong máy (xem components/chapter-reaction).
+ */
+export async function reactToChapter(
+  storyId: number | string,
+  number: number | string,
+  score: number,
+  readerId: string,
+): Promise<ReactionTotals & { mine: number }> {
+  const path = `/stories/${storyId}/chapters/${number}/reaction`;
+  const res = await fetch(`${API_URL}${path}`, {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ score, reader_id: readerId }),
+  });
+  if (!res.ok) throw new ApiError(res.status, path);
+  return (await res.json()) as ReactionTotals & { mine: number };
 }

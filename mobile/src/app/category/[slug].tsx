@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -32,6 +32,7 @@ import {
 import { getCategories, getStories, type Category, type StoryCard } from '@/lib/api';
 import { plural } from '@/lib/format';
 import { useResponsive } from '@/lib/responsive';
+import { useHideFinished } from '@/store/history';
 
 /** Số thẻ giả hiển thị khi lưới đang tải. */
 const SKELETON_COUNT = 6;
@@ -52,6 +53,10 @@ export default function CategoryScreen() {
 
   // --- Danh sách truyện, phân trang 20/trang ---
   const [items, setItems] = useState<StoryCard[]>([]);
+  // Truyện đã đọc hết không hiện nữa (như trang chủ). Trang ít thẻ đi thì FlatList tự gọi
+  // onEndReached tải trang sau.
+  const hideFinished = useHideFinished();
+  const visible = useMemo(() => hideFinished(items), [hideFinished, items]);
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -197,7 +202,7 @@ export default function CategoryScreen() {
       ) : (
         /* số truyện đã hiện ở banner nên dòng đầu danh sách nói cách sắp xếp */
         <FlatList
-          data={items}
+          data={visible}
           keyExtractor={(item) => String(item.id)}
           // FlatList không đổi numColumns tại chỗ được: xoay máy / kéo cửa sổ thì dựng lại.
           key={`grid-${columns}`}
@@ -208,6 +213,11 @@ export default function CategoryScreen() {
           onEndReached={loadMore}
           onEndReachedThreshold={0.4}
           ListHeaderComponent={<Text style={styles.countText}>Sorted by recently updated</Text>}
+          ListEmptyComponent={
+            loadingMore ? null : (
+              <Text style={styles.countText}>You&apos;ve finished every story in this genre so far.</Text>
+            )
+          }
           ListFooterComponent={
             loadingMore ? (
               <View style={styles.footer}>

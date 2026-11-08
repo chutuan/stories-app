@@ -7,7 +7,7 @@ Mọi tên endpoint, tên field JSON phải khớp CHÍNH XÁC giữa 2 bên.
 - Backend: Laravel + MySQL. Hai vai trò: (a) **Admin web** (Blade) để CRUD thể loại/truyện/chương + upload ảnh; (b) **REST API** công khai cho mobile đọc.
 - Mobile: Expo + TypeScript + expo-router. Chế độ **guest** (không đăng nhập). Xu và danh sách chương đã mở khóa lưu **local** bằng AsyncStorage.
 - Kiếm tiền: **Banner** (trên cùng màn đọc) + **Rewarded** (AdMob).
-- Kinh tế xu: 1 rewarded xem hết = **+90 xu**. Mở 1 chương = **30 xu** (1 quảng cáo = 3 chương).
+- Kinh tế xu: 1 rewarded xem hết = **+60 xu**, không giới hạn lượt (từ app 1.0.4). Mở 1 chương = **30 xu** (1 quảng cáo = 2 chương).
 - Khóa chương: **Chương 1 miễn phí**, **chương 2 trở đi khóa** (theo `story.free_chapters`, mặc định 1).
 
 ## 2. Data model (MySQL)

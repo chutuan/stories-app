@@ -10,10 +10,25 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
  *
  * Mỗi truyện MỘT dòng (đọc lại thì cập nhật chương và đẩy lên đầu), tối đa
  * HISTORY_LIMIT truyện — dài hơn nữa thì không ai cuộn tới, chỉ tốn chỗ lưu.
+ *
+ * Song song là SỔ TIẾN ĐỘ (`stories:progress`, storyId -> chương xa nhất từng mở) cho MỌI
+ * truyện, không cắt ở HISTORY_LIMIT: nó quyết định truyện nào "đã đọc" (không lên dải nổi
+ * bật) và "đã đọc hết" (không hiện trong danh sách nữa). Nếu chỉ dựa vào lịch sử 100 dòng,
+ * người đọc nhiều sẽ thấy truyện đọc xong từ lâu quay lại. Từ 1.0.4; lần đầu mở bản mới thì
+ * sổ được dựng từ lịch sử sẵn có.
  */
 
 export const HISTORY_LIMIT = 100;
 const KEY_HISTORY = 'stories:history';
+const KEY_PROGRESS = 'stories:progress';
+/**
+ * Trần sổ tiến độ (~15 byte/truyện). Quá thì bỏ truyện có id NHỎ nhất (truyện lên kệ sớm nhất):
+ * khoá số của object JS luôn xếp theo số tăng dần, không theo thứ tự ghi. Kho hiện ~500 truyện.
+ */
+const PROGRESS_LIMIT = 5000;
+
+/** storyId -> chương xa nhất từng mở. */
+export type Progress = Record<number, number>;
 
 export interface HistoryEntry {
   storyId: number;
@@ -45,6 +60,8 @@ export function isFinished(entry: HistoryEntry, lastChapter?: number | null): bo
 interface HistoryContextValue {
   /** mới nhất trước */
   entries: HistoryEntry[];
+  /** sổ tiến độ mọi truyện từng mở — xem đầu file */
+  progress: Progress;
   ready: boolean;
   /** Ghi một lượt đọc. Gọi lặp lại cùng truyện + chương thì chỉ cập nhật, không thêm dòng. */
   record: (input: HistoryInput) => void;
@@ -53,6 +70,31 @@ interface HistoryContextValue {
 }
 
 const HistoryContext = createContext<HistoryContextValue | null>(null);
+
+function parseProgress(raw: string | null): Progress {
+  if (!raw) return {};
+  try {
+    const data: unknown = JSON.parse(raw);
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return {};
+    const out: Progress = {};
+    for (const [id, max] of Object.entries(data as Record<string, unknown>)) {
+      if (typeof max === 'number' && Number.isFinite(max) && /^\d+$/.test(id)) out[Number(id)] = max;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+/** Ghi chương xa nhất của một truyện; trả về CHÍNH object cũ nếu không có gì đổi. */
+function bumpProgress(progress: Progress, storyId: number, chapter: number): Progress {
+  const prev = progress[storyId];
+  if (prev != null && prev >= chapter) return progress;
+  const next: Progress = { ...progress, [storyId]: Math.max(prev ?? 0, chapter) };
+  const ids = Object.keys(next);
+  for (const old of ids.slice(0, Math.max(0, ids.length - PROGRESS_LIMIT))) delete next[Number(old)];
+  return next;
+}
 
 /** Đọc lại dữ liệu đã lưu; dòng hỏng thì bỏ, không làm hỏng cả danh sách. */
 function parse(raw: string | null): HistoryEntry[] {
@@ -93,10 +135,28 @@ type HistoryOp =
   | { type: 'remove'; storyId: number }
   | { type: 'clear' };
 
-function applyOp(list: HistoryEntry[], op: HistoryOp): HistoryEntry[] {
-  if (op.type === 'clear') return [];
-  if (op.type === 'remove') return list.filter((e) => e.storyId !== op.storyId);
-  const { input } = op;
+interface HistoryState {
+  entries: HistoryEntry[];
+  progress: Progress;
+}
+
+function applyOp(state: HistoryState, op: HistoryOp): HistoryState {
+  if (op.type === 'clear') return { entries: [], progress: {} };
+  if (op.type === 'remove') {
+    let progress = state.progress;
+    if (progress[op.storyId] != null) {
+      progress = { ...progress };
+      delete progress[op.storyId];
+    }
+    return { entries: state.entries.filter((e) => e.storyId !== op.storyId), progress };
+  }
+  return {
+    entries: applyRecord(state.entries, op.input),
+    progress: bumpProgress(state.progress, op.input.storyId, op.input.chapter),
+  };
+}
+
+function applyRecord(list: HistoryEntry[], input: HistoryInput): HistoryEntry[] {
   const prev = list.find((e) => e.storyId === input.storyId);
   const entry: HistoryEntry = {
     ...input,
@@ -111,10 +171,10 @@ function applyOp(list: HistoryEntry[], op: HistoryOp): HistoryEntry[] {
 }
 
 export function HistoryProvider({ children }: { children: React.ReactNode }) {
-  const [entries, setEntries] = useState<HistoryEntry[]>([]);
+  const [state, setState] = useState<HistoryState>({ entries: [], progress: {} });
   const [ready, setReady] = useState(false);
   // Bản mới nhất cho các callback: hai lượt ghi sát nhau không được đè mất nhau.
-  const entriesRef = useRef<HistoryEntry[]>([]);
+  const stateRef = useRef<HistoryState>({ entries: [], progress: {} });
   // Thao tác tới trước khi đọc xong AsyncStorage (ghi, xoá, xoá hết) thì để dành, chạy lại
   // đúng thứ tự sau khi đọc xong. Ghi thẳng lúc đó sẽ lưu đè danh sách rỗng lên dữ liệu cũ.
   const pendingRef = useRef<HistoryOp[]>([]);
@@ -122,30 +182,41 @@ export function HistoryProvider({ children }: { children: React.ReactNode }) {
   // của provider, nên chờ effect thì lượt ghi rơi vào khoảng hở sẽ kẹt mãi trong hàng đợi.
   const readyRef = useRef(false);
 
-  const commit = useCallback((next: HistoryEntry[]) => {
-    entriesRef.current = next;
-    setEntries(next);
-    AsyncStorage.setItem(KEY_HISTORY, JSON.stringify(next)).catch(() => {});
+  const commit = useCallback((next: HistoryState) => {
+    const prev = stateRef.current;
+    stateRef.current = next;
+    setState(next);
+    if (next.entries !== prev.entries) {
+      AsyncStorage.setItem(KEY_HISTORY, JSON.stringify(next.entries)).catch(() => {});
+    }
+    if (next.progress !== prev.progress) {
+      AsyncStorage.setItem(KEY_PROGRESS, JSON.stringify(next.progress)).catch(() => {});
+    }
   }, []);
 
   useEffect(() => {
     let alive = true;
-    AsyncStorage.getItem(KEY_HISTORY)
+    Promise.all([
       // Đọc lỗi thì coi như chưa có lịch sử, nhưng vẫn giữ các thao tác đang chờ.
-      .catch(() => null)
-      .then((raw) => {
-        if (!alive) return;
-        const pending = pendingRef.current;
-        pendingRef.current = [];
-        const list = pending.reduce(applyOp, parse(raw));
-        readyRef.current = true;
-        if (pending.length > 0) commit(list);
-        else {
-          entriesRef.current = list;
-          setEntries(list);
-        }
-        setReady(true);
-      });
+      AsyncStorage.getItem(KEY_HISTORY).catch(() => null),
+      AsyncStorage.getItem(KEY_PROGRESS).catch(() => null),
+    ]).then(([rawHistory, rawProgress]) => {
+      if (!alive) return;
+      const entries = parse(rawHistory);
+      // Dựng/bổ sung sổ tiến độ từ lịch sử (lần đầu chạy bản có sổ, hoặc sổ bị hỏng).
+      let progress = parseProgress(rawProgress);
+      const loadedProgress = progress;
+      for (const e of entries) progress = bumpProgress(progress, e.storyId, e.maxChapter);
+      const pending = pendingRef.current;
+      pendingRef.current = [];
+      const loaded: HistoryState = { entries, progress: loadedProgress };
+      const next = pending.reduce(applyOp, { entries, progress });
+      readyRef.current = true;
+      // So với bản ĐÃ LƯU để commit biết khoá nào cần ghi lại.
+      stateRef.current = loaded;
+      commit(next);
+      setReady(true);
+    });
     return () => {
       alive = false;
     };
@@ -157,7 +228,7 @@ export function HistoryProvider({ children }: { children: React.ReactNode }) {
         pendingRef.current.push(op);
         return;
       }
-      commit(applyOp(entriesRef.current, op));
+      commit(applyOp(stateRef.current, op));
     },
     [commit],
   );
@@ -167,8 +238,8 @@ export function HistoryProvider({ children }: { children: React.ReactNode }) {
   const clear = useCallback(() => run({ type: 'clear' }), [run]);
 
   const value = useMemo(
-    () => ({ entries, ready, record, remove, clear }),
-    [entries, ready, record, remove, clear],
+    () => ({ entries: state.entries, progress: state.progress, ready, record, remove, clear }),
+    [state, ready, record, remove, clear],
   );
 
   return <HistoryContext.Provider value={value}>{children}</HistoryContext.Provider>;
@@ -181,20 +252,27 @@ export function useHistory(): HistoryContextValue {
 }
 
 /**
- * Lọc khỏi danh sách những truyện người dùng đã đọc hết — trang chủ không mời đọc lại
- * thứ người ta vừa đọc xong. Truyện đang ra có thêm chương thì tự hiện lại.
+ * Lọc khỏi danh sách những truyện người dùng đã đọc hết — không mời đọc lại thứ người ta
+ * vừa đọc xong, ở MỌI danh sách duyệt truyện (trang chủ, xếp hạng, thể loại). Không áp cho
+ * Search (người ta chủ động tìm) và Library. Truyện đang ra có thêm chương thì tự hiện lại.
  */
 export function useHideFinished() {
-  const { entries } = useHistory();
-  const byStory = useMemo(() => new Map(entries.map((e) => [e.storyId, e])), [entries]);
+  const { progress } = useHistory();
   return useCallback(
     <T extends { id: number; chapters_count: number; latest_chapter_number: number | null }>(
       stories: T[],
     ): T[] =>
       stories.filter((s) => {
-        const entry = byStory.get(s.id);
-        return !entry || !isFinished(entry, s.latest_chapter_number ?? s.chapters_count);
+        const max = progress[s.id];
+        const last = s.latest_chapter_number ?? s.chapters_count;
+        return max == null || !(last > 0 && max >= last);
       }),
-    [byStory],
+    [progress],
   );
+}
+
+/** Người dùng đã mở truyện này chưa (dù chỉ một chương). Dùng cho dải nổi bật. */
+export function useHasRead() {
+  const { progress } = useHistory();
+  return useCallback((storyId: number) => progress[storyId] != null, [progress]);
 }

@@ -15,6 +15,7 @@ import {
 import type { TextStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ChapterReaction } from '@/components/chapter-reaction';
 import { EmptyState } from '@/components/empty-state';
 import { ReaderSettingsSheet } from '@/components/reader-settings-sheet';
 import { Skeleton, SkeletonText } from '@/components/skeleton';
@@ -41,7 +42,7 @@ import {
 } from '@/store/reader-prefs';
 import { useAppConfig } from '@/store/config';
 import { useHistory } from '@/store/history';
-import { AD_TASK_LIMIT, useRewards } from '@/store/rewards';
+import { AD_REWARD, useRewards } from '@/store/rewards';
 import { COIN_PER_CHAPTER, useWallet } from '@/store/wallet';
 
 /**
@@ -50,8 +51,39 @@ import { COIN_PER_CHAPTER, useWallet } from '@/store/wallet';
  */
 const storyMetaCache = new Map<string, { chaptersCount: number; thumbnailUrl: string | null }>();
 
-/** Ô giữa chương phải ra khỏi màn hình thêm chừng này (pt) thì banner trên mới gắn lại. */
+/** Ô trong thân chương phải ra khỏi màn hình thêm chừng này (pt) thì banner trên mới gắn lại. */
 const MID_AD_SLACK = 80;
+
+/**
+ * Chỗ đặt ô quảng cáo 300×250 TRONG THÂN chương: chỉ số đoạn mà ô nằm ngay sau.
+ *
+ *  - dưới 600 từ: không ô nào (chỉ còn ô cuối chương) — quảng cáo sau vài câu mở đầu là cắt
+ *    ngang mạch đọc, AdMob/AdSense đều phạt kiểu chèn đó;
+ *  - 600–1.199 từ: một ô quanh 40% chương (như bản ≤ 1.0.3);
+ *  - từ 1.200 từ (≈85% số chương, trung vị ~1.800): HAI ô quanh 1/3 và 2/3 — Tuấn thêm
+ *    ô thứ hai từ 1.0.4.
+ *
+ * Hai ô luôn cách nhau ít nhất MIN_WORDS_BETWEEN_ADS từ (đoạn rất dài không đẩy hai ô sát
+ * nhau), và không bao giờ đặt sau đoạn cuối: chỗ đó đã có ô cuối chương.
+ */
+const MIN_WORDS_BETWEEN_ADS = 300;
+
+function inContentAdSlots(paragraphs: string[]): number[] {
+  const counts = paragraphs.map((p) => p.split(/\s+/).filter(Boolean).length);
+  const total = counts.reduce((a, b) => a + b, 0);
+  const marks = total >= 1200 ? [1 / 3, 2 / 3] : total >= 600 ? [0.4] : [];
+  const slots: number[] = [];
+  let acc = 0;
+  let lastAt = 0;
+  for (let i = 0; i < counts.length - 1 && slots.length < marks.length; i++) {
+    acc += counts[i];
+    if (acc >= total * marks[slots.length] && (slots.length === 0 || acc - lastAt >= MIN_WORDS_BETWEEN_ADS)) {
+      slots.push(i);
+      lastAt = acc;
+    }
+  }
+  return slots;
+}
 
 /**
  * Bề rộng cột chữ trên màn rộng tính theo CỠ CHỮ (em), không cố định theo pt: chừng
@@ -124,11 +156,8 @@ function ReaderScreen() {
   const { width } = useResponsive();
   const router = useRouter();
   const { coins, spendCoins, isUnlocked, unlock } = useWallet();
-  // Sổ cái quảng cáo dùng CHUNG với tab Phần thưởng: mọi lượt xem đều phải đếm
-  // ở đây, nếu không hạn mức mỗi ngày sẽ vô hiệu và xu trở thành vô hạn.
+  // Sổ cái quảng cáo dùng CHUNG với tab Phần thưởng (bộ đếm "hôm nay đã xem mấy lượt").
   const {
-    adsWatched,
-    nextAdCoins,
     recordAdWatch,
     recordAdFallback,
     ready: rewardsReady,
@@ -174,7 +203,7 @@ function ReaderScreen() {
   const scrollRef = useRef<ScrollView>(null);
 
   /**
-   * Banner trên cùng được gỡ khi ô quảng cáo giữa chương lọt vào màn hình: hai quảng cáo
+   * Banner trên cùng được gỡ khi một ô quảng cáo trong thân chương lọt vào màn hình: hai quảng cáo
    * trong cùng một khung nhìn là kiểu AdMob không khuyến khích. Gắn số chương như `message`
    * để sang chương mới thì banner tự hiện lại. Gỡ hẳn (unmount), KHÔNG ẩn bằng opacity —
    * banner bị ẩn vẫn tính lượt hiển thị, đó mới là vi phạm chính sách.
@@ -186,19 +215,28 @@ function ReaderScreen() {
   const [bannerHeight, setBannerHeight] = useState(0);
   const scrollY = useRef(0);
   const viewportH = useRef(0);
-  /** Vị trí ô giữa chương trong nội dung cuộn; `chapter` để không dùng nhầm số đo chương trước. */
-  const midAdBox = useRef<{ chapter: number; y: number; h: number } | null>(null);
+  /**
+   * Vị trí các ô trong thân chương (theo thứ tự ô) trong nội dung cuộn; `chapter` để không
+   * dùng nhầm số đo của chương trước.
+   */
+  const midAdBoxes = useRef<{ chapter: number; boxes: Record<number, { y: number; h: number }> }>({
+    chapter: -1,
+    boxes: {},
+  });
 
   const syncTopBanner = useCallback(() => {
-    const box = midAdBox.current;
+    const { chapter: measured, boxes } = midAdBoxes.current;
     let onScreen = false;
-    if (box && box.chapter === chapterNumber && box.h > 0 && viewportH.current > 0) {
-      // Đã gỡ thì phải cuộn ô giữa ra xa thêm một đoạn mới gắn lại: không có độ trễ này,
+    if (measured === chapterNumber && viewportH.current > 0) {
+      // Đã gỡ thì phải cuộn ô ra xa thêm một đoạn mới gắn lại: không có độ trễ này,
       // cuộn lắc quanh mép sẽ gỡ/gắn liên tục, mỗi lần gắn là một lượt xin quảng cáo mới.
       const slack = topBannerHidden ? MID_AD_SLACK : 0;
-      onScreen =
-        box.y - slack < scrollY.current + viewportH.current &&
-        box.y + box.h + slack > scrollY.current;
+      onScreen = Object.values(boxes).some(
+        (box) =>
+          box.h > 0 &&
+          box.y - slack < scrollY.current + viewportH.current &&
+          box.y + box.h + slack > scrollY.current,
+      );
     }
     setMidAdOnScreen(onScreen ? chapterNumber : null);
   }, [chapterNumber, topBannerHidden]);
@@ -301,10 +339,8 @@ function ReaderScreen() {
     }
   }, [spendCoins, unlock, notify, storyId, chapterNumber]);
 
-  const adsDone = adsWatched >= AD_TASK_LIMIT;
-
   const handleWatchAd = useCallback(async () => {
-    if (watchingAd || adsDone) return;
+    if (watchingAd) return;
     setMessage(null);
     setWatchingAd(true);
     try {
@@ -315,12 +351,12 @@ function ReaderScreen() {
       // Bản 1.0(3) bị Apple từ chối theo Guideline 2.1(a) vì người mới cài không có
       // xu và AdMob không trả quảng cáo -> không mở nổi chương nào. Bản 1.0(4)–(7)
       // sửa bằng cách cấp +90 mỗi lần không có quảng cáo, nhưng thế thì ai chặn
-      // quảng cáo cũng bấm 4 lần/ngày lấy 360 xu mà không xem gì.
+      // quảng cáo cũng bấm liên tục lấy xu mà không xem gì.
       //
       // Giờ chỉ cấp bù khi người đọc THỰC SỰ KẸT: đang đứng ở chương khoá và số dư
       // không đủ mở nó. Cấp vừa đủ một chương, tối đa `daily_limit` lần/ngày, bật/tắt
       // từ trang admin. Áp dụng như nhau cho mọi người — không có "chế độ duyệt".
-      // Cấp bù không tính là một lượt xem quảng cáo nên không ăn vào 4 lượt/ngày.
+      // Cấp bù không tính là một lượt xem quảng cáo.
       if (unavailable) {
         const shortfall = Math.max(0, COIN_PER_CHAPTER - coinsRef.current);
         if (shortfall === 0) {
@@ -340,7 +376,7 @@ function ReaderScreen() {
           );
         } else {
           notify(
-            'No ad is available right now. Check in or keep reading on the Rewards tab to earn coins, or try again later.',
+            'No ad is available right now. Keep reading to earn free coins on the Rewards tab, or try again later.',
             false,
           );
         }
@@ -350,22 +386,16 @@ function ReaderScreen() {
         notify('You need to watch the whole ad to earn coins.', false);
         return;
       }
-      // Xu thưởng chỉ được cộng qua recordAdWatch — đó là nơi DUY NHẤT đếm lượt
-      // và chặn tại AD_TASK_LIMIT. Gọi thẳng addCoins ở đây chính là lỗ hổng cũ:
-      // bấm xem quảng cáo bao nhiêu lần cũng nhận xu, mà tab Phần thưởng vẫn báo
-      // "đã nhận 0/150" vì bộ đếm không hề nhúc nhích.
+      // Xu thưởng chỉ cộng qua recordAdWatch — nơi duy nhất đếm lượt cho tab Phần thưởng.
+      // Không giới hạn lượt (từ 1.0.4).
       const got = recordAdWatch();
-      if (got > 0) {
-        notify(`You got +${formatCoins(got)}!`, true);
-      } else {
-        notify("You've used all ad rewards for today. Come back tomorrow.", false);
-      }
+      if (got > 0) notify(`You got +${formatCoins(got)}!`, true);
     } catch {
       notify('Could not load the ad, please try again later.', false);
     } finally {
       setWatchingAd(false);
     }
-  }, [watchingAd, adsDone, recordAdWatch, recordAdFallback, adFallback, notify]);
+  }, [watchingAd, recordAdWatch, recordAdFallback, adFallback, notify]);
 
   const goTo = useCallback(
     (target: number | null) => {
@@ -390,21 +420,8 @@ function ReaderScreen() {
     [chapter, canRead],
   );
 
-  // Ô quảng cáo giữa chương: sau đoạn đầu tiên mà số từ đã đọc vượt 40% chương.
-  // Chương dưới 600 từ thì không chèn giữa (chỉ còn ô cuối chương) — quảng cáo sau
-  // vài câu mở đầu là cắt ngang mạch đọc, và AdMob/AdSense đều phạt kiểu chèn đó.
-  // Không bao giờ đặt sau đoạn cuối: chỗ đó đã có ô cuối chương.
-  const midAdAfter = useMemo(() => {
-    const counts = paragraphs.map((p) => p.split(/\s+/).filter(Boolean).length);
-    const total = counts.reduce((a, b) => a + b, 0);
-    if (total < 600) return -1;
-    let acc = 0;
-    for (let i = 0; i < counts.length - 1; i++) {
-      acc += counts[i];
-      if (acc >= total * 0.4) return i;
-    }
-    return -1;
-  }, [paragraphs]);
+  // Ô quảng cáo trong thân chương — xem inContentAdSlots.
+  const adSlots = useMemo(() => inContentAdSlots(paragraphs), [paragraphs]);
 
   const storyTitle = chapter?.story.title ?? null;
   const missingCoins = Math.max(0, COIN_PER_CHAPTER - coins);
@@ -416,21 +433,14 @@ function ReaderScreen() {
     ? { text: activeMessage.text, ok: activeMessage.ok }
     : notEnough
       ? {
-          text: adsDone
-            ? `You need ${plural(
-                missingCoins,
-                'more coin',
-                'more coins',
-              )}. No ad rewards left today — check in or keep reading to earn more.`
-            : // PHẢI nêu cả đường miễn phí, không chỉ quảng cáo. Bản cũ chỉ nhắc
-              // "Watch an ad" cho tới khi hết sạch lượt quảng cáo — nên khi AdMob
-              // không có hàng, app dẫn người dùng vào đúng cánh cửa đang đóng và
-              // không hề chỉ cửa nào khác. Đó là thứ Apple gặp.
-              `You need ${plural(
-                missingCoins,
-                'more coin',
-                'more coins',
-              )}. Watch an ad for +${formatCoins(nextAdCoins)}, or earn coins free by checking in and reading.`,
+          // PHẢI nêu cả đường miễn phí, không chỉ quảng cáo: khi AdMob không có hàng,
+          // chỉ nhắc "Watch an ad" là dẫn người dùng vào đúng cánh cửa đang đóng. Đó là
+          // thứ Apple gặp ở bản 1.0(3).
+          text: `You need ${plural(
+            missingCoins,
+            'more coin',
+            'more coins',
+          )}. Watch an ad for +${formatCoins(AD_REWARD)}, or earn coins free by reading.`,
           ok: false,
         }
       : null;
@@ -443,9 +453,12 @@ function ReaderScreen() {
   );
 
   const onMidAdFrame = useCallback(
-    ({ y, height }: { y: number; height: number }) => {
+    (slot: number, { y, height }: { y: number; height: number }) => {
       // Ô không có hàng thì báo cao 0 — banner trên được ở lại.
-      midAdBox.current = { chapter: chapterNumber, y, h: height };
+      if (midAdBoxes.current.chapter !== chapterNumber) {
+        midAdBoxes.current = { chapter: chapterNumber, boxes: {} };
+      }
+      midAdBoxes.current.boxes[slot] = { y, h: height };
       syncTopBanner();
     },
     [chapterNumber, syncTopBanner],
@@ -611,7 +624,7 @@ function ReaderScreen() {
           <ChapterBody
             paragraphs={paragraphs}
             textStyle={bodyTextStyle}
-            midAdAfter={midAdAfter}
+            adSlots={adSlots}
             chapterNumber={chapterNumber}
             labelColor={rt.faint}
             onMidAdFrame={onMidAdFrame}
@@ -625,6 +638,15 @@ function ReaderScreen() {
             </Text>
             <View style={[styles.endLine, { backgroundColor: rt.border }]} />
           </View>
+
+          {/* Năm khuôn mặt chấm chương — giữ nguyên chiều cao sau khi bấm (ô quảng cáo ngay dưới). */}
+          <ChapterReaction
+            key={`react-${chapter.story.id}-${chapter.number}`}
+            storyId={chapter.story.id}
+            chapterNumber={chapter.number}
+            totals={chapter.reaction}
+            rt={rt}
+          />
 
           <InlineAd key={`end-${chapterNumber}`} labelColor={rt.faint} />
         </ScrollView>
@@ -705,40 +727,28 @@ function ReaderScreen() {
 
             <Pressable
               onPress={handleWatchAd}
-              disabled={watchingAd || adsDone || !rewardsReady}
+              disabled={watchingAd || !rewardsReady}
               accessibilityRole="button"
-              accessibilityState={{ disabled: watchingAd || adsDone || !rewardsReady }}
-              accessibilityLabel={
-                adsDone
-                  ? 'No ad rewards left today'
-                  : `Watch an ad to get ${formatCoins(nextAdCoins)}`
-              }
+              accessibilityState={{ disabled: watchingAd || !rewardsReady }}
+              accessibilityLabel={`Watch an ad to get ${formatCoins(AD_REWARD)}`}
               style={({ pressed }) => [
                 styles.adBtn,
-                (watchingAd || adsDone || !rewardsReady) && styles.adBtnBusy,
-                pressed && !watchingAd && !adsDone && styles.pressed,
+                (watchingAd || !rewardsReady) && styles.adBtnBusy,
+                pressed && !watchingAd && styles.pressed,
               ]}
             >
               {watchingAd ? (
                 <ActivityIndicator color={Palette.coinDeep} size="small" />
               ) : (
                 <>
-                  <Ionicons
-                    name={adsDone ? 'checkmark-circle' : 'play-circle'}
-                    size={18}
-                    color={adsDone ? Palette.freeDeep : Palette.coinDeep}
-                  />
-                  <Text style={[styles.adBtnText, adsDone && { color: Palette.freeDeep }]}>
-                    {adsDone
-                      ? 'No ad rewards left today'
-                      : `Watch ad · +${formatCoins(nextAdCoins)}`}
-                  </Text>
+                  <Ionicons name="play-circle" size={18} color={Palette.coinDeep} />
+                  <Text style={styles.adBtnText}>{`Watch ad · +${formatCoins(AD_REWARD)}`}</Text>
                 </>
               )}
             </Pressable>
 
             {/* Lối sang tab Phần thưởng. Màn khoá trước đây là ngõ cụt điều hướng:
-                xu kiếm được bằng điểm danh và mốc thời gian đọc đều phải BẤM TAY để
+                xu kiếm được bằng mốc thời gian đọc phải BẤM TAY để
                 nhận ở một tab khác, mà từ đây không có đường nào tới đó. Người dùng
                 ngồi đủ 10 phút cũng không biết mình đã đủ điều kiện. */}
             <Pressable
@@ -808,38 +818,46 @@ function ReaderScreen() {
 
 /**
  * Thân chương — tách riêng và memo hoá vì màn đọc render lại khá thường: bộ đếm phút
- * đọc của Rewards cập nhật context mỗi 15 giây, banner gỡ/gắn khi ô giữa chương vào
+ * đọc của Rewards cập nhật context mỗi 15 giây, banner gỡ/gắn khi ô trong thân chương vào
  * khung nhìn, số xu đổi... Chương dài cả trăm đoạn mà dựng lại đúng lúc đang cuộn là
  * rớt khung hình, thấy rõ trên iPad (cột chữ rộng, nhiều dòng mỗi đoạn).
  */
 const ChapterBody = memo(function ChapterBody({
   paragraphs,
   textStyle,
-  midAdAfter,
+  adSlots,
   chapterNumber,
   labelColor,
   onMidAdFrame,
 }: {
   paragraphs: string[];
   textStyle: TextStyle;
-  midAdAfter: number;
+  /** chỉ số đoạn có ô quảng cáo ngay sau — xem inContentAdSlots */
+  adSlots: number[];
   chapterNumber: number;
   labelColor: string;
-  onMidAdFrame: (frame: { y: number; height: number }) => void;
+  onMidAdFrame: (slot: number, frame: { y: number; height: number }) => void;
 }) {
   return (
     <>
-      {paragraphs.map((text, i) => (
-        <Fragment key={i}>
-          <Text style={[styles.paragraph, textStyle]} selectable>
-            {text}
-          </Text>
-          {/* key theo số chương: sang chương mới thì ô được dựng lại và xin quảng cáo mới */}
-          {i === midAdAfter ? (
-            <InlineAd key={`mid-${chapterNumber}`} labelColor={labelColor} onFrame={onMidAdFrame} />
-          ) : null}
-        </Fragment>
-      ))}
+      {paragraphs.map((text, i) => {
+        const slot = adSlots.indexOf(i);
+        return (
+          <Fragment key={i}>
+            <Text style={[styles.paragraph, textStyle]} selectable>
+              {text}
+            </Text>
+            {/* key theo số chương: sang chương mới thì ô được dựng lại và xin quảng cáo mới */}
+            {slot >= 0 ? (
+              <InlineAd
+                key={`mid-${chapterNumber}-${slot}`}
+                labelColor={labelColor}
+                onFrame={(frame) => onMidAdFrame(slot, frame)}
+              />
+            ) : null}
+          </Fragment>
+        );
+      })}
     </>
   );
 });

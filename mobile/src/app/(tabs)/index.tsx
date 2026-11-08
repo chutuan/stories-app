@@ -46,7 +46,7 @@ import {
 } from '@/lib/api';
 import { formatViews, plural, storyStatusLabel } from '@/lib/format';
 import { gridFor, useResponsive } from '@/lib/responsive';
-import { useHideFinished } from '@/store/history';
+import { useHasRead, useHideFinished } from '@/store/history';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
@@ -316,12 +316,14 @@ function DiscoverTab({
   }, [router]);
 
   // Truyện người dùng đã đọc hết không mời lại ở trang chủ. Nổi bật = truyện xem nhiều nhất
-  // tuần mà người dùng chưa đọc hết; đọc hết rồi thì lấy truyện kế tiếp trong bảng xếp hạng.
+  // tuần mà người dùng CHƯA MỞ chương nào (từ 1.0.4); đã đọc rồi thì lấy truyện kế trong bảng
+  // xếp hạng. Đọc hết cả nhóm ứng viên thì quay về truyện chưa đọc hết đầu tiên.
   const hideFinished = useHideFinished();
+  const hasRead = useHasRead();
   const featured = useMemo(() => {
     const pool = home?.featured_pool ?? (home?.featured ? [home.featured] : []);
-    return hideFinished(pool)[0] ?? null;
-  }, [hideFinished, home]);
+    return pool.find((story) => !hasRead(story.id)) ?? hideFinished(pool)[0] ?? null;
+  }, [hideFinished, hasRead, home]);
   // Hàng ngay dưới nổi bật: xem nhiều nhất tuần, bỏ truyện đang nổi bật cho khỏi lặp lại.
   // Tuần chưa có lượt xem (hoặc server chưa có `weekly`) thì quay về "Recently updated".
   const weekly = useMemo(

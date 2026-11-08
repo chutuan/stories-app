@@ -18,10 +18,13 @@ import { COIN_PER_REWARD, useWallet } from '@/store/wallet';
  * Lưu cục bộ bằng AsyncStorage, KHÔNG đụng tới ví: mọi khoản xu đều cộng qua
  * `useWallet().addCoins` để nguồn xu duy nhất vẫn là `store/wallet.tsx`.
  *
- * Ba nhóm nhiệm vụ:
- *  1. Điểm danh — 1 lần/ngày, mốc theo thứ trong tuần, reset khi sang TUẦN mới.
- *  2. Thời gian đọc trong ngày — 4 mốc 10/30/60/90 phút, reset khi sang NGÀY mới.
- *  3. Nhiệm vụ quảng cáo — 4 lượt/ngày, cũng reset khi sang ngày mới.
+ * Hai nguồn xu:
+ *  1. Thời gian đọc trong ngày — 4 mốc 10/30/60/90 phút, reset khi sang NGÀY mới.
+ *  2. Xem quảng cáo — KHÔNG giới hạn lượt, mỗi lượt +COIN_PER_REWARD. Bộ đếm trong ngày
+ *     chỉ để hiện "hôm nay đã xem mấy lượt", không chặn gì.
+ *
+ * Điểm danh hằng ngày đã BỎ từ 1.0.4 (Tuấn quyết 08/11/2026). Bản lưu cũ còn các
+ * trường `week`/`checkedDays` — parseState lờ đi, không cần tăng STATE_VERSION.
  *
  * Mọi phép so ngày đều theo GIỜ ĐỊA PHƯƠNG của máy (không dùng UTC), vì mốc
  * "làm mới lúc 00:00" là 00:00 của người dùng.
@@ -47,50 +50,12 @@ export const READING_MILESTONES: readonly ReadingMilestone[] = [
 ] as const;
 
 /**
- * Xu cho lượt xem quảng cáo thứ 1, 2, 3, 4 trong ngày.
+ * Xu cho MỖI lượt xem quảng cáo — không giới hạn số lượt trong ngày (từ 1.0.4).
  *
- * Cố ý để PHẲNG: nút bấm luôn hứa đúng một con số ("Watch ad · +90 coins"), xem
- * xong lượt nào cũng nhận đúng bằng đó. Bậc thang cũ (30/30/40/50) làm nút hứa một
- * đằng trả một nẻo tuỳ lượt trong ngày.
- *
- * 90 xu = đúng 3 chương (COIN_PER_CHAPTER = 30), giữ nguyên tỉ lệ "xem hết một
- * quảng cáo mở được 3 chương" đã chốt từ đầu dự án.
+ * Bản ≤ 1.0.3: 4 lượt/ngày × 90 xu. Tuấn đổi 08/11/2026 thành không giới hạn nhưng mỗi
+ * lượt 60 xu (= 2 chương, COIN_PER_CHAPTER = 30). Nút bấm luôn hứa đúng con số này.
  */
-export const AD_TASKS: readonly number[] = [
-  COIN_PER_REWARD,
-  COIN_PER_REWARD,
-  COIN_PER_REWARD,
-  COIN_PER_REWARD,
-] as const;
-
-/** Số lượt quảng cáo tối đa mỗi ngày. */
-export const AD_TASK_LIMIT = AD_TASKS.length;
-
-/** Tổng xu có thể nhận từ quảng cáo trong 1 ngày. */
-export const AD_MAX_COINS = AD_TASKS.reduce((sum, n) => sum + n, 0);
-
-/** Xu điểm danh theo thứ: CN, T2, T3, T4, T5, T6, T7 (cuối tuần nhiều hơn). */
-/**
- * Điểm danh theo thứ trong tuần, chỉ số theo Date.getDay() (0 = Chủ nhật).
- *
- * THỨ HAI VÀ THỨ BA TRƯỚC ĐÂY LÀ 10, và đó là một ngõ cụt thật: cộng với mốc đọc
- * 10 phút (+15) chỉ ra 25 xu, trong khi một chương giá 30. Nghĩa là hai ngày mỗi
- * tuần, người không xem được quảng cáo KHÔNG mở nổi chương nào — kể cả khi làm
- * đúng từng bước trong ghi chú đã gửi Apple. Sàn 15 bảo đảm mọi ngày trong tuần
- * đều có một đường không-quảng-cáo dẫn tới ít nhất một chương.
- */
-export const CHECKIN_COINS: readonly number[] = [30, 15, 15, 15, 15, 20, 30] as const;
-
-/** Nhãn thứ trong tuần, thứ tự khớp `Date.getDay()` (0 = CN). */
-export const WEEKDAY_LABELS: readonly string[] = [
-  'Sun',
-  'Mon',
-  'Tue',
-  'Wed',
-  'Thu',
-  'Fri',
-  'Sat',
-] as const;
+export const AD_REWARD = COIN_PER_REWARD;
 
 /** Trần thời gian đọc ghi nhận mỗi ngày (giây) — chặn số liệu vô lý. */
 const MAX_READING_SECONDS = 12 * 60 * 60;
@@ -116,20 +81,6 @@ export function dayKey(date: Date = new Date()): string {
   return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
 }
 
-/** Khoá ngày CHỦ NHẬT mở đầu tuần chứa `date`. */
-export function weekStartKey(date: Date = new Date()): string {
-  const start = new Date(date.getFullYear(), date.getMonth(), date.getDate() - date.getDay());
-  return dayKey(start);
-}
-
-/** 7 khoá ngày của tuần chứa `date`, theo thứ tự CN -> T7. */
-export function getWeekDays(date: Date = new Date()): string[] {
-  const base = new Date(date.getFullYear(), date.getMonth(), date.getDate() - date.getDay());
-  return Array.from({ length: 7 }, (_, i) =>
-    dayKey(new Date(base.getFullYear(), base.getMonth(), base.getDate() + i)),
-  );
-}
-
 /* ------------------------------------------------------------------ */
 /* TRẠNG THÁI                                                          */
 /* ------------------------------------------------------------------ */
@@ -137,10 +88,6 @@ export function getWeekDays(date: Date = new Date()): string[] {
 interface RewardsState {
   /** ngày của số liệu trong ngày ('YYYY-MM-DD') */
   day: string;
-  /** chủ nhật mở đầu tuần của `checkedDays` */
-  week: string;
-  /** các ngày đã điểm danh trong tuần hiện tại */
-  checkedDays: string[];
   /** số giây đã đọc trong ngày */
   readingSeconds: number;
   /** các mốc phút đã nhận thưởng trong ngày */
@@ -159,8 +106,6 @@ interface RewardsState {
 function emptyState(now: Date): RewardsState {
   return {
     day: dayKey(now),
-    week: weekStartKey(now),
-    checkedDays: [],
     readingSeconds: 0,
     readingClaimed: [],
     adsWatched: 0,
@@ -170,29 +115,22 @@ function emptyState(now: Date): RewardsState {
 }
 
 /**
- * Đưa trạng thái về đúng ngày/tuần hiện tại.
+ * Đưa trạng thái về đúng ngày hiện tại.
  * Trả về CHÍNH object cũ nếu không có gì phải reset (giữ nguyên tham chiếu để
  * React bỏ qua render thừa và không ghi lại AsyncStorage vô ích).
  */
-function rollOver(state: RewardsState, day: string, week: string): RewardsState {
-  let next = state;
-  if (next.day !== day) {
-    // Sang ngày mới: thời gian đọc + nhiệm vụ quảng cáo về 0.
-    next = {
-      ...next,
-      day,
-      readingSeconds: 0,
-      readingClaimed: [],
-      adsWatched: 0,
-      adsCoins: 0,
-      fallbackGrants: 0,
-    };
-  }
-  if (next.week !== week) {
-    // Sang tuần mới: lịch điểm danh làm lại từ đầu.
-    next = { ...next, week, checkedDays: [] };
-  }
-  return next;
+function rollOver(state: RewardsState, day: string): RewardsState {
+  if (state.day === day) return state;
+  // Sang ngày mới: thời gian đọc + bộ đếm quảng cáo về 0.
+  return {
+    ...state,
+    day,
+    readingSeconds: 0,
+    readingClaimed: [],
+    adsWatched: 0,
+    adsCoins: 0,
+    fallbackGrants: 0,
+  };
 }
 
 /** Đọc lại state đã lưu; dữ liệu hỏng/khác phiên bản thì bỏ qua. */
@@ -204,10 +142,6 @@ function parseState(raw: string | null, now: Date): RewardsState | null {
     const base = emptyState(now);
     return {
       day: typeof data.day === 'string' ? data.day : base.day,
-      week: typeof data.week === 'string' ? data.week : base.week,
-      checkedDays: Array.isArray(data.checkedDays)
-        ? data.checkedDays.filter((d): d is string => typeof d === 'string')
-        : [],
       readingSeconds:
         typeof data.readingSeconds === 'number' && Number.isFinite(data.readingSeconds)
           ? Math.max(0, Math.min(MAX_READING_SECONDS, data.readingSeconds))
@@ -217,7 +151,7 @@ function parseState(raw: string | null, now: Date): RewardsState | null {
         : [],
       adsWatched:
         typeof data.adsWatched === 'number' && Number.isFinite(data.adsWatched)
-          ? Math.max(0, Math.min(AD_TASK_LIMIT, data.adsWatched))
+          ? Math.max(0, Math.floor(data.adsWatched))
           : 0,
       adsCoins:
         typeof data.adsCoins === 'number' && Number.isFinite(data.adsCoins)
@@ -243,16 +177,6 @@ export interface RewardsContextValue {
   ready: boolean;
   /** khoá ngày hôm nay */
   today: string;
-  /** 7 khoá ngày của tuần hiện tại, CN -> T7 */
-  weekDays: string[];
-  /** các ngày đã điểm danh trong tuần */
-  checkedDays: string[];
-  /** hôm nay đã điểm danh chưa */
-  checkedToday: boolean;
-  /** xu điểm danh của hôm nay */
-  todayCheckInCoins: number;
-  /** Điểm danh. Trả về số xu nhận được, 0 nếu đã điểm danh rồi. */
-  checkIn: () => number;
 
   /** số phút đã đọc trong ngày */
   readingMinutes: number;
@@ -273,9 +197,7 @@ export interface RewardsContextValue {
   adsWatched: number;
   /** tổng xu đã nhận từ quảng cáo hôm nay */
   adsCoins: number;
-  /** xu của lượt xem kế tiếp (0 nếu hết lượt) */
-  nextAdCoins: number;
-  /** Ghi nhận 1 lượt xem quảng cáo hợp lệ; trả về số xu vừa cộng. */
+  /** Ghi nhận 1 lượt xem quảng cáo hợp lệ (không giới hạn); trả về số xu vừa cộng. */
   recordAdWatch: () => number;
   /** số lần đã cấp bù hôm nay vì không có quảng cáo */
   fallbackGrants: number;
@@ -293,7 +215,7 @@ export function RewardsProvider({ children }: { children: React.ReactNode }) {
   const { addCoins } = useWallet();
   const [state, setState] = useState<RewardsState>(() => emptyState(new Date()));
   const [ready, setReady] = useState(false);
-  /** đổi mỗi khi qua ngày mới để tính lại `today` / `weekDays` */
+  /** đổi mỗi khi qua ngày mới để tính lại `today` */
   const [dayStamp, setDayStamp] = useState(() => dayKey(new Date()));
 
   // Bản mới nhất của state cho các callback (không đọc ref trong thân render).
@@ -317,7 +239,7 @@ export function RewardsProvider({ children }: { children: React.ReactNode }) {
         const now = new Date();
         const parsed = parseState(raw, now);
         if (parsed) {
-          setState(rollOver(parsed, dayKey(now), weekStartKey(now)));
+          setState(rollOver(parsed, dayKey(now)));
         }
       } catch {
         // hỏng thì dùng mặc định
@@ -344,9 +266,8 @@ export function RewardsProvider({ children }: { children: React.ReactNode }) {
     if (seconds <= 0) return;
     const now = new Date();
     const day = dayKey(now);
-    const week = weekStartKey(now);
     setState((prev) => {
-      const rolled = rollOver(prev, day, week);
+      const rolled = rollOver(prev, day);
       const nextSeconds = Math.min(MAX_READING_SECONDS, rolled.readingSeconds + seconds);
       if (nextSeconds === rolled.readingSeconds) return rolled;
       return { ...rolled, readingSeconds: nextSeconds };
@@ -386,24 +307,6 @@ export function RewardsProvider({ children }: { children: React.ReactNode }) {
     [addReadingSeconds],
   );
 
-  const checkIn = useCallback((): number => {
-    if (!readyRef.current) return 0;
-    const now = new Date();
-    const day = dayKey(now);
-    const week = weekStartKey(now);
-    const current = rollOver(stateRef.current, day, week);
-    if (current.checkedDays.includes(day)) {
-      setState(current);
-      setDayStamp(day);
-      return 0;
-    }
-    const coins = CHECKIN_COINS[now.getDay()] ?? 10;
-    setState({ ...current, checkedDays: [...current.checkedDays, day] });
-    setDayStamp(day);
-    addCoins(coins);
-    return coins;
-  }, [addCoins]);
-
   const claimReading = useCallback(
     (minutes: number): number => {
       if (!readyRef.current) return 0;
@@ -411,8 +314,7 @@ export function RewardsProvider({ children }: { children: React.ReactNode }) {
       if (!milestone) return 0;
       const now = new Date();
       const day = dayKey(now);
-      const week = weekStartKey(now);
-      const current = rollOver(stateRef.current, day, week);
+      const current = rollOver(stateRef.current, day);
       const reached = Math.floor(current.readingSeconds / 60) >= milestone.minutes;
       if (!reached || current.readingClaimed.includes(milestone.minutes)) {
         setState(current);
@@ -431,22 +333,15 @@ export function RewardsProvider({ children }: { children: React.ReactNode }) {
     if (!readyRef.current) return 0;
     const now = new Date();
     const day = dayKey(now);
-    const week = weekStartKey(now);
-    const current = rollOver(stateRef.current, day, week);
-    if (current.adsWatched >= AD_TASK_LIMIT) {
-      setState(current);
-      setDayStamp(day);
-      return 0;
-    }
-    const coins = AD_TASKS[current.adsWatched] ?? COIN_PER_REWARD;
+    const current = rollOver(stateRef.current, day);
+    const coins = AD_REWARD;
     const next = {
       ...current,
       adsWatched: current.adsWatched + 1,
       adsCoins: current.adsCoins + coins,
     };
-    // Ghi luôn vào ref thay vì chờ effect đồng bộ sau lần render kế: nếu lượt sau
-    // tới trước khi effect chạy (quảng cáo lỗi trả về gần như tức thì, người dùng
-    // bấm dồn) thì nó sẽ đọc số lượt CŨ -> được cộng xu mà bộ đếm không tăng.
+    // Ghi luôn vào ref thay vì chờ effect đồng bộ sau lần render kế: lượt sau tới
+    // trước khi effect chạy thì vẫn đọc đúng số lượt đã đếm.
     stateRef.current = next;
     setState(next);
     setDayStamp(day);
@@ -459,8 +354,7 @@ export function RewardsProvider({ children }: { children: React.ReactNode }) {
       if (!readyRef.current || coins <= 0) return 0;
       const now = new Date();
       const day = dayKey(now);
-      const week = weekStartKey(now);
-      const current = rollOver(stateRef.current, day, week);
+      const current = rollOver(stateRef.current, day);
       if (current.fallbackGrants >= dailyLimit) {
         setState(current);
         setDayStamp(day);
@@ -486,16 +380,6 @@ export function RewardsProvider({ children }: { children: React.ReactNode }) {
     void dayStamp;
     return dayKey(new Date());
   }, [dayStamp]);
-
-  const weekDays = useMemo(() => {
-    void dayStamp;
-    return getWeekDays(new Date());
-  }, [dayStamp]);
-
-  const checkedDays = useMemo(
-    () => state.checkedDays.filter((d) => weekDays.includes(d)),
-    [state.checkedDays, weekDays],
-  );
 
   const claimableReading = useMemo(
     () =>
@@ -523,11 +407,6 @@ export function RewardsProvider({ children }: { children: React.ReactNode }) {
     () => ({
       ready,
       today,
-      weekDays,
-      checkedDays,
-      checkedToday: checkedDays.includes(today),
-      todayCheckInCoins: CHECKIN_COINS[new Date().getDay()] ?? 10,
-      checkIn,
       readingMinutes,
       addReadingMinutes,
       readingClaimed: state.readingClaimed,
@@ -537,7 +416,6 @@ export function RewardsProvider({ children }: { children: React.ReactNode }) {
       claimReading,
       adsWatched: state.adsWatched,
       adsCoins: state.adsCoins,
-      nextAdCoins: state.adsWatched < AD_TASK_LIMIT ? (AD_TASKS[state.adsWatched] ?? 0) : 0,
       recordAdWatch,
       fallbackGrants: state.fallbackGrants,
       recordAdFallback,
@@ -545,9 +423,6 @@ export function RewardsProvider({ children }: { children: React.ReactNode }) {
     [
       ready,
       today,
-      weekDays,
-      checkedDays,
-      checkIn,
       readingMinutes,
       addReadingMinutes,
       state.readingClaimed,
