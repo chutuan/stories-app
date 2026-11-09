@@ -14,16 +14,16 @@ use Throwable;
  * routes/console.php. Một truyện hỏng bị đánh dấu `failed` rồi bỏ qua, không chặn
  * các truyện sau; số truyện đăng được vẫn đủ `--count` nếu kho còn.
  *
- *   php artisan stories:release-queued --count=10
+ *   php artisan stories:release-queued --count=4
  *   php artisan stories:release-queued --dry        # xem truyện nào sẽ được đăng
  */
 class ReleaseQueuedStories extends Command
 {
-    /** Số truyện đăng mỗi ngày theo lịch. */
-    public const DAILY = 10;
+    /** Số truyện đăng mỗi ngày theo lịch. 10 từ 02/11/2026; Tuấn giảm còn 4 ngày 10/11/2026. */
+    public const DAILY = 4;
 
     protected $signature = 'stories:release-queued
-        {--count=10 : Số truyện đăng lần này}
+        {--count=4 : Số truyện đăng lần này}
         {--dry : Chỉ liệt kê, không đăng}';
 
     protected $description = 'Đăng các truyện đầu hàng trong kho chờ';
