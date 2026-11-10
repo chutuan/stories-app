@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Chip } from '@/components/chip';
 import { EmptyState } from '@/components/empty-state';
+import { ReadProgress } from '@/components/read-progress';
 import { SectionHeader } from '@/components/section-header';
 import { Skeleton } from '@/components/skeleton';
 import { StoryCardSkeleton, StoryCardView, StoryCover } from '@/components/story-card';
@@ -46,7 +47,7 @@ import {
 } from '@/lib/api';
 import { formatViews, plural, storyStatusLabel } from '@/lib/format';
 import { gridFor, useResponsive } from '@/lib/responsive';
-import { useHasRead, useHideFinished } from '@/store/history';
+import { useHasRead, useHideFinished, useReadPercent } from '@/store/history';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
@@ -1149,6 +1150,8 @@ function RankRow({
 }) {
   const router = useRouter();
   const top = rank <= 3;
+  const percentOf = useReadPercent();
+  const percent = percentOf(story.id, story.latest_chapter_number ?? story.chapters_count);
 
   const open = useCallback(() => {
     router.push(`/story/${story.id}`);
@@ -1196,6 +1199,7 @@ function RankRow({
           )}
           <Text style={styles.rankChapters}>{plural(story.chapters_count, 'chapter', 'chapters')}</Text>
         </View>
+        {percent != null ? <ReadProgress percent={percent} style={styles.rankProgress} /> : null}
       </View>
 
       <Ionicons name="chevron-forward" size={16} color={Palette.faint} />
@@ -1705,6 +1709,10 @@ const styles = StyleSheet.create({
     fontSize: FontSize.caption,
     fontWeight: FontWeight.medium,
     lineHeight: LineHeight.caption,
+  },
+  rankProgress: {
+    marginTop: Spacing.xs,
+    maxWidth: 220,
   },
   rankMeta: {
     flexDirection: 'row',

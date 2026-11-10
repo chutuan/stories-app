@@ -6,6 +6,7 @@ import { memo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
 
+import { ReadProgress } from '@/components/read-progress';
 import { Skeleton } from '@/components/skeleton';
 import {
   coverGradient,
@@ -22,6 +23,7 @@ import {
 } from '@/constants/theme';
 import type { StoryCard } from '@/lib/api';
 import { storyRibbonLabel } from '@/lib/format';
+import { useReadPercent } from '@/store/history';
 
 /** Lấy chữ cái đầu của tên truyện để làm bìa dự phòng. */
 function initialOf(title?: string | null): string {
@@ -54,6 +56,7 @@ export interface StoryCoverProps {
 
 /**
  * Bìa truyện 3:4: ảnh + ribbon trạng thái (trên-trái) + badge số chương (dưới-phải).
+ * % đã đọc KHÔNG nằm trên bìa mà là <ReadProgress> dưới tên truyện (components/read-progress).
  *
  * Ảnh bìa là artwork TỐI nên mọi thứ đè lên nó vẫn dùng nền tối mờ / màu đặc
  * + chữ trắng — đây là ngoại lệ duy nhất của giao diện sáng.
@@ -174,13 +177,15 @@ export const StoryCardView = memo(function StoryCardView({
   style,
 }: StoryCardViewProps) {
   const categoryText = story.categories.map((c) => c.name).join(' · ');
+  const percentOf = useReadPercent();
+  const percent = percentOf(story.id, story.latest_chapter_number ?? story.chapters_count);
 
   return (
     <Link href={`/story/${story.id}`} asChild>
       {/* Link asChild KHÔNG nhận mảng style -> phải StyleSheet.flatten */}
       <Pressable
         accessibilityRole="link"
-        accessibilityLabel={story.title}
+        accessibilityLabel={percent != null ? `${story.title}, ${percent}% read` : story.title}
         style={StyleSheet.flatten([styles.card, width != null ? { width } : styles.cardFlex, style])}
       >
         {({ pressed }) => (
@@ -202,6 +207,7 @@ export const StoryCardView = memo(function StoryCardView({
                   {categoryText}
                 </Text>
               ) : null}
+              {percent != null ? <ReadProgress percent={percent} style={styles.readProgress} /> : null}
             </View>
           </View>
         )}
@@ -337,5 +343,8 @@ const styles = StyleSheet.create({
     fontSize: FontSize.tiny,
     fontWeight: FontWeight.medium,
     lineHeight: LineHeight.caption,
+  },
+  readProgress: {
+    marginTop: Spacing.xs,
   },
 });

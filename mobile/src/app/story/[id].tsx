@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Chip } from '@/components/chip';
 import { EmptyState } from '@/components/empty-state';
+import { ReadProgress } from '@/components/read-progress';
 import { SectionHeader } from '@/components/section-header';
 import { Skeleton, SkeletonText } from '@/components/skeleton';
 import { StoryCover } from '@/components/story-card';
@@ -27,6 +28,7 @@ import {
 import { getStory, type ChapterMeta, type Story } from '@/lib/api';
 import { formatCoins, formatViews, plural, storyStatusLabel } from '@/lib/format';
 import { CONTENT_MAX_WIDTH, useResponsive } from '@/lib/responsive';
+import { useReadPercent } from '@/store/history';
 import { COIN_PER_CHAPTER, useWallet } from '@/store/wallet';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
@@ -133,11 +135,16 @@ export default function StoryDetailScreen() {
   const chapters = useMemo<ChapterItem[]>(() => (story?.chapters ?? []) as ChapterItem[], [story]);
 
   /**
-   * Chương đầu tiên CÓ audio — đích của nút "Nghe".
-   * Thường là chương 1; nếu chương 1 chưa có MP3 thì nhảy tới chương có audio
-   * gần nhất thay vì đưa người dùng vào màn nghe rỗng.
+   * Đích của nút "Nghe": chương đầu tiên CÓ audio; truyện chưa có chương nào có audio thì
+   * chương đầu. Nút LUÔN bật (Tuấn yêu cầu 10/11/2026): màn nghe ghi lượt bấm lên server để
+   * biết chương nào được muốn nghe, rồi báo "Audio is currently unavailable" nếu chưa có file.
    */
-  const audioChapter = useMemo(() => chapters.find((c) => c.has_audio === true) ?? null, [chapters]);
+  const audioChapter = useMemo(
+    () => chapters.find((c) => c.has_audio === true) ?? chapters[0] ?? null,
+    [chapters],
+  );
+  const percentOf = useReadPercent();
+  const readPct = story ? percentOf(story.id, story.latest_chapter_number ?? story.chapters_count) : null;
 
   const openChapter = useCallback(
     (number: number) => {
@@ -279,6 +286,10 @@ export default function StoryDetailScreen() {
                 </View>
               ) : null}
 
+              {readPct != null ? (
+                <ReadProgress percent={readPct} style={[styles.readProgress, wide && styles.readProgressWide]} />
+              ) : null}
+
               {/* ---------- Hàng thông tin nhanh: 3 ô ngăn cách (màn rộng: một dòng gọn) ---------- */}
               {wide ? (
                 <View style={styles.statLine}>
@@ -376,11 +387,11 @@ export default function StoryDetailScreen() {
                 </Pressable>
               </View>
 
-              {/* ---------- Nghe truyện (mờ đi khi chưa có audio) ---------- */}
+              {/* ---------- Nghe truyện (mờ đi chỉ khi truyện chưa có chương nào) ---------- */}
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={
-                  audioChapter ? `Listen to chapter ${audioChapter.number}` : 'No audio yet'
+                  audioChapter ? `Listen to chapter ${audioChapter.number}` : 'No chapters yet'
                 }
                 accessibilityState={{ disabled: !audioChapter }}
                 disabled={!audioChapter}
@@ -407,7 +418,7 @@ export default function StoryDetailScreen() {
                   Listen
                 </Text>
                 <Text style={styles.listenHint} numberOfLines={1}>
-                  {audioChapter ? `Chapter ${audioChapter.number}` : 'No audio yet'}
+                  {audioChapter ? `Chapter ${audioChapter.number}` : 'No chapters yet'}
                 </Text>
                 {audioChapter ? (
                   <Ionicons name="chevron-forward" size={15} color={Palette.accentDeep} />
@@ -800,6 +811,16 @@ const styles = StyleSheet.create({
     fontSize: 30,
     lineHeight: 36,
     textAlign: 'left',
+  },
+  // Thanh % đã đọc dưới tên tác giả: màn hẹp căn giữa, bề rộng cố định cho cân với cột chữ.
+  readProgress: {
+    width: 200,
+    maxWidth: '80%',
+    marginTop: Spacing.sm,
+  },
+  readProgressWide: {
+    maxWidth: 280,
+    width: '60%',
   },
   authorRow: {
     flexDirection: 'row',

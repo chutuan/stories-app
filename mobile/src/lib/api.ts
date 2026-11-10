@@ -1,4 +1,7 @@
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
+
+import { getReaderId } from '@/lib/reader-id';
 
 /**
  * Base URL của REST API.
@@ -237,4 +240,29 @@ export async function reactToChapter(
   });
   if (!res.ok) throw new ApiError(res.status, path);
   return (await res.json()) as ReactionTotals & { mine: number };
+}
+
+/**
+ * Báo server một lượt bấm nghe audio (`click`, mỗi lần mở màn nghe một chương) hoặc một lần xem
+ * hết quảng cáo để mở audio chương (`unlock`). Trang admin/audio xếp chương theo số người muốn
+ * nghe để Tuấn chọn chương tạo giọng đọc. Bắn rồi quên: lỗi mạng không bao giờ chặn người nghe.
+ */
+export function recordAudioRequest(
+  storyId: number | string,
+  number: number | string,
+  event: 'click' | 'unlock',
+): void {
+  getReaderId()
+    .then((readerId) =>
+      fetch(`${API_URL}/stories/${storyId}/chapters/${number}/audio-request`, {
+        method: 'POST',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event,
+          reader_id: readerId,
+          platform: Platform.OS === 'ios' || Platform.OS === 'android' ? Platform.OS : undefined,
+        }),
+      }),
+    )
+    .catch(() => {});
 }

@@ -6,8 +6,17 @@
  * KHÔNG dùng TTS trên máy (expo-speech đã bị gỡ khỏi dự án).
  *
  * Chương chưa có file MP3 -> `audio_url` = null: màn hình vẫn dựng đủ trình phát
- * nhưng mọi nút bị vô hiệu hoá và hiện thông báo "Chương này chưa có bản audio".
+ * nhưng mọi nút bị vô hiệu hoá và hiện "Audio is currently unavailable".
  * TUYỆT ĐỐI không giả lập tiến trình chạy khi không có file thật.
+ *
+ * MỞ AUDIO BẰNG QUẢNG CÁO (Tuấn yêu cầu 10/11/2026): mọi chương, miễn phí hay trả xu, đều
+ * phải xem một quảng cáo có thưởng mới nghe được; mỗi lượt mở đúng chương này trong 24 giờ
+ * (store/audio-unlocks). Không có quảng cáo để chiếu thì báo "Audio is currently
+ * unavailable. Please try again later." — KHÔNG cấp bù như màn khoá xu.
+ * Chương chưa có MP3 thì không chiếu quảng cáo (không có gì để thưởng).
+ *
+ * Mỗi lần màn này mở một chương do người dùng bấm (không tính tự chuyển chương) được báo
+ * lên server (`recordAudioRequest`) — trang admin/audio xếp chương theo số người muốn nghe.
  */
 
 import { Ionicons } from '@expo/vector-icons';
@@ -49,11 +58,11 @@ import {
   Spacing,
   withAlpha,
 } from '@/constants/theme';
-import { API_URL } from '@/lib/api';
-import { formatCoins } from '@/lib/format';
+import { showRewarded } from '@/lib/ads';
+import { API_URL, recordAudioRequest } from '@/lib/api';
 import { CONTENT_MAX_WIDTH, SHEET_MAX_WIDTH, useResponsive } from '@/lib/responsive';
+import { useAudioUnlocks } from '@/store/audio-unlocks';
 import { useHistory } from '@/store/history';
-import { COIN_PER_CHAPTER, useWallet } from '@/store/wallet';
 
 type IoniconName = keyof typeof Ionicons.glyphMap;
 
@@ -93,6 +102,18 @@ interface AudioStory {
   thumbnail_url: string | null;
   chapters_count: number;
   chapters?: AudioChapterMeta[];
+}
+
+/**
+ * Phiên âm thanh: nghe được cả khi máy đang ở chế độ im lặng. KHÔNG bật
+ * shouldPlayInBackground vì rời màn là dừng phát. Gọi lại sau mỗi lượt quảng cáo.
+ */
+function applyAudioMode(): void {
+  setAudioModeAsync({
+    playsInSilentMode: true,
+    shouldPlayInBackground: false,
+    interruptionMode: 'duckOthers',
+  }).catch(() => {});
 }
 
 async function fetchJson<T>(path: string): Promise<T> {
@@ -161,15 +182,13 @@ interface ChapterRow {
   number: number;
   title: string;
   hasAudio: boolean;
+  /** có file nhưng chưa mở bằng quảng cáo (hoặc đã quá 24 giờ) */
   locked: boolean;
 }
 
 /** Chương kế tiếp — dữ liệu cần để quyết định làm gì khi nghe hết chương này. */
 interface NextChapter {
   number: number;
-  title: string;
-  /** nghe được: chương miễn phí, hoặc người dùng có gói Premium */
-  playable: boolean;
   /** đã có file MP3 chưa; `null` = chưa biết (mục lục chưa tải xong) */
   hasAudio: boolean | null;
 }
@@ -185,15 +204,8 @@ export default function AudioPlayerScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { width, height, wide, contentInset } = useResponsive();
-  /**
-   * Audio đi theo ĐÚNG quyền đọc: chương miễn phí thì ai cũng nghe, chương trả phí
-   * phải mở bằng xu ở màn đọc.
-   *
-   * Gói Premium đã bị TẮT TẠM THỜI để bản nộp App Store không chứa mua trong ứng
-   * dụng — bản Apple đang xét cũng không có. Bật lại bằng cách revert đúng một
-   * commit, xem thông điệp commit "Tắt tạm gói đăng ký".
-   */
-  const { isUnlocked } = useWallet();
+  /** Audio mở bằng quảng cáo, mỗi chương 24 giờ — tách khỏi khoá xu của chữ. */
+  const { isAudioUnlocked, unlockAudio } = useAudioUnlocks();
   const { record: recordHistory } = useHistory();
   /**
    * Modal của React Native phủ TOÀN BỘ cửa sổ app, không nằm trong ngăn xếp
@@ -215,6 +227,15 @@ export default function AudioPlayerScreen() {
   /** Vị trí đang kéo trên thanh tiến trình (null = không kéo). */
   const [seeking, setSeeking] = useState<number | null>(null);
   const [coverFailed, setCoverFailed] = useState(false);
+  /** Đang chiếu quảng cáo mở audio. */
+  const [watchingAd, setWatchingAd] = useState(false);
+  /** Kết quả lượt quảng cáo vừa rồi, gắn số chương để không dính sang chương khác. */
+  const [adResult, setAdResult] = useState<{
+    number: number;
+    kind: 'unavailable' | 'not-finished';
+  } | null>(null);
+  /** Chương vừa mở bằng quảng cáo: phát luôn khi file nạp xong, người dùng đã bấm Phát rồi. */
+  const [startAfterUnlock, setStartAfterUnlock] = useState<number | null>(null);
 
   /* ---- Tải chương ---- */
   useEffect(() => {
@@ -244,29 +265,36 @@ export default function AudioPlayerScreen() {
     };
   }, [storyId, retryCount]);
 
+  /* ---- Lượt bấm nghe: báo server mỗi lần màn này mở một chương do NGƯỜI DÙNG chọn
+         (nút tai nghe, nút Listen, đổi chương trong trình phát). Tự chuyển chương khi nghe
+         hết (`autoplay=1`) không phải lượt bấm nên không tính. ---- */
+  useEffect(() => {
+    if (autoplayRequested) return;
+    recordAudioRequest(storyId, chapterNumber, 'click');
+  }, [storyId, chapterNumber, autoplayRequested]);
+
   /* ---- Cấu hình phiên âm thanh: nghe được cả khi máy đang ở chế độ im lặng.
          KHÔNG bật shouldPlayInBackground vì rời màn là dừng phát. ---- */
   useEffect(() => {
-    setAudioModeAsync({
-      playsInSilentMode: true,
-      shouldPlayInBackground: false,
-      interruptionMode: 'duckOthers',
-    }).catch(() => {});
+    applyAudioMode();
   }, []);
 
   const chapter = chapterData && chapterData.number === chapterNumber ? chapterData : null;
   const failed = failedNumber === chapterNumber;
   const loading = !chapter && !failed;
 
-  /* Chương trả phí chỉ dành cho thành viên; chương miễn phí thì ai cũng nghe. */
-  const locked = chapter ? !chapter.is_free && !isUnlocked(storyId, chapterNumber) : false;
+  /* Có file MP3 nhưng chưa xem quảng cáo mở chương này (hoặc đã quá 24 giờ). */
+  const locked = chapter ? chapter.audio_url != null && !isAudioUnlocked(storyId, chapterNumber) : false;
   const audioUrl = chapter && !locked ? chapter.audio_url : null;
+  /** Nghe được ngay: có file VÀ đã mở bằng quảng cáo. */
   const hasAudio = audioUrl != null;
+  /** Nút Phát bấm được: phát luôn, hoặc (khi còn khoá) chiếu quảng cáo để mở. */
+  const playEnabled = hasAudio || locked;
 
-  // Lịch sử đọc: nghe một chương cũng tính là đã đọc tới đó. Chỉ ghi khi chương mở được
-  // và có audio (màn khoá / chương chưa có audio thì người dùng chưa nghe gì).
+  // Lịch sử đọc: nghe một chương cũng tính là đã đọc tới đó. Chỉ ghi khi chương nghe được
+  // (màn khoá / chương chưa có audio thì người dùng chưa nghe gì).
   useEffect(() => {
-    if (!chapter || locked || !hasAudio) return;
+    if (!chapter || !hasAudio) return;
     recordHistory({
       storyId: chapter.story.id,
       title: chapter.story.title,
@@ -275,7 +303,7 @@ export default function AudioPlayerScreen() {
       chapterTitle: chapter.title,
       chaptersCount: story?.chapters_count ?? null,
     });
-  }, [chapter, locked, hasAudio, story, recordHistory]);
+  }, [chapter, hasAudio, story, recordHistory]);
 
   /* ---- PLAYER (expo-audio) ----
      Đổi `source` là hook tự tạo player mới và giải phóng player cũ;
@@ -394,6 +422,46 @@ export default function AudioPlayerScreen() {
     [hasAudio, player],
   );
 
+  /**
+   * Chiếu quảng cáo có thưởng để mở audio chương này 24 giờ. Mỗi lượt xem hết chỉ mở ĐÚNG
+   * chương đang mở. Không có quảng cáo (no-fill, chặn quảng cáo, mất mạng) thì báo
+   * "Audio is currently unavailable" — theo đúng ý Tuấn, không cấp bù.
+   */
+  const watchAdToListen = useCallback(async () => {
+    if (watchingAd || !chapter || chapter.audio_url == null) return;
+    const number = chapter.number;
+    setAdResult(null);
+    setWatchingAd(true);
+    try {
+      const { rewarded, unavailable } = await showRewarded();
+      if (unavailable) {
+        setAdResult({ number, kind: 'unavailable' });
+        return;
+      }
+      if (!rewarded) {
+        setAdResult({ number, kind: 'not-finished' });
+        return;
+      }
+      unlockAudio(storyId, number);
+      recordAudioRequest(storyId, number, 'unlock');
+      // SDK quảng cáo có thể đổi phiên âm thanh của máy lúc chiếu video: đặt lại trước khi phát.
+      applyAudioMode();
+      setStartAfterUnlock(number);
+    } catch {
+      setAdResult({ number, kind: 'unavailable' });
+    } finally {
+      setWatchingAd(false);
+    }
+  }, [watchingAd, chapter, storyId, unlockAudio]);
+
+  const pressPlay = useCallback(() => {
+    if (locked) {
+      watchAdToListen();
+      return;
+    }
+    togglePlay();
+  }, [locked, watchAdToListen, togglePlay]);
+
   const cycleSpeed = useCallback(() => {
     setSpeedIndex((i) => (i + 1) % SPEEDS.length);
   }, []);
@@ -435,31 +503,29 @@ export default function AudioPlayerScreen() {
       number: c.number,
       title: chapterLabel(c),
       hasAudio: c.has_audio === true,
-      locked: !c.is_free && !isUnlocked(storyId, c.number),
+      locked: c.has_audio === true && !isAudioUnlocked(storyId, c.number),
     }));
-  }, [story, isUnlocked, storyId]);
+  }, [story, isAudioUnlocked, storyId]);
 
   /* ---- Chương kế tiếp ---- */
   const nextInfo = useMemo<NextChapter | null>(() => {
     const target = chapter?.next;
     if (!chapter || target == null) return null;
     const meta = story?.chapters?.find((c) => c.number === target) ?? null;
-    // Mục lục chưa về thì suy ra "miễn phí" từ `free_chapters` của truyện.
-    const isFree = meta ? meta.is_free : target <= chapter.story.free_chapters;
     return {
       number: target,
-      title: meta ? chapterLabel(meta) : `Chapter ${target}`,
-      playable: isFree || isUnlocked(storyId, target),
       hasAudio: meta ? meta.has_audio === true : null,
     };
-  }, [chapter, story, isUnlocked, storyId]);
+  }, [chapter, story]);
 
-  /* ---- Tự phát khi màn hình được mở bằng cách tự chuyển chương ----
+  /* ---- Tự phát khi màn hình được mở bằng cách tự chuyển chương, hoặc ngay sau khi
+     vừa xem quảng cáo mở chương này (người dùng đã bấm Phát).
      Mỗi player (mỗi chương) chỉ tự bấm phát ĐÚNG MỘT LẦN: người dùng bấm tạm
      dừng xong thì không bị hệ thống bật lại. */
   const autoStartedRef = useRef<string | null>(null);
+  const wantAutoStart = autoplayRequested || startAfterUnlock === chapterNumber;
   useEffect(() => {
-    if (!autoplayRequested || !hasAudio) return;
+    if (!wantAutoStart || !hasAudio) return;
     if (!statusFresh || !status.isLoaded) return;
     if (autoStartedRef.current === player.id) return;
     autoStartedRef.current = player.id;
@@ -468,7 +534,7 @@ export default function AudioPlayerScreen() {
     } catch {
       // player vừa được giải phóng — bỏ qua
     }
-  }, [autoplayRequested, hasAudio, statusFresh, status.isLoaded, player]);
+  }, [wantAutoStart, hasAudio, statusFresh, status.isLoaded, player]);
 
   /* ---- Nghe hết chương thì làm gì ---- */
   const handleFinished = useCallback(() => {
@@ -477,19 +543,13 @@ export default function AudioPlayerScreen() {
     if (!focused) return;
     // Hết truyện: không còn chương sau, cứ để thanh tiến trình đứng ở cuối.
     if (!nextInfo) return;
-    if (!nextInfo.playable) {
-      // Chương sau chưa mở khoá. Màn ĐỌC đã có sẵn giao diện trả xu / xem quảng cáo
-      // để mở, nên đưa thẳng người nghe sang đó thay vì dựng thêm một hộp thoại nữa
-      // trong màn nghe — mở khoá xong bấm nút tai nghe là nghe tiếp được.
-      setTocOpen(false);
-      router.replace(`/reader/${storyId}/${nextInfo.number}?dir=next` as Href);
-      return;
-    }
     // Chương sau chắc chắn CHƯA có MP3 -> ở lại, nhảy sang cũng không phát được.
     // `null` (chưa biết) thì vẫn nhảy: màn hình đích tự báo nếu thiếu audio.
     if (nextInfo.hasAudio === false) return;
+    // Chương sau chưa mở bằng quảng cáo thì màn đích hiện nút "Watch ad" và chờ người dùng
+    // bấm — quảng cáo có thưởng không được tự bật khi người dùng chưa chọn xem.
     goChapter(nextInfo.number, { autoplay: true });
-  }, [focused, nextInfo, goChapter, router, storyId]);
+  }, [focused, nextInfo, goChapter]);
 
   /**
    * Bắt lúc nghe hết TRÊN LUỒNG SỰ KIỆN, không đọc từ state đã render.
@@ -518,12 +578,17 @@ export default function AudioPlayerScreen() {
 
 
   /* Loại thông báo cần hiện phía trên thanh tiến trình. */
-  const notice: 'locked' | 'no-audio' | null = !chapter
+  const lastAd = adResult && adResult.number === chapterNumber ? adResult.kind : null;
+  const notice: 'no-audio' | 'locked' | 'ad-unavailable' | 'ad-not-finished' | null = !chapter
     ? null
-    : locked
-      ? 'locked'
-      : chapter.audio_url == null
-        ? 'no-audio'
+    : chapter.audio_url == null
+      ? 'no-audio'
+      : locked
+        ? lastAd === 'unavailable'
+          ? 'ad-unavailable'
+          : lastAd === 'not-finished'
+            ? 'ad-not-finished'
+            : 'locked'
         : null;
 
   /* ---- Kích thước bìa + đĩa than ---- */
@@ -777,18 +842,38 @@ export default function AudioPlayerScreen() {
             {notice === 'no-audio' ? (
               <Notice
                 icon="mic-off-outline"
-                title="No audio for this chapter yet"
-                description="You can read the text instead, or pick another chapter that has audio."
-                actionLabel="Read text instead"
+                title="Audio is currently unavailable"
+                description="Please try again later. You can read this chapter in the meantime."
+                actionLabel="Read text"
                 onAction={openReader}
+              />
+            ) : notice === 'ad-unavailable' ? (
+              <Notice
+                danger
+                icon="time-outline"
+                title="Audio is currently unavailable"
+                description="Please try again later."
+                actionLabel="Try again"
+                busy={watchingAd}
+                onAction={watchAdToListen}
+              />
+            ) : notice === 'ad-not-finished' ? (
+              <Notice
+                icon="play-circle-outline"
+                title="Watch the whole ad to listen"
+                description="The audio for this chapter unlocks when the ad finishes."
+                actionLabel="Watch ad"
+                busy={watchingAd}
+                onAction={watchAdToListen}
               />
             ) : notice === 'locked' ? (
               <Notice
-                icon="lock-closed-outline"
-                title="This chapter is locked"
-                description={`Unlock it with ${formatCoins(COIN_PER_CHAPTER)} in the reader, then come back to listen.`}
-                actionLabel="Unlock in reader"
-                onAction={openReader}
+                icon="play-circle-outline"
+                title="Watch a short ad to listen"
+                description="One ad unlocks the audio for this chapter for 24 hours."
+                actionLabel="Watch ad"
+                busy={watchingAd}
+                onAction={watchAdToListen}
               />
             ) : hasAudio && playbackError ? (
               <Notice
@@ -852,19 +937,27 @@ export default function AudioPlayerScreen() {
                 onPress={() => goChapter(chapter?.prev ?? null)}
               />
 
+              {/*
+                key theo playEnabled: nút được dựng MỚI khi đổi giữa tắt (nền xám, viền) và bật
+                (nền cam, bóng, dải màu). Đổi style tại chỗ thì Android (RN 0.86, Fabric) vẽ sai:
+                nút chỉ còn hình tròn cam trơn trên một ô vuông nhạt, mất icon play/pause (thấy
+                trên emulator 09/11/2026; iOS không bị). Đừng bỏ key.
+                Còn khoá (chưa xem quảng cáo) thì nút vẫn BẬT: bấm là chiếu quảng cáo để mở.
+              */}
               <Pressable
-                onPress={togglePlay}
-                disabled={!hasAudio}
+                key={playEnabled ? 'play-on' : 'play-off'}
+                onPress={pressPlay}
+                disabled={!playEnabled || watchingAd}
                 accessibilityRole="button"
-                accessibilityLabel={playing ? 'Pause' : 'Play'}
-                accessibilityState={{ disabled: !hasAudio }}
+                accessibilityLabel={locked ? 'Watch an ad to listen' : playing ? 'Pause' : 'Play'}
+                accessibilityState={{ disabled: !playEnabled, busy: watchingAd }}
                 style={({ pressed }) => [
                   styles.playBtn,
-                  !hasAudio && styles.playBtnOff,
-                  pressed && hasAudio && styles.pressed,
+                  !playEnabled && styles.playBtnOff,
+                  pressed && playEnabled && styles.pressed,
                 ]}
               >
-                {hasAudio ? (
+                {playEnabled ? (
                   <LinearGradient
                     colors={Gradients.accent}
                     start={{ x: 0, y: 0 }}
@@ -872,16 +965,16 @@ export default function AudioPlayerScreen() {
                     style={StyleSheet.absoluteFill}
                   />
                 ) : null}
-                {busy ? (
+                {busy || watchingAd ? (
                   <ActivityIndicator
                     size="small"
-                    color={hasAudio ? Palette.onAccent : Palette.faint}
+                    color={playEnabled ? Palette.onAccent : Palette.faint}
                   />
                 ) : (
                   <Ionicons
                     name={playing ? 'pause' : 'play'}
                     size={30}
-                    color={hasAudio ? Palette.onAccent : Palette.faint}
+                    color={playEnabled ? Palette.onAccent : Palette.faint}
                     style={playing ? undefined : styles.playIcon}
                   />
                 )}
@@ -990,7 +1083,7 @@ function ControlItem({
   );
 }
 
-/** Thẻ thông báo (chưa có audio / chương khoá / lỗi phát). */
+/** Thẻ thông báo (chưa có audio / cần xem quảng cáo / lỗi phát). */
 function Notice({
   icon,
   title,
@@ -998,6 +1091,7 @@ function Notice({
   actionLabel,
   onAction,
   danger = false,
+  busy = false,
 }: {
   icon: IoniconName;
   title: string;
@@ -1005,6 +1099,8 @@ function Notice({
   actionLabel: string;
   onAction: () => void;
   danger?: boolean;
+  /** đang chạy việc của nút (chiếu quảng cáo): hiện vòng xoay, không bấm lại được */
+  busy?: boolean;
 }) {
   const tint = danger ? Palette.dangerDeep : Palette.accentDeep;
   return (
@@ -1024,15 +1120,21 @@ function Notice({
       </View>
       <Pressable
         onPress={onAction}
+        disabled={busy}
         accessibilityRole="button"
         accessibilityLabel={actionLabel}
+        accessibilityState={{ busy }}
         style={({ pressed }) => [
           styles.noticeBtn,
           { backgroundColor: tint },
-          pressed && styles.pressed,
+          pressed && !busy && styles.pressed,
         ]}
       >
-        <Text style={styles.noticeBtnText}>{actionLabel}</Text>
+        {busy ? (
+          <ActivityIndicator size="small" color={Palette.onAccent} />
+        ) : (
+          <Text style={styles.noticeBtnText}>{actionLabel}</Text>
+        )}
       </Pressable>
     </View>
   );

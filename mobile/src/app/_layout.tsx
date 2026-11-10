@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppOpenPrompts } from '@/components/app-open-prompts';
 import { WindowControlsSafeArea } from '@/components/window-controls-safe-area';
 import { Palette } from '@/constants/theme';
+import { AudioUnlocksProvider } from '@/store/audio-unlocks';
 import { ConfigProvider } from '@/store/config';
 import { HistoryProvider } from '@/store/history';
 import { NotificationsProvider } from '@/store/notifications';
@@ -43,42 +44,45 @@ export default function RootLayout() {
                   từng màn sẽ tạo nhiều sổ độc lập cùng ghi đè một khoá AsyncStorage. */}
               <RewardsProvider>
                 <NotificationsProvider>
-                  {/* Giao diện SÁNG -> nội dung status bar phải TỐI */}
-                  <StatusBar style="dark" />
-                  <Stack
-                    screenOptions={{
-                      headerShown: false,
-                      contentStyle: { backgroundColor: Palette.bg },
-                      animation: 'slide_from_right',
-                    }}>
-                    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                    <Stack.Screen name="story/[id]" />
-                    {/*
-                      Lùi chương phải trượt vào từ TRÁI, tiến chương từ PHẢI. Prev và Next đều
-                      là router.replace trên CÙNG một route nên nếu để nguyên `slide_from_right`
-                      của screenOptions thì bấm Previous vẫn trượt như Next — đúng lỗi đã gặp.
+                  {/* Audio mở bằng quảng cáo, 24 giờ mỗi chương — màn nghe và mục lục của nó đọc chung. */}
+                  <AudioUnlocksProvider>
+                    {/* Giao diện SÁNG -> nội dung status bar phải TỐI */}
+                    <StatusBar style="dark" />
+                    <Stack
+                      screenOptions={{
+                        headerShown: false,
+                        contentStyle: { backgroundColor: Palette.bg },
+                        animation: 'slide_from_right',
+                      }}>
+                      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                      <Stack.Screen name="story/[id]" />
+                      {/*
+                        Lùi chương phải trượt vào từ TRÁI, tiến chương từ PHẢI. Prev và Next đều
+                        là router.replace trên CÙNG một route nên nếu để nguyên `slide_from_right`
+                        của screenOptions thì bấm Previous vẫn trượt như Next — đúng lỗi đã gặp.
 
-                      Hướng đi kèm trong tham số `dir` của route và phải đọc Ở ĐÂY, dạng hàm:
-                      options dạng hàm được tính lúc dựng descriptor, tức TRƯỚC khi hoạt ảnh
-                      chạy. Đặt trong màn hình bằng <Stack.Screen options={...}> thì tới lượt
-                      effect sau lần render đầu mới áp, khi đó hoạt ảnh đã bắt đầu rồi.
-                    */}
-                    <Stack.Screen
-                      name="reader/[storyId]/[number]"
-                      options={({ route }) => ({
-                        animation: readingAnimation(route, 'slide_from_right'),
-                      })}
-                    />
-                    {/* Mở trình phát thì trượt lên từ đáy; đổi chương bên trong thì trượt ngang. */}
-                    <Stack.Screen
-                      name="audio/[storyId]/[number]"
-                      options={({ route }) => ({
-                        animation: readingAnimation(route, 'slide_from_bottom'),
-                      })}
-                    />
-                  </Stack>
-                  {/* "Đọc tiếp" khi mở app và lời mời bật thông báo — bảng trượt nằm trên mọi màn. */}
-                  <AppOpenPrompts />
+                        Hướng đi kèm trong tham số `dir` của route và phải đọc Ở ĐÂY, dạng hàm:
+                        options dạng hàm được tính lúc dựng descriptor, tức TRƯỚC khi hoạt ảnh
+                        chạy. Đặt trong màn hình bằng <Stack.Screen options={...}> thì tới lượt
+                        effect sau lần render đầu mới áp, khi đó hoạt ảnh đã bắt đầu rồi.
+                      */}
+                      <Stack.Screen
+                        name="reader/[storyId]/[number]"
+                        options={({ route }) => ({
+                          animation: readingAnimation(route, 'slide_from_right'),
+                        })}
+                      />
+                      {/* Mở trình phát thì trượt lên từ đáy; đổi chương bên trong thì trượt ngang. */}
+                      <Stack.Screen
+                        name="audio/[storyId]/[number]"
+                        options={({ route }) => ({
+                          animation: readingAnimation(route, 'slide_from_bottom'),
+                        })}
+                      />
+                    </Stack>
+                    {/* "Đọc tiếp" khi mở app và lời mời bật thông báo — bảng trượt nằm trên mọi màn. */}
+                    <AppOpenPrompts />
+                  </AudioUnlocksProvider>
                 </NotificationsProvider>
               </RewardsProvider>
             </HistoryProvider>

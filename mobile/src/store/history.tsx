@@ -252,9 +252,33 @@ export function useHistory(): HistoryContextValue {
 }
 
 /**
+ * Phần trăm đã đọc của một truyện: chương xa nhất từng mở / số chương cuối, làm tròn.
+ * null = chưa mở chương nào (hoặc chưa biết số chương). Đã mở thì tối thiểu 1% — truyện
+ * 300 chương mới mở chương 1 vẫn phải thấy là đã bắt đầu, không hiện "0%".
+ */
+export function readPercent(maxChapter: number | null | undefined, lastChapter: number | null | undefined): number | null {
+  if (maxChapter == null || maxChapter <= 0 || lastChapter == null || lastChapter <= 0) return null;
+  if (maxChapter >= lastChapter) return 100;
+  return Math.min(99, Math.max(1, Math.round((maxChapter / lastChapter) * 100)));
+}
+
+/**
+ * % đã đọc cho nhãn góc phải bìa (Tuấn yêu cầu 10/11/2026). Đọc từ SỔ TIẾN ĐỘ nên đúng cả
+ * với truyện đã rơi khỏi 100 dòng lịch sử. `lastChapter`: số chương cuối hiện tại của truyện.
+ */
+export function useReadPercent() {
+  const { progress } = useHistory();
+  return useCallback(
+    (storyId: number, lastChapter: number | null | undefined) => readPercent(progress[storyId], lastChapter),
+    [progress],
+  );
+}
+
+/**
  * Lọc khỏi danh sách những truyện người dùng đã đọc hết — không mời đọc lại thứ người ta
- * vừa đọc xong, ở MỌI danh sách duyệt truyện (trang chủ, xếp hạng, thể loại). Không áp cho
- * Search (người ta chủ động tìm) và Library. Truyện đang ra có thêm chương thì tự hiện lại.
+ * vừa đọc xong. Áp cho trang chủ, Ranking, New/Free, thể loại và lời mời bật thông báo.
+ * KHÔNG áp cho Search (Tuấn quyết 10/11/2026: người dùng tìm đích danh có thể muốn đọc lại —
+ * thẻ vẫn có huy hiệu ✓100%), History và Library. Truyện đang ra có thêm chương thì tự hiện lại.
  */
 export function useHideFinished() {
   const { progress } = useHistory();

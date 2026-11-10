@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AboutLinks } from '@/components/about-links';
 import { Chip } from '@/components/chip';
 import { EmptyState } from '@/components/empty-state';
+import { ReadProgress } from '@/components/read-progress';
 import { StoryCardSkeleton, StoryCardView, StoryCover } from '@/components/story-card';
 import {
   FontSize,
@@ -31,7 +32,7 @@ import {
 import { getStory, type Story } from '@/lib/api';
 import { plural, timeAgo } from '@/lib/format';
 import { CONTENT_MAX_WIDTH, useResponsive } from '@/lib/responsive';
-import { type HistoryEntry, isFinished, useHistory } from '@/store/history';
+import { type HistoryEntry, isFinished, readPercent, useHistory } from '@/store/history';
 import { useWallet } from '@/store/wallet';
 
 /** Số thẻ giả hiển thị khi đang tải. */
@@ -304,7 +305,7 @@ function HistoryCard({
   const finished = isFinished(entry);
   const progress = progressLabel(entry, finished);
   const total = entry.chaptersCount;
-  const ratio = finished ? 1 : total ? Math.min(1, entry.maxChapter / total) : 0;
+  const percent = finished ? 100 : readPercent(entry.maxChapter, total);
   return (
     <Pressable
       onPress={onPress}
@@ -321,17 +322,7 @@ function HistoryCard({
         showRibbon={false}
         showChapters={false}
       />
-      {total ? (
-        <View style={styles.cardTrack}>
-          <View
-            style={[
-              styles.cardFill,
-              finished && styles.cardFillDone,
-              { width: `${Math.round(ratio * 100)}%` },
-            ]}
-          />
-        </View>
-      ) : null}
+      {percent != null ? <ReadProgress percent={percent} style={styles.cardProgress} /> : null}
       <View style={styles.cardMeta}>
         <Text style={styles.cardTitle} numberOfLines={2}>
           {entry.title}
@@ -362,6 +353,7 @@ function HistoryRow({
 }) {
   const finished = isFinished(entry);
   const progress = progressLabel(entry, finished);
+  const percent = finished ? 100 : readPercent(entry.maxChapter, entry.chaptersCount);
   return (
     <Pressable
       onPress={onPress}
@@ -398,6 +390,7 @@ function HistoryRow({
             {entry.chapterTitle}
           </Text>
         ) : null}
+        {percent != null ? <ReadProgress percent={percent} style={styles.rowProgress} /> : null}
       </View>
       <Ionicons name="chevron-forward" size={18} color={Palette.muted} />
     </Pressable>
@@ -503,6 +496,10 @@ const styles = StyleSheet.create({
     color: Palette.freeDeep,
     fontWeight: FontWeight.semibold,
   },
+  rowProgress: {
+    marginTop: Spacing.xs,
+    maxWidth: 240,
+  },
   rowChapter: {
     color: Palette.muted,
     fontSize: FontSize.caption,
@@ -524,20 +521,8 @@ const styles = StyleSheet.create({
     borderColor: Palette.border,
     ...Shadow.card,
   },
-  cardTrack: {
-    height: 4,
+  cardProgress: {
     marginHorizontal: Spacing.xs - 2,
-    borderRadius: Radius.pill,
-    backgroundColor: Palette.surfaceAlt,
-    overflow: 'hidden',
-  },
-  cardFill: {
-    height: '100%',
-    borderRadius: Radius.pill,
-    backgroundColor: Palette.accent,
-  },
-  cardFillDone: {
-    backgroundColor: Palette.freeDeep,
   },
   cardMeta: {
     gap: 2,

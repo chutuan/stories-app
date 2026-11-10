@@ -412,6 +412,8 @@ function ReaderScreen() {
   const openAudio = useCallback(() => {
     // Màn nghe do route riêng đảm nhiệm; ép kiểu vì bảng route sinh tự động
     // chỉ được cập nhật sau khi file /audio/... tồn tại trên đĩa.
+    // Nút LUÔN bật, kể cả chương chưa có MP3 (Tuấn yêu cầu 10/11/2026): màn nghe ghi lượt
+    // bấm lên server rồi tự báo "Audio is currently unavailable" hoặc mời xem quảng cáo.
     router.push(`/audio/${storyId}/${chapterNumber}` as Href);
   }, [router, storyId, chapterNumber]);
 
@@ -521,22 +523,16 @@ function ReaderScreen() {
 
         <Pressable
           onPress={openAudio}
-          disabled={!hasAudio}
           hitSlop={6}
           accessibilityRole="button"
-          accessibilityLabel={hasAudio ? 'Listen to this chapter' : 'No audio for this chapter yet'}
-          accessibilityState={{ disabled: !hasAudio }}
+          accessibilityLabel="Listen to this chapter"
           style={({ pressed }) => [
             styles.iconBtn,
-            hasAudio ? styles.iconBtnOn : styles.iconBtnOff,
-            pressed && hasAudio && styles.pressed,
+            styles.iconBtnOn,
+            pressed && styles.pressed,
           ]}
         >
-          <Ionicons
-            name="headset"
-            size={18}
-            color={hasAudio ? Palette.onAccent : Palette.faint}
-          />
+          <Ionicons name="headset" size={18} color={Palette.onAccent} />
         </Pressable>
       </View>
 
@@ -1005,9 +1001,6 @@ const styles = StyleSheet.create({
   iconBtnOn: {
     backgroundColor: Palette.accentDeep,
     borderColor: 'transparent',
-  },
-  iconBtnOff: {
-    opacity: 0.45,
   },
   aaLabel: {
     color: Palette.accentDeep,

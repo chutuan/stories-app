@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { FontSize, FontWeight, Layout, LineHeight, Palette, Radius, Spacing } from '@/constants/theme';
 import { reactToChapter, type ReactionTotals } from '@/lib/api';
+import { getReaderId } from '@/lib/reader-id';
 import type { ReaderTheme } from '@/store/reader-prefs';
 
 /**
@@ -12,7 +13,7 @@ import type { ReaderTheme } from '@/store/reader-prefs';
  * (backend: Api\ChapterReactionController, Web\ReactionController).
  *
  * App không có tài khoản: lần bấm đầu tiên sinh một mã ngẫu nhiên, giữ trong máy
- * (`stories:reader-id`) và gửi kèm mỗi phiếu để bấm lại là ĐỔI phiếu chứ không thêm phiếu.
+ * (`stories:reader-id`, lib/reader-id) và gửi kèm mỗi phiếu để bấm lại là ĐỔI phiếu chứ không thêm phiếu.
  * Server chỉ lưu bản băm của mã đó. Phiếu của chính máy này nhớ ở `stories:reactions`.
  *
  * KHÁC WEB một chỗ, có chủ đích: bấm xong năm khuôn mặt VẪN Ở NGUYÊN, chỉ tô mặt đã chọn.
@@ -23,7 +24,6 @@ import type { ReaderTheme } from '@/store/reader-prefs';
  * Không có ô chữ nào: chỉ là một con số, không phải nội dung do người dùng tạo (Guideline 1.2).
  */
 
-const KEY_READER_ID = 'stories:reader-id';
 const KEY_VOTES = 'stories:reactions';
 /** Giữ phiếu của chừng này chương gần nhất; quá thì bỏ phiếu cũ nhất (chỉ là để tô mặt đã chọn). */
 const MAX_VOTES = 3000;
@@ -60,23 +60,6 @@ async function saveVote(key: string, score: number): Promise<void> {
   const keys = Object.keys(votes);
   for (const old of keys.slice(0, Math.max(0, keys.length - MAX_VOTES))) delete votes[old];
   await AsyncStorage.setItem(KEY_VOTES, JSON.stringify(votes)).catch(() => {});
-}
-
-let readerIdPromise: Promise<string> | null = null;
-
-/** Mã ngẫu nhiên của máy này. Không cần ngẫu nhiên mật mã: chỉ để phân biệt hai máy. */
-function getReaderId(): Promise<string> {
-  readerIdPromise ??= AsyncStorage.getItem(KEY_READER_ID)
-    .catch(() => null)
-    .then((stored) => {
-      if (stored && /^[A-Za-z0-9_-]{16,64}$/.test(stored)) return stored;
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-      let id = '';
-      for (let i = 0; i < 32; i++) id += chars[Math.floor(Math.random() * chars.length)];
-      AsyncStorage.setItem(KEY_READER_ID, id).catch(() => {});
-      return id;
-    });
-  return readerIdPromise;
 }
 
 /* ------------------------------------------------------------------ */

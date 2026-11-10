@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { usePathname, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -21,7 +21,7 @@ import {
 } from '@/constants/theme';
 import { getHome, type StoryCard } from '@/lib/api';
 import { useResponsive } from '@/lib/responsive';
-import { isFinished, type HistoryEntry, useHistory } from '@/store/history';
+import { isFinished, type HistoryEntry, useHideFinished, useHistory } from '@/store/history';
 import { openedFromNotificationRecently, useNotifications } from '@/store/notifications';
 
 /**
@@ -258,15 +258,21 @@ function NotifySheet({
   onClose: () => void;
 }) {
   // Bìa 3 truyện mới nhất: cho thấy cụ thể mỗi tối sẽ nhận được gì. null = đang tải.
-  const [covers, setCovers] = useState<StoryCard[] | null>(null);
+  // Bỏ truyện người dùng đã đọc hết, như mọi danh sách khác (chỉ History/Library còn hiện).
+  const [newest, setNewest] = useState<StoryCard[] | null>(null);
+  const hideFinished = useHideFinished();
+  const covers = useMemo(
+    () => (newest ? hideFinished(newest).slice(0, 3) : null),
+    [newest, hideFinished],
+  );
   useEffect(() => {
     let alive = true;
     getHome()
       .then((home) => {
-        if (alive) setCovers(home.newest.filter((s) => s.thumbnail_url).slice(0, 3));
+        if (alive) setNewest(home.newest.filter((s) => s.thumbnail_url));
       })
       .catch(() => {
-        if (alive) setCovers([]);
+        if (alive) setNewest([]);
       });
     return () => {
       alive = false;
