@@ -38,6 +38,10 @@ yarn-error.*
 
 # EAS / store credentials (KHONG BAO GIO commit; *.p8 / *.p12 da ignore o tren)
 google-play-service-account.json
+# Firebase Android config: EAS lay tu bien moi truong kieu file GOOGLE_SERVICES_JSON
+google-services.json
+# Khoa service account FCM V1 (chi upload len EAS, khong giu)
+*firebase-adminsdk*.json
 
 # typescript
 *.tsbuildinfo

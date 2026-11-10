@@ -38,6 +38,7 @@ export default function SearchScreen() {
   const { columns, cellWidth, gap } = useResponsive();
   const [query, setQuery] = useState('');
   const [inputFocused, setInputFocused] = useState(false);
+  const inputRef = useRef<TextInput>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [results, setResults] = useState<StoryCard[]>([]);
@@ -110,14 +111,24 @@ export default function SearchScreen() {
         <Text style={styles.subheading}>Find stories by title, author or genre</Text>
       </View>
 
-      {/* Ô nhập từ khoá */}
-      <View style={[styles.searchBar, inputFocused && styles.searchBarFocused]}>
+      {/*
+        Ô nhập từ khoá. Khung là Pressable nên chạm vào kính lúp hay phần lề cũng focus ô nhập.
+        Còn một lý do bắt buộc trên Android (RN 0.86, Fabric): khi khung là View trơn, không có
+        trình xử lý chạm nào, chạm vào TextInput không tới được JS -> ô không bao giờ focus,
+        không gõ được chữ nào (thấy trên emulator 09/11/2026; iOS không bị). Đừng đổi lại View.
+        accessible={false}: để TalkBack vẫn thấy ô nhập, không gộp cả khung thành một nút.
+      */}
+      <Pressable
+        onPress={() => inputRef.current?.focus()}
+        accessible={false}
+        style={[styles.searchBar, inputFocused && styles.searchBarFocused]}>
         <Ionicons
           name="search"
           size={18}
           color={inputFocused ? Palette.accentDeep : Palette.faint}
         />
         <TextInput
+          ref={inputRef}
           style={styles.input}
           placeholder="Search stories or authors"
           placeholderTextColor={Palette.faint}
@@ -140,7 +151,7 @@ export default function SearchScreen() {
             <Ionicons name="close-circle" size={19} color={Palette.faint} />
           </Pressable>
         ) : null}
-      </View>
+      </Pressable>
 
       {/* Bộ lọc thể loại — chip đang chọn tô cam đặc, chữ trắng */}
       <FlatList

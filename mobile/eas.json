@@ -48,6 +48,18 @@
         "EXPO_PUBLIC_API_URL": "https://api.tunastory.com/api"
       }
     },
+    "production-apk": {
+      // Y hệt production (cùng env, cùng ID AdMob thật) nhưng ra file APK để cài
+      // thử lên Android emulator / máy thật trước khi đưa bản .aab lên Google Play.
+      // Emulator được AdMob tự coi là thiết bị test nên không sinh lượt hiển thị thật.
+      "extends": "production",
+      "environment": "production",
+      "distribution": "internal",
+      "autoIncrement": false,
+      "android": {
+        "buildType": "apk"
+      }
+    },
     "production": {
       // Bản phát hành: TestFlight (iOS) + Play Internal Testing (Android).
       // autoIncrement: EAS tự tăng ios.buildNumber và android.versionCode
@@ -77,13 +89,15 @@
         "EXPO_PUBLIC_ADMOB_BANNER_ID_IOS": "ca-app-pub-9892355907152840/3899537894",
         "EXPO_PUBLIC_ADMOB_REWARDED_ID_IOS": "ca-app-pub-9892355907152840/3713659468",
         // Banner 300×250 chen trong nội dung chương (InlineAd), tạo 31/10/2026.
-        "EXPO_PUBLIC_ADMOB_INLINE_ID_IOS": "ca-app-pub-9892355907152840/8991062919"
+        "EXPO_PUBLIC_ADMOB_INLINE_ID_IOS": "ca-app-pub-9892355907152840/8991062919",
 
-        // CÒN THIẾU — chỉ cần khi phát hành Android (iOS đã đủ):
-        //   "EXPO_PUBLIC_ADMOB_ANDROID_APP_ID":      "ca-app-pub-XXXX~XXXX"
-        //   "EXPO_PUBLIC_ADMOB_BANNER_ID_ANDROID":   "ca-app-pub-XXXX/XXXX"
-        //   "EXPO_PUBLIC_ADMOB_REWARDED_ID_ANDROID": "ca-app-pub-XXXX/XXXX"
-        //   "EXPO_PUBLIC_ADMOB_INLINE_ID_ANDROID":   "ca-app-pub-XXXX/XXXX"
+        // Android — app AdMob riêng "Stories: Billionaire Novels" (Android), tạo 09/11/2026
+        // trước khi app có trên Google Play; liên kết cửa hàng sau khi app lên Play.
+        // Tên unit giống bên iOS: Top banner / Content / Rewarded.
+        "EXPO_PUBLIC_ADMOB_ANDROID_APP_ID": "ca-app-pub-9892355907152840~1303196469",
+        "EXPO_PUBLIC_ADMOB_BANNER_ID_ANDROID": "ca-app-pub-9892355907152840/4476154715",
+        "EXPO_PUBLIC_ADMOB_REWARDED_ID_ANDROID": "ca-app-pub-9892355907152840/2412923146",
+        "EXPO_PUBLIC_ADMOB_INLINE_ID_ANDROID": "ca-app-pub-9892355907152840/5697562035"
       }
     }
   },

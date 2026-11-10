@@ -27,3 +27,20 @@ mobile/android/
 # lỗi — cái tránh được là một .env có giá trị SAI cho khoá mà eas.json không đặt,
 # loại đó sẽ lặng lẽ chui vào bản phát hành.
 mobile/.env
+
+# .easignore THAY HẲN .gitignore nên mọi thứ bị gitignore mà không ghi lại ở đây đều
+# bị tải lên. Kiểm 09/11/2026 (build Android đầu tiên): imports/ 5,4GB, .claude/ 1,7GB.
+/imports/
+.claude/
+**/node_modules/
+store/creative/
+hoi-thoai-thanh-tra-banh-mi.txt
+.DS_Store
+*.log
+__pycache__/
+mobile/.env.*
+!mobile/.env.example
+# google-services.json đi qua biến môi trường kiểu file GOOGLE_SERVICES_JSON trên EAS.
+mobile/google-services.json
+*firebase-adminsdk*.json
+mobile/google-play-service-account.json

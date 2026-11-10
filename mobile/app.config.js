@@ -18,6 +18,22 @@ const ADMOB_IOS_APP_ID_TEST = 'ca-app-pub-3940256099942544~1458002511';
 // API mặc định cho môi trường dev (backend Laravel chạy `php artisan serve --port=8001`).
 const DEFAULT_API_URL = 'http://localhost:8001/api';
 
+// Kotlin cho Android. Phải >= bản Kotlin mà play-services-ads (react-native-google-mobile-ads)
+// dùng để biên dịch, hiện là 2.3.0. Dùng cho cả expo-build-properties lẫn plugin ghim KGP.
+const KOTLIN_VERSION = '2.3.0';
+
+// google-services.json của Firebase project "TunaStory" (tunastory-ed1ef), cần cho thông
+// báo đẩy Android (Expo push đi qua FCM). File này KHÔNG commit:
+// - EAS Build: lấy từ biến môi trường kiểu file GOOGLE_SERVICES_JSON (`eas env`,
+//   môi trường production + preview), EAS gán biến này thành đường dẫn file tạm.
+// - Build local: đặt file `google-services.json` cạnh app.config.js.
+// Thiếu cả hai thì app vẫn build được, chỉ là Android không nhận được thông báo.
+const fs = require('fs');
+const path = require('path');
+const GOOGLE_SERVICES_FILE =
+  process.env.GOOGLE_SERVICES_JSON ??
+  (fs.existsSync(path.join(__dirname, 'google-services.json')) ? './google-services.json' : undefined);
+
 module.exports = {
   expo: {
     name: 'Stories',
@@ -57,6 +73,7 @@ module.exports = {
     },
     android: {
       package: 'com.chutuan.stories',
+      googleServicesFile: GOOGLE_SERVICES_FILE,
       adaptiveIcon: {
         backgroundColor: '#F2703A',
         foregroundImage: './assets/images/android-icon-foreground.png',
@@ -64,6 +81,18 @@ module.exports = {
         monochromeImage: './assets/images/android-icon-monochrome.png',
       },
       predictiveBackGestureEnabled: false,
+      // Gỡ các quyền app không dùng nhưng template/plugin tự thêm vào manifest. Google Play
+      // soi kỹ quyền đặc biệt, và người dùng thấy danh sách quyền ở trang cài đặt.
+      // - WRITE_SETTINGS: expo-brightness thêm cho setSystemBrightnessAsync; app chỉ dùng
+      //   setBrightnessAsync (độ sáng cửa sổ app), không cần quyền.
+      // - SYSTEM_ALERT_WINDOW: chỉ dev menu cần.
+      // - Bộ nhớ ngoài: app không đọc/ghi file của người dùng.
+      blockedPermissions: [
+        'android.permission.WRITE_SETTINGS',
+        'android.permission.SYSTEM_ALERT_WINDOW',
+        'android.permission.READ_EXTERNAL_STORAGE',
+        'android.permission.WRITE_EXTERNAL_STORAGE',
+      ],
     },
     web: {
       output: 'static',
@@ -80,7 +109,7 @@ module.exports = {
         'expo-build-properties',
         {
           android: {
-            kotlinVersion: '2.3.0',
+            kotlinVersion: KOTLIN_VERSION,
           },
           ios: {
             // Adopt UIScene lifecycle. Bản 1.0.0 (4) bị Apple đánh trượt 2.1(a) vì
@@ -104,6 +133,9 @@ module.exports = {
           },
         },
       ],
+      // kotlinVersion ở trên KHÔNG đổi trình biên dịch Kotlin thật; plugin này mới đổi.
+      // Xem giải thích trong plugins/with-kotlin-gradle-plugin.js.
+      ['./plugins/with-kotlin-gradle-plugin', { version: KOTLIN_VERSION }],
       [
         'expo-splash-screen',
         {
@@ -145,7 +177,18 @@ module.exports = {
       // thông báo chỉ hiện banner, không cần đánh thức app chạy nền (Guideline 2.5.4).
       // ios/ bị gitignore và không prebuild lại: entitlement đã thêm tay vào
       // ios/Stories/Stories.entitlements — prebuild lần sau plugin này sinh lại đúng thế.
-      'expo-notifications',
+      [
+        'expo-notifications',
+        {
+          // Android vẽ icon thông báo chỉ theo kênh alpha (trắng trên nền trong suốt);
+          // để mặc định nó lấy icon app -> hiện thành ô vuông trắng. Đây là quyển sách
+          // cắt từ android-icon-monochrome.png, tô màu cam của app.
+          icon: './assets/images/notification-icon.png',
+          color: '#F2703A',
+          // Trùng id kênh tạo trong src/store/notifications.tsx ("New stories").
+          defaultChannel: 'default',
+        },
+      ],
     ],
     extra: {
       // URL gốc của REST API. iOS chặn HTTP thường (App Transport Security)

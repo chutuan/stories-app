@@ -3,7 +3,7 @@ import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState, Linking, Platform } from 'react-native';
+import { AppState, Linking, PermissionsAndroid, Platform } from 'react-native';
 
 import { API_URL } from '@/lib/api';
 
@@ -101,6 +101,26 @@ function toPermission(res: Notifications.NotificationPermissionsStatus): NotifyP
   return res.status === 'undetermined' ? 'undetermined' : 'denied';
 }
 
+/**
+ * Như toPermission, thêm một chỗ vá cho Android 13+: expo-notifications báo 'denied' cả khi app
+ * CHƯA xin quyền lần nào, vì nó coi areNotificationsEnabled() = false (luôn false cho tới khi được
+ * cấp POST_NOTIFICATIONS) là bị từ chối. Không vá thì app không bao giờ hiện hộp xin quyền của
+ * hệ thống mà đẩy người ta thẳng sang Cài đặt (thấy trên emulator 09/11/2026).
+ * Còn hỏi được (canAskAgain) mà POST_NOTIFICATIONS chưa cấp = coi như chưa hỏi; Android tự chặn
+ * sau hai lần từ chối, lúc đó canAskAgain = false. Đã cấp quyền mà người dùng tắt thông báo của
+ * app trong Cài đặt thì vẫn là 'denied': chỉ bật lại được ở đó.
+ */
+async function readPermission(res: Notifications.NotificationPermissionsStatus): Promise<NotifyPermission> {
+  const perm = toPermission(res);
+  if (perm !== 'denied' || Platform.OS !== 'android' || Number(Platform.Version) < 33 || !res.canAskAgain) {
+    return perm;
+  }
+  const granted = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS).catch(
+    () => true,
+  );
+  return granted ? 'denied' : 'undetermined';
+}
+
 function deviceTimezone(): string {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
@@ -170,7 +190,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
   // Đọc tuỳ chọn + quyền hiện tại; đã bật và còn quyền thì đăng ký lại (token có thể đổi,
   // và múi giờ đi theo người dùng khi họ đi xa).
   const refresh = useCallback(async () => {
-    const perm = toPermission(await Notifications.getPermissionsAsync());
+    const perm = await readPermission(await Notifications.getPermissionsAsync());
     permissionRef.current = perm;
     setPermission(perm);
     if (perm === 'granted' && awaitingSettingsRef.current && !prefsRef.current.enabled) {
@@ -230,10 +250,10 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
         importance: Notifications.AndroidImportance.DEFAULT,
       }).catch(() => {});
     }
-    let perm = toPermission(await Notifications.getPermissionsAsync());
+    let perm = await readPermission(await Notifications.getPermissionsAsync());
     const askedNow = perm === 'undetermined';
     if (askedNow) {
-      perm = toPermission(
+      perm = await readPermission(
         await Notifications.requestPermissionsAsync({
           ios: { allowAlert: true, allowSound: true, allowBadge: false },
         }),
