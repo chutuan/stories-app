@@ -1,4 +1,12 @@
-# Metadata cho phiên bản 1.0.4 (BẢN NHÁP, chưa điền lên App Store Connect)
+# Metadata cho phiên bản 1.0.4 (build 12)
+
+**Đã nộp duyệt 08/11/2026 ~14:53 (giờ máy)** — "Waiting for Review", tự phát hành khi duyệt xong, phát hành ngay cho
+mọi người, giữ rating cũ. Build 12 archive tại máy (Xcode 27B52, cùng toolchain với 1.0.3; framework native cùng UUID với
+1.0.3, chỉ JS đổi) và upload bằng `xcodebuild -exportArchive` (destination upload, không qua Organizer); số build giữ 12.
+TestFlight: nhóm nội bộ "Team (Expo)". Promotional text, Description, What's New, Notes đã dán đúng các bản dưới đây
+(kiểm SHA-256 sau khi tải lại trang). Ảnh Rewards thay mới ở iPhone 6.9" (vị trí 5; 6.5" tự dùng ảnh 6.9") và iPad 13"
+(vị trí 5): `store/screenshots/ios-6.9/4-rewards.png`, `ipad-13/5-rewards.png` (`ios-6.5/4-rewards.png` chụp kèm, chưa dùng).
+Trong lúc duyệt: giữ free_chapters/tên #16 và #11, giữ cấp bù 2 lần/ngày (Notes dựa vào đó).
 
 Soạn 08/11/2026. Thay đổi trong app (Tuấn yêu cầu 08/11):
 - bỏ điểm danh hằng ngày;

@@ -1,0 +1,58 @@
+<!doctype html>
+<!--
+  Feature graphic cho Google Play: 1024x500, JPEG hoặc PNG 24-bit (không alpha).
+  Xuất: bash store/creative/play/render.sh  -> feature-1024x500.png
+  Không vẽ máy iPhone (trang Android), không giá, không "#1"/"best", không URL.
+  Bìa truyện lấy từ API production (covers/), chọn bìa không có máu/bạo lực.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<title>Stories feature graphic</title>
+<style>
+  :root { --ink: #1A1614; --muted: #6E635C; --accent: #FF9052; --accent-deep: #F2703A; --bg: #FDF8F4; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1024px; height: 500px; overflow: hidden; }
+  body {
+    position: relative;
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    background:
+      radial-gradient(420px 360px at 760px 270px, rgba(255, 144, 82, .42), rgba(255, 144, 82, 0) 72%),
+      radial-gradient(520px 380px at 80px 20px, #FFE6D2, rgba(255, 230, 210, 0) 70%),
+      linear-gradient(135deg, #FFF2E6 0%, var(--bg) 46%, #FBE6D5 100%);
+  }
+  .copy { position: absolute; left: 64px; top: 0; bottom: 0; width: 470px;
+          display: flex; flex-direction: column; justify-content: center; }
+  .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 26px; }
+  .brand img { width: 44px; height: 44px; border-radius: 11px; box-shadow: 0 4px 10px rgba(140, 60, 15, .25); }
+  .brand span { font-size: 26px; font-weight: 800; letter-spacing: -.5px; }
+  .brand span b { color: var(--accent-deep); }
+  h1 { font-size: 58px; line-height: 1.02; font-weight: 800; letter-spacing: -1.6px; }
+  h1 em { font-style: normal; background: linear-gradient(100deg, var(--accent), var(--accent-deep));
+          -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .copy p { margin-top: 20px; font-size: 22px; line-height: 1.3; font-weight: 500; color: var(--muted); }
+
+  .cover { position: absolute; width: 168px; height: 224px; border-radius: 14px; overflow: hidden;
+           box-shadow: 0 22px 40px rgba(140, 60, 15, .28), 0 6px 14px rgba(26, 22, 20, .18); }
+  .cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .c1 { left: 540px; top: 150px; transform: rotate(-9deg); }
+  .c2 { left: 634px; top: 104px; transform: rotate(-4deg); }
+  .c3 { left: 732px; top: 84px;  transform: rotate(0deg); width: 184px; height: 245px; z-index: 3; }
+  .c4 { left: 818px; top: 118px; transform: rotate(5deg); z-index: 2; }
+  .c1 { z-index: 1; } .c2 { z-index: 2; }
+</style>
+</head>
+<body>
+  <div class="copy">
+    <div class="brand"><img src="../../../mobile/assets/images/icon.png" alt=""><span>Stor<b>ies</b></span></div>
+    <h1>Your next chapter<br>is <em>waiting.</em></h1>
+    <p>Read it yourself, or sit back and listen.</p>
+  </div>
+  <div class="cover c1"><img src="covers/an-address-in-kentucky.jpg" alt=""></div>
+  <div class="cover c2"><img src="covers/nine-tiers-of-gold-leaf.jpg" alt=""></div>
+  <div class="cover c3"><img src="covers/the-sixty-dollar-suit.jpg" alt=""></div>
+  <div class="cover c4"><img src="covers/the-black-swan-wedding.jpg" alt=""></div>
+</body>
+</html>
