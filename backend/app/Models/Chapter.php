@@ -43,6 +43,12 @@ class Chapter extends Model
         return $this->hasMany(ChapterReaction::class);
     }
 
+    /** Lượt bấm nghe audio trong app, mỗi máy một dòng — xem ChapterAudioRequest. */
+    public function audioRequests(): HasMany
+    {
+        return $this->hasMany(ChapterAudioRequest::class);
+    }
+
     public function story(): BelongsTo
     {
         return $this->belongsTo(Story::class);

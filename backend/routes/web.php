@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AudioRequestController;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\ChapterController;
@@ -163,6 +164,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::get('votes', [VoteController::class, 'index'])->name('votes.index');
         Route::delete('votes/{vote}', [VoteController::class, 'destroy'])->name('votes.destroy');
+
+        Route::get('audio', [AudioRequestController::class, 'index'])->name('audio.index');
 
         Route::get('queue', [QueueController::class, 'index'])->name('queue.index');
         Route::delete('queue/{item}', [QueueController::class, 'destroy'])->name('queue.destroy');

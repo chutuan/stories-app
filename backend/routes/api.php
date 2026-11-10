@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\ChapterAudioRequestController;
 use App\Http\Controllers\Api\ChapterController;
 use App\Http\Controllers\Api\ChapterReactionController;
 use App\Http\Controllers\Api\ConfigController;
@@ -22,6 +23,11 @@ Route::get('/stories/{story}/chapters/{number}', [ChapterController::class, 'sho
 Route::post('/stories/{story}/chapters/{number}/reaction', [ChapterReactionController::class, 'store'])
     ->whereNumber('number')
     ->middleware('throttle:20,1');
+// Lượt bấm nghe audio / lần xem quảng cáo mở audio của app (Tuấn yêu cầu 10/11/2026) — trang
+// admin/audio xếp chương theo số người muốn nghe. Xem ChapterAudioRequestController.
+Route::post('/stories/{story}/chapters/{number}/audio-request', [ChapterAudioRequestController::class, 'store'])
+    ->whereNumber('number')
+    ->middleware('throttle:30,1');
 
 // Lượt đọc của bản WEB (tunastory.com gọi cùng tên miền, đường dẫn tương đối): trang gửi tín hiệu
 // khi người đọc đã thật sự ở lại, thay cho việc đếm lúc GET trang. Xem WebSeenController.

@@ -36,6 +36,9 @@
                     <a class="nav-link {{ request()->routeIs('admin.votes.*') ? 'active' : '' }}" href="{{ route('admin.votes.index') }}">Phiếu đánh giá</a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('admin.audio.*') ? 'active' : '' }}" href="{{ route('admin.audio.index') }}">Yêu cầu audio</a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('admin.categories.*') ? 'active' : '' }}" href="{{ route('admin.categories.index') }}">Thể loại</a>
                 </li>
                 <li class="nav-item">
@@ -57,6 +60,11 @@
 
             @if (session('status'))
                 <div class="alert alert-success">{{ session('status') }}</div>
+            @endif
+            {{-- Vài thao tác trả lỗi bằng with('error') (vd. tạo audio cho chương đã có audio) — trước
+                 đây không trang nào in ra nên bấm xong không thấy gì. --}}
+            @if (session('error'))
+                <div class="alert alert-danger">{{ session('error') }}</div>
             @endif
             @if ($errors->any())
                 <div class="alert alert-danger">
