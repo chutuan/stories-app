@@ -79,7 +79,9 @@ def main():
         toc = [{'n': i + 1, 'slug': c['slug'], 'title': c['title']} for i, c in enumerate(chapters)]
         for c in chapters:
             out = {
-                'slug': c['slug'], 'url': c['url'], 'title': c['title'], 'image': c['image'],
+                # Bản xuất cũ tự thêm `url`; chi tiết bài lấy thẳng từ API admin thì chỉ có public_url.
+                'slug': c['slug'], 'url': c.get('url') or c.get('public_url') or c.get('permalink'),
+                'title': c['title'], 'image': c['image'],
                 'published_at': c['published_at'], 'modified_at': c['updated_at'],
                 'category': (c.get('categories') or [None])[0],
                 'series_title': series_title, 'series_toc': toc,
