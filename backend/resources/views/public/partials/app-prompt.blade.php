@@ -1,5 +1,7 @@
 {{--
   Mời người đọc trên iPhone/iPad tải app — bottom sheet, KHÔNG phải hộp che kín màn hình.
+  Android: chỉ khi bật config app.android_public (trang Play hết 404, tức đã lên production).
+  Badge và dòng "Free on ..." của Android chỉ được in ra khi đã bật.
 
   Vì sao không bật ngay khi vào trang: Google hạ hạng trang di động hiện popup che nội
   dung ngay sau khi người dùng bấm vào từ kết quả tìm kiếm ("intrusive interstitials"),
@@ -24,7 +26,10 @@
       <img src="{{ asset('icons/icon-180.png') }}" width="60" height="60" alt="Stories app icon">
       <div>
         <strong id="ap-title">Read Stories in the app</strong>
-        <span>Free on the App Store</span>
+        <span data-ap-os="ios">Free on the App Store</span>
+        @if (config('app.android_public'))
+          <span data-ap-os="android" hidden>Free on Google Play</span>
+        @endif
       </div>
     </div>
     <ul class="ap-list">
@@ -32,9 +37,16 @@
       <li>Listen to narrated stories</li>
       <li>Keep a library on your phone, no account needed</li>
     </ul>
-    <a class="store-badge ap-get" href="{{ route('public.app') }}">
-      <img src="{{ asset('images/app-store-badge.svg') }}" width="168" height="56" alt="Download on the App Store">
+    {{-- loading=lazy trong khối hidden: không ai tải badge cho tới khi script bên dưới chọn đúng
+         cửa hàng của máy và chuyển ảnh đó sang eager. Máy tính không tải badge nào. --}}
+    <a class="store-badge ap-get" data-ap-os="ios" href="{{ route('public.app', ['os' => 'ios']) }}">
+      <img src="{{ asset('images/app-store-badge.svg') }}" width="168" height="56" loading="lazy" alt="Download on the App Store">
     </a>
+    @if (config('app.android_public'))
+      <a class="store-badge ap-get" data-ap-os="android" href="{{ route('public.app', ['os' => 'android']) }}" hidden>
+        <img src="{{ asset('images/google-play-badge.png') }}" width="188" height="56" loading="lazy" alt="Get it on Google Play">
+      </a>
+    @endif
     <button class="ap-later" type="button" data-ap-close>Continue in browser</button>
   </div>
 </div>
@@ -56,6 +68,7 @@
   .ap-head span{color:var(--muted);font-size:14px}
   .ap-list{margin:0 0 18px;padding-left:20px;font-size:15px;line-height:1.55}
   .ap-get.store-badge{display:block;width:max-content;margin:0 auto}
+  .ap-get.store-badge[hidden]{display:none}
   .ap-get.store-badge img{height:56px}
   .ap-later{display:block;width:100%;margin-top:8px;padding:12px;border:0;background:transparent;
             color:var(--muted);font-size:15px;cursor:pointer}
@@ -63,10 +76,15 @@
 </style>
 <script>
 (function () {
+  var ANDROID = @json((bool) config('app.android_public'));
   var ua = navigator.userAgent || '';
   // iPadOS 13+ tự xưng là Mac: nhận ra nhờ màn cảm ứng nhiều điểm.
   var isIOS = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
-  if (!isIOS || window.navigator.standalone) return;
+  var os = isIOS ? 'ios' : (ANDROID && /Android/.test(ua) ? 'android' : '');
+  if (!os) return;
+  // Đã cài web ra màn hình chính và đang mở như app: không mời.
+  if (window.navigator.standalone ||
+      (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)) return;
 
   var KEY = 'stories.appPrompt';
   var DAY = 864e5;
@@ -83,6 +101,14 @@
 
   var root = document.getElementById('app-prompt');
   if (!root) return;
+  // Chỉ để lại dòng chữ và badge của cửa hàng ứng với máy này.
+  Array.prototype.forEach.call(root.querySelectorAll('[data-ap-os]'), function (el) {
+    el.hidden = el.getAttribute('data-ap-os') !== os;
+    // Badge đúng máy thì tải ngay, để lúc hộp trượt lên ảnh đã sẵn (lazy trong khối ẩn
+    // thì phải chờ hộp mở mới tải, badge sẽ hiện trễ).
+    var img = el.hidden ? null : el.querySelector('img');
+    if (img) img.loading = 'eager';
+  });
   var lastFocus = null;
 
   function close(days) {
@@ -109,7 +135,7 @@
 
   root.addEventListener('click', function (e) {
     if (e.target.closest('[data-ap-close]')) { close(1); }
-    // Link vẫn mở App Store; đóng luôn hộp để quay lại Safari không gặp lại nó.
+    // Link vẫn mở cửa hàng; đóng luôn hộp để quay lại trình duyệt không gặp lại nó.
     else if (e.target.closest('.ap-get')) { close(1); }
   });
 

@@ -73,26 +73,57 @@ Route::get('/{key}.txt', function (string $key) {
 // ?src=<nhãn> do script nhúng ở trang khác gắn vào (xem /embed/app-prompt.js). Có
 // IOS_PROVIDER_TOKEN thì chuyển thành link chiến dịch của App Store (pt + ct), để App
 // Store Connect > App Analytics đếm được lượt tải theo từng trang; chưa có thì bỏ qua.
+//
+// Android (chỉ khi config app.android_public bật): ?os=android, hoặc không có ?os mà máy
+// là Android (quét mã QR) -> trang Google Play. src đi vào tham số referrer dưới dạng
+// utm_source, để Play Console > Thu nạp người dùng đếm lượt cài theo từng trang nhúng.
+// Chưa bật thì máy Android vẫn sang App Store như trước (trang Play còn 404).
 Route::get('/app', function (Request $request) {
-    $id = config('app.ios_app_id');
-    $pt = config('app.ios_provider_token');
     // ct của Apple: tối đa 40 ký tự. Lọc ký tự để không ai nhét được gì lạ vào URL.
-    // ?src[]=x cho ra mảng: không phải chuỗi thì coi như không có.
+    // ?src[]=x cho ra mảng: không phải chuỗi thì coi như không có. Dùng chung cho Play.
     $src = $request->query('src');
     $ct = is_string($src) ? substr((string) preg_replace('/[^A-Za-z0-9._-]/', '', $src), 0, 40) : '';
 
-    // Đúng dạng link mà trình tạo chiến dịch của App Store Connect sinh ra.
-    return redirect()->away(filled($pt) && $ct !== ''
-        ? "https://apps.apple.com/app/apple-store/id{$id}?".http_build_query(['pt' => $pt, 'ct' => $ct, 'mt' => 8])
-        : "https://apps.apple.com/app/id{$id}", 302);
+    $os = $request->query('os');
+    $android = config('app.android_public') && ($os === 'android'
+        || (! is_string($os) && str_contains((string) $request->userAgent(), 'Android')));
+
+    if ($android) {
+        $query = ['id' => config('app.android_package')];
+        if ($ct !== '') {
+            // http_build_query mã hoá lần nữa: Play cần referrer là MỘT chuỗi đã mã hoá.
+            $query['referrer'] = http_build_query(['utm_source' => $ct, 'utm_medium' => 'app-prompt']);
+        }
+        $url = 'https://play.google.com/store/apps/details?'.http_build_query($query);
+    } else {
+        $id = config('app.ios_app_id');
+        $pt = config('app.ios_provider_token');
+        // Đúng dạng link mà trình tạo chiến dịch của App Store Connect sinh ra.
+        $url = filled($pt) && $ct !== ''
+            ? "https://apps.apple.com/app/apple-store/id{$id}?".http_build_query(['pt' => $pt, 'ct' => $ct, 'mt' => 8])
+            : "https://apps.apple.com/app/id{$id}";
+    }
+
+    // Đích đổi theo máy người bấm: báo cho mọi tầng cache biết, phòng sau này có Cache
+    // Rule "cache everything" ở Cloudflare thì máy iPhone không nhận nhầm link Play.
+    return redirect()->away($url, 302)->setVary('User-Agent');
 })->name('public.app');
 
-// Script mời tải app để DÁN VÀO TRANG WEB KHÁC (chỉ hiện trên iPhone/iPad):
+// Script mời tải app để DÁN VÀO TRANG WEB KHÁC (iPhone/iPad; thêm Android khi bật
+// config app.android_public):
 //   <script src="https://tunastory.com/embed/app-prompt.js" async></script>
 // Nguồn ở resources/embed/ chứ không ở public/: để trong public/ thì nginx trả thẳng
 // file, không qua PublicPageCache, và Cloudflare không có Cache-Control để theo.
-Route::get('/embed/app-prompt.js', fn () => response()->file(
-    resource_path('embed/app-prompt.js'),
+// Công tắc Android được điền vào lúc trả file (dấu /*android_public*/ trong script), để
+// bật/tắt bằng .env chứ không phải sửa script. Sau khi đổi, Cloudflare giữ bản cũ tối đa
+// 10 phút (s-maxage của PublicPageCache), trình duyệt thêm 1 phút.
+Route::get('/embed/app-prompt.js', fn () => response(
+    str_replace(
+        'false /*android_public*/',
+        (config('app.android_public') ? 'true' : 'false').' /*android_public*/',
+        (string) file_get_contents(resource_path('embed/app-prompt.js')),
+    ),
+    200,
     ['Content-Type' => 'application/javascript; charset=UTF-8'],
 ))->name('public.embed.app-prompt');
 

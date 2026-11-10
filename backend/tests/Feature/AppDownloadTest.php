@@ -38,6 +38,62 @@ class AppDownloadTest extends TestCase
         $this->get('/app')->assertRedirect('https://apps.apple.com/app/id6810302346');
     }
 
+    private const ANDROID_UA = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36';
+
+    public function test_android_chua_bat_thi_van_sang_app_store(): void
+    {
+        config(['app.android_public' => false]);
+
+        $this->withHeaders(['User-Agent' => self::ANDROID_UA])->get('/app')
+            ->assertRedirect('https://apps.apple.com/app/id6810302346');
+        $this->get('/app?os=android&src=blog.example.com')
+            ->assertRedirect('https://apps.apple.com/app/id6810302346');
+    }
+
+    public function test_android_da_bat_thi_sang_google_play(): void
+    {
+        config(['app.android_public' => true, 'app.ios_provider_token' => null]);
+
+        // Quét mã QR bằng máy Android: không có ?os, đoán theo User-Agent.
+        $this->withHeaders(['User-Agent' => self::ANDROID_UA])->get('/app')
+            ->assertRedirect('https://play.google.com/store/apps/details?id=com.chutuan.stories')
+            ->assertHeader('Vary', 'User-Agent');
+        // Script nhúng nói rõ os; src thành utm_source trong referrer (mã hoá hai lần).
+        $this->get('/app?os=android&src=blog.example.com')
+            ->assertRedirect('https://play.google.com/store/apps/details?id=com.chutuan.stories'
+                .'&referrer=utm_source%3Dblog.example.com%26utm_medium%3Dapp-prompt');
+        // ?os=ios thắng User-Agent; máy không phải Android vẫn sang App Store.
+        $this->withHeaders(['User-Agent' => self::ANDROID_UA])->get('/app?os=ios')
+            ->assertRedirect('https://apps.apple.com/app/id6810302346');
+        $this->withHeaders(['User-Agent' => 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)'])->get('/app')
+            ->assertRedirect('https://apps.apple.com/app/id6810302346');
+    }
+
+    public function test_script_nhung_dien_cong_tac_android_tu_config(): void
+    {
+        config(['app.android_public' => false]);
+        $this->assertStringContainsString('var ANDROID = false /*android_public*/;', $this->get('/embed/app-prompt.js')->getContent());
+
+        config(['app.android_public' => true]);
+        $body = $this->get('/embed/app-prompt.js')->getContent();
+        $this->assertStringContainsString('var ANDROID = true /*android_public*/;', $body);
+        $this->assertStringContainsString('/images/google-play-badge.png', $body);
+        $this->assertFileExists(public_path('images/google-play-badge.png'));
+    }
+
+    public function test_modal_chi_co_badge_google_play_khi_da_bat(): void
+    {
+        config(['app.android_public' => false]);
+        $this->get('/about')->assertOk()->assertSee('id="app-prompt"', false)
+            ->assertDontSee('alt="Get it on Google Play"', false)->assertDontSee('/app?os=android', false)
+            ->assertSee('var ANDROID = false', false);
+
+        config(['app.android_public' => true]);
+        $this->get('/about')->assertOk()
+            ->assertSee('images/google-play-badge.png', false)->assertSee('alt="Get it on Google Play"', false)
+            ->assertSee('/app?os=android', false)->assertSee('var ANDROID = true', false);
+    }
+
     public function test_script_nhung_tra_javascript_cache_duoc_o_bien_va_khong_co_cookie(): void
     {
         $response = $this->get('/embed/app-prompt.js')->assertOk();

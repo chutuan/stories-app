@@ -1,5 +1,6 @@
 /*!
- * Stories — mời người đọc trên iPhone/iPad tải app, dùng trên trang web KHÁC tunastory.com.
+ * Stories — mời người đọc trên iPhone/iPad (và Android, khi đã bật) tải app, dùng trên
+ * trang web KHÁC tunastory.com.
  *
  * Nhúng (dán trước </body>, hoặc trong <head> cũng được vì có async):
  *   <script src="https://tunastory.com/embed/app-prompt.js" async></script>
@@ -10,7 +11,9 @@
  *
  * Cùng quy tắc với lời mời trên tunastory.com (partials/app-prompt.blade.php), vì trang
  * nhúng cũng bị Google chấm "intrusive interstitials" y như vậy:
- *   - chỉ iPhone/iPad/iPod; máy khác thì script thoát ngay, không thêm gì vào trang;
+ *   - chỉ iPhone/iPad/iPod, và Android khi server bật config app.android_public (route
+ *     /embed/app-prompt.js điền vào chỗ đánh dấu android_public bên dưới); máy khác thì
+ *     script thoát ngay, không thêm gì vào trang;
  *   - vào từ máy tìm kiếm thì không hiện ở trang đó;
  *   - là bottom sheet hiện sau vài giây, không che kín màn hình ngay khi vào;
  *   - đóng hay bấm tải thì 1 giờ sau mới hiện lại (nhớ theo từng trang nhúng; Tuấn đổi từ
@@ -18,7 +21,8 @@
  *     không bấm gì mà rời trang thì chưa tính, trang sau vẫn có thể hiện.
  *
  * Giao diện nằm trong Shadow DOM: CSS của trang nhúng không làm vỡ hộp mời, và CSS của
- * hộp mời không lọt ra làm hỏng trang nhúng. Không gọi mạng gì ngoài ảnh icon và badge App Store.
+ * hộp mời không lọt ra làm hỏng trang nhúng. Không gọi mạng gì ngoài ảnh icon và badge
+ * của cửa hàng (App Store hoặc Google Play).
  */
 (function () {
   'use strict';
@@ -30,10 +34,22 @@
   if (window.__storiesAppPrompt) return;
   window.__storiesAppPrompt = true;
 
+  // Server thay "false" ngay trước dấu android_public bằng "true" khi app Android đã lên
+  // Google Play công khai. Đừng đổi chữ ở chỗ này: route tìm đúng chuỗi đó để thay.
+  var ANDROID = false /*android_public*/;
+
   var ua = navigator.userAgent || '';
   // iPadOS 13+ tự xưng là Mac: nhận ra nhờ màn cảm ứng nhiều điểm.
   var isIOS = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
-  if (!isIOS || navigator.standalone) return;
+  var os = isIOS ? 'ios' : (ANDROID && /Android/.test(ua) ? 'android' : '');
+  if (!os) return;
+  // Đang chạy như app đã cài ra màn hình chính (PWA của trang nhúng): không mời.
+  var standalone = navigator.standalone ||
+    (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  if (standalone) return;
+  var STORE = os === 'android'
+    ? { name: 'Google Play', badge: '/images/google-play-badge.png', w: 188, alt: 'Get it on Google Play' }
+    : { name: 'the App Store', badge: '/images/app-store-badge.svg', w: 168, alt: 'Download on the App Store' };
 
   // Gốc lấy theo chính địa chỉ đã tải script, nên chạy được cả ở máy dev lẫn production.
   var BASE = 'https://tunastory.com';
@@ -61,7 +77,8 @@
   if (!(delay >= 0)) delay = 8;
   // Cùng bộ ký tự với route /app (ct của App Store chỉ nhận tối đa 40 ký tự).
   var campaign = String(data.campaign || location.hostname || '').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 40);
-  var href = BASE + '/app' + (campaign ? '?src=' + encodeURIComponent(campaign) : '');
+  // Nói rõ os cho route /app thay vì để nó đoán qua User-Agent.
+  var href = BASE + '/app' + '?os=' + os + (campaign ? '&src=' + encodeURIComponent(campaign) : '');
 
   var CSS =
     '.ap{position:fixed;top:0;right:0;bottom:0;left:0;z-index:2147483647;color:#1A1614;' +
@@ -82,7 +99,7 @@
     '.hd span{color:#6E635C;font-size:14px}' +
     'ul{margin:0 0 18px;padding-left:20px}' +
     'li{margin:0}' +
-    // Badge gốc của Apple: chỉ được đổi kích thước (xem ghi chú .store-badge trong layout).
+    // Badge gốc của Apple/Google: chỉ được đổi kích thước (xem ghi chú .store-badge trong layout).
     '.get{display:block;width:max-content;margin:0 auto;line-height:0;border-radius:8px}' +
     '.get img{display:block;width:auto;height:56px}' +
     '.later{display:block;width:100%;margin-top:8px;padding:12px;border:0;background:transparent;' +
@@ -96,7 +113,7 @@
         '<button class="x" type="button" aria-label="Close" data-close>&times;</button>' +
         '<div class="hd">' +
           '<img src="' + BASE + '/icons/icon-180.png" width="60" height="60" alt="">' +
-          '<div><strong id="t">Read Stories in the app</strong><span>Free on the App Store</span></div>' +
+          '<div><strong id="t">Read Stories in the app</strong><span>Free on ' + STORE.name + '</span></div>' +
         '</div>' +
         '<ul>' +
           '<li>Adjust font size, line spacing and page theme</li>' +
@@ -104,7 +121,7 @@
           '<li>Keep a library on your phone, no account needed</li>' +
         '</ul>' +
         '<a class="get" href="">' +
-          '<img src="' + BASE + '/images/app-store-badge.svg" width="168" height="56" alt="Download on the App Store">' +
+          '<img src="' + BASE + STORE.badge + '" width="' + STORE.w + '" height="56" alt="' + STORE.alt + '">' +
         '</a>' +
         '<button class="later" type="button" data-close>Continue in browser</button>' +
       '</div>' +
@@ -172,7 +189,7 @@
     root.addEventListener('click', function (e) {
       var t = e.target;
       if (t.closest('[data-close]')) close(1);
-      // Không chặn link: App Store vẫn mở. Đóng luôn hộp để quay lại Safari không gặp lại nó
+      // Không chặn link: cửa hàng vẫn mở. Đóng luôn hộp để quay lại trình duyệt không gặp lại nó
       // (thẻ chứa chỉ bị gỡ sau 260ms, sau khi trình duyệt đã đi theo link).
       else if (t.closest('.get')) close(1);
     });

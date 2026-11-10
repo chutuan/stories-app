@@ -162,6 +162,18 @@ return [
     'ios_provider_token' => env('IOS_PROVIDER_TOKEN'),
 
     /*
+    | App Android trên Google Play. Tên gói công khai, không phải bí mật.
+    |
+    | android_public: CÔNG TẮC cho mọi lời mời tải bản Android (hộp mời trên site, script
+    | nhúng /embed/app-prompt.js, nhánh Android của /app). Để false tới khi app lên
+    | production: trong lúc chỉ có kênh thử nghiệm kín, trang Play trả 404 cho người ngoài
+    | (kiểm 09/11/2026), mời người đọc bấm vào đó là đưa họ tới trang lỗi. Google duyệt
+    | production rồi thì đặt ANDROID_APP_PUBLIC=true trong .env và chạy config:cache.
+    */
+    'android_package' => env('ANDROID_PACKAGE', 'com.chutuan.stories'),
+    'android_public' => (bool) env('ANDROID_APP_PUBLIC', false),
+
+    /*
     | Ngày cập nhật văn bản pháp lý, hiện trên trang Privacy và Terms.
     */
     'legal_updated' => env('LEGAL_UPDATED', '8 November 2026'),

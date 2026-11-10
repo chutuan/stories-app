@@ -364,7 +364,10 @@ window.StoriesHistory = {
   }
   /* Badge "Download on the App Store" là ảnh gốc của Apple (public/images/app-store-badge.svg,
      tải từ toolbox.marketingtools.apple.com 04/11/2026): quy định của Apple là không sửa màu,
-     không vẽ lại, không làm chuyển động, cao tối thiểu 40px trên màn hình. Chỉ đổi kích thước. */
+     không vẽ lại, không làm chuyển động, cao tối thiểu 40px trên màn hình. Chỉ đổi kích thước.
+     Badge "Get it on Google Play" (public/images/google-play-badge.png) cũng là ảnh gốc, tải từ
+     play.google.com/intl/en_us/badges 09/11/2026, chỉ cắt bỏ lề trong suốt 41px quanh badge để
+     cao bằng badge Apple; luật của Google cũng vậy: không sửa, không vẽ lại. */
   a.store-badge{display:inline-block;flex:none;line-height:0;border-radius:8px}
   a.store-badge img{display:block;width:auto;height:52px}
   .foot-grid a.store-badge img{height:40px}
