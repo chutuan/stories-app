@@ -3,41 +3,43 @@
 @section('title', 'Thể loại')
 @section('heading', 'Thể loại')
 @section('actions')
-    <a href="{{ route('admin.categories.create') }}" class="btn btn-primary" style="background:#534ab7;border-color:#534ab7;">+ Thêm thể loại</a>
+    <a href="{{ route('admin.categories.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Thêm thể loại</a>
 @endsection
 
 @section('content')
-<div class="card shadow-sm">
+<div class="card" style="max-width:900px">
     <div class="table-responsive">
-        <table class="table align-middle mb-0">
-            <thead class="table-light">
+        <table class="table table-hover align-middle">
+            <thead>
                 <tr>
                     <th>Tên</th>
                     <th>Slug</th>
-                    <th class="text-center">Số truyện</th>
+                    <th class="text-end">Số truyện</th>
                     <th class="text-end">Thao tác</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse ($categories as $category)
                     <tr>
-                        <td>{{ $category->name }}</td>
+                        <td><a href="{{ route('admin.categories.edit', $category) }}" class="cell-title">{{ $category->name }}</a></td>
                         <td><code>{{ $category->slug }}</code></td>
-                        <td class="text-center">{{ $category->stories_count }}</td>
+                        <td class="text-end tabular">{{ $category->stories_count }}</td>
                         <td class="text-end">
-                            <a href="{{ route('admin.categories.edit', $category) }}" class="btn btn-sm btn-outline-secondary">Sửa</a>
-                            <form method="POST" action="{{ route('admin.categories.destroy', $category) }}" class="d-inline" onsubmit="return confirm('Xóa thể loại này?');">
-                                @csrf @method('DELETE')
-                                <button class="btn btn-sm btn-outline-danger">Xóa</button>
-                            </form>
+                            <div class="row-actions">
+                                <a href="{{ route('admin.categories.edit', $category) }}" class="btn btn-sm btn-outline-secondary btn-icon" title="Sửa thể loại" aria-label="Sửa thể loại"><i class="bi bi-pencil"></i></a>
+                                <form method="POST" action="{{ route('admin.categories.destroy', $category) }}" onsubmit="return confirm('Xóa thể loại này?');">
+                                    @csrf @method('DELETE')
+                                    <button class="btn btn-sm btn-outline-danger btn-icon" title="Xóa thể loại" aria-label="Xóa thể loại"><i class="bi bi-trash3"></i></button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="4" class="text-center text-muted py-4">Chưa có thể loại nào.</td></tr>
+                    <tr><td colspan="4" class="empty-row"><i class="bi bi-tags"></i>Chưa có thể loại nào.</td></tr>
                 @endforelse
             </tbody>
         </table>
     </div>
 </div>
-<div class="mt-3">{{ $categories->links() }}</div>
+<div class="pager" style="max-width:900px">{{ $categories->links('pagination::bootstrap-5') }}</div>
 @endsection

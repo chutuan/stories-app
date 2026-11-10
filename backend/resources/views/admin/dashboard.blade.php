@@ -1,68 +1,68 @@
 @extends('admin.layout')
 
-@section('title', 'Bảng điều khiển')
-@section('heading', 'Bảng điều khiển')
+@section('title', 'Tổng quan')
+@section('heading', 'Tổng quan')
+@section('actions')
+    <a href="{{ route('admin.stories.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Thêm truyện</a>
+@endsection
 
 @section('content')
-<div class="row g-3 mb-4">
-    <div class="col-md-4">
-        <div class="card text-bg-light shadow-sm">
-            <div class="card-body">
-                <div class="text-muted">Truyện</div>
-                <div class="display-6 fw-bold">{{ $storiesCount }}</div>
-            </div>
-        </div>
+<div class="row g-3 section-gap">
+    <div class="col-6 col-xl-3">
+        <x-admin.stat icon="book" label="Truyện" :value="number_format($storiesCount)" :href="route('admin.stories.index')" />
     </div>
-    <div class="col-md-4">
-        <div class="card text-bg-light shadow-sm">
-            <div class="card-body">
-                <div class="text-muted">Chương</div>
-                <div class="display-6 fw-bold">{{ $chaptersCount }}</div>
-            </div>
-        </div>
+    <div class="col-6 col-xl-3">
+        <x-admin.stat icon="file-earmark-text" tone="info" label="Chương" :value="number_format($chaptersCount)" />
     </div>
-    <div class="col-md-4">
-        <div class="card text-bg-light shadow-sm">
-            <div class="card-body">
-                <div class="text-muted">Thể loại</div>
-                <div class="display-6 fw-bold">{{ $categoriesCount }}</div>
-            </div>
-        </div>
+    <div class="col-6 col-xl-3">
+        <x-admin.stat icon="tags" tone="neutral" label="Thể loại" :value="number_format($categoriesCount)" :href="route('admin.categories.index')" />
+    </div>
+    <div class="col-6 col-xl-3">
+        <x-admin.stat icon="inboxes" tone="success" label="Kho chờ đăng" :value="number_format($queueCount)"
+                      :hint="$queueCount > 0 ? 'Mỗi ngày đăng tự động vài truyện' : 'Kho trống'" :href="route('admin.queue.index')" />
     </div>
 </div>
 
-@if ($queueCount > 0)
-    <div class="alert alert-light border shadow-sm d-flex justify-content-between align-items-center mb-4">
-        <span>Kho chờ đăng còn <strong>{{ $queueCount }}</strong> truyện, mỗi ngày đăng tự động vài truyện.</span>
-        <a href="{{ route('admin.queue.index') }}" class="btn btn-sm btn-outline-primary">Xem kho</a>
+<div class="card">
+    <div class="card-header">
+        <i class="bi bi-clock-history"></i> Truyện cập nhật gần đây
+        <a href="{{ route('admin.stories.index') }}" class="card-header-aside text-decoration-none">Xem tất cả →</a>
     </div>
-@endif
-
-<div class="card shadow-sm">
-    <div class="card-header bg-white fw-semibold">Truyện cập nhật gần đây</div>
     <div class="table-responsive">
-        <table class="table align-middle mb-0">
-            <thead class="table-light">
+        <table class="table table-hover align-middle">
+            <thead>
                 <tr>
+                    <th style="width:56px"></th>
                     <th>Tiêu đề</th>
                     <th>Trạng thái</th>
-                    <th class="text-center">Số chương</th>
+                    <th class="text-end">Chương</th>
+                    <th>Cập nhật</th>
                     <th class="text-end">Thao tác</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse ($recentStories as $story)
                     <tr>
-                        <td>{{ $story->title }}</td>
-                        <td><span class="badge bg-secondary">{{ $story->status_label }}</span></td>
-                        <td class="text-center">{{ $story->chapters_count }}</td>
+                        <td>
+                            @if ($story->thumbnail_url)
+                                <img src="{{ $story->thumbnail_url }}" class="thumb" alt="" loading="lazy">
+                            @else
+                                <div class="thumb"></div>
+                            @endif
+                        </td>
+                        <td><a href="{{ route('admin.stories.edit', $story) }}" class="cell-title">{{ $story->title }}</a></td>
+                        <td>@include('admin.partials.story-status', ['story' => $story])</td>
+                        <td class="text-end tabular">{{ $story->chapters_count }}</td>
+                        <td class="cell-sub text-nowrap">{{ $story->updated_at?->diffForHumans() }}</td>
                         <td class="text-end">
-                            <a href="{{ route('admin.stories.chapters.index', $story) }}" class="btn btn-sm btn-outline-primary">Chương</a>
-                            <a href="{{ route('admin.stories.edit', $story) }}" class="btn btn-sm btn-outline-secondary">Sửa</a>
+                            <div class="row-actions">
+                                <a href="{{ route('admin.stories.chapters.index', $story) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-list-ol"></i> Chương</a>
+                                <a href="{{ route('admin.stories.edit', $story) }}" class="btn btn-sm btn-outline-secondary btn-icon" title="Sửa truyện" aria-label="Sửa truyện"><i class="bi bi-pencil"></i></a>
+                            </div>
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="4" class="text-center text-muted py-4">Chưa có truyện nào.</td></tr>
+                    <tr><td colspan="6" class="empty-row"><i class="bi bi-journal"></i>Chưa có truyện nào.</td></tr>
                 @endforelse
             </tbody>
         </table>

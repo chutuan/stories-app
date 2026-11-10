@@ -7,8 +7,10 @@ use App\Http\Controllers\Admin\ChapterController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\VoteController;
 use App\Http\Controllers\Admin\QueueController;
+use App\Http\Controllers\Admin\SecurityController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\StoryController;
+use App\Http\Controllers\Admin\TwoFactorChallengeController;
 use App\Http\Controllers\Web\ReactionController;
 use App\Http\Controllers\Web\ReadController;
 use App\Services\IndexNow;
@@ -156,10 +158,28 @@ Route::get('/ads.txt', function () {
 
 Route::prefix('admin')->name('admin.')->group(function () {
     Route::get('login', [AuthController::class, 'showLogin'])->name('login');
-    Route::post('login', [AuthController::class, 'login'])->name('login.attempt');
+    // Trần cứng theo IP; ngưỡng chính (5 lần/phút theo email + IP) nằm trong AuthController.
+    Route::post('login', [AuthController::class, 'login'])->middleware('throttle:20,1')->name('login.attempt');
     Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 
+    // Bước 2 của đăng nhập (mã 6 số / mã khôi phục) — người dùng CHƯA đăng nhập ở đây.
+    Route::get('two-factor', [TwoFactorChallengeController::class, 'show'])->name('two-factor');
+    Route::post('two-factor', [TwoFactorChallengeController::class, 'verify'])
+        ->middleware('throttle:10,1')->name('two-factor.verify');
+
+    // Trang Bảo mật nằm NGOÀI admin.2fa: tài khoản chưa bật 2FA vẫn vào được để bật.
     Route::middleware('auth')->group(function () {
+        Route::get('security', [SecurityController::class, 'show'])->name('security');
+        Route::post('security/setup', [SecurityController::class, 'start'])
+            ->middleware('throttle:10,1')->name('security.setup');
+        Route::post('security/setup/cancel', [SecurityController::class, 'cancel'])->name('security.cancel');
+        Route::post('security/confirm', [SecurityController::class, 'confirm'])
+            ->middleware('throttle:10,1')->name('security.confirm');
+        Route::post('security/recovery-codes', [SecurityController::class, 'regenerateRecoveryCodes'])
+            ->middleware('throttle:10,1')->name('security.recovery-codes');
+    });
+
+    Route::middleware(['auth', 'admin.2fa'])->group(function () {
         Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
         Route::get('votes', [VoteController::class, 'index'])->name('votes.index');

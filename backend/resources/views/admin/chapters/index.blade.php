@@ -1,48 +1,49 @@
 @extends('admin.layout')
 
 @section('title', 'Chương · ' . $story->title)
-@section('heading', 'Chương: ' . $story->title)
+@section('crumb')<a href="{{ route('admin.stories.index') }}">Truyện</a> / Chương @endsection
+@section('heading', $story->title)
 @section('actions')
-    <a href="{{ route('admin.stories.chapters.create', $story) }}" class="btn btn-primary" style="background:#534ab7;border-color:#534ab7;">+ Thêm chương</a>
-    <a href="{{ route('admin.stories.edit', $story) }}" class="btn btn-outline-secondary">Sửa truyện</a>
+    <a href="{{ route('admin.stories.edit', $story) }}" class="btn btn-outline-secondary"><i class="bi bi-pencil"></i> Sửa truyện</a>
+    <a href="{{ route('admin.stories.chapters.create', $story) }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Thêm chương</a>
 @endsection
 
 @section('content')
-<p class="text-muted">Miễn phí {{ $story->free_chapters }} chương đầu. Tổng {{ $story->chapters()->count() }} chương.</p>
+<p class="page-intro">Miễn phí <strong>{{ $story->free_chapters }}</strong> chương đầu · Tổng <strong>{{ $story->chapters()->count() }}</strong> chương.</p>
 
-<div class="card shadow-sm">
+<div class="card">
     <div class="table-responsive">
-        <table class="table align-middle mb-0">
-            <thead class="table-light">
+        <table class="table table-hover align-middle">
+            <thead>
                 <tr>
-                    <th style="width:90px;">Chương</th>
+                    <th style="width:80px">Chương</th>
                     <th>Tiêu đề</th>
                     <th class="text-center">Trạng thái</th>
                     <th class="text-center">Audio</th>
                     {{-- Phản hồi của người đọc trên bản web: thang 5 mặt cười ở
                          cuối mỗi chương. Cột này để thấy chương nào đắt, chương
                          nào nhạt — xem App\Http\Controllers\Web\ReactionController. --}}
-                    <th class="text-center" style="width:130px;">Phản hồi</th>
+                    <th class="text-center" style="width:120px">Phản hồi</th>
                     <th class="text-end">Thao tác</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse ($chapters as $chapter)
                     <tr>
-                        <td>#{{ $chapter->number }}</td>
-                        <td>{{ $chapter->title }}</td>
+                        <td class="fw-semibold tabular text-muted">#{{ $chapter->number }}</td>
+                        <td><a href="{{ route('admin.stories.chapters.edit', [$story, $chapter]) }}" class="cell-title">{{ $chapter->title }}</a></td>
                         <td class="text-center">
                             @if ($chapter->number <= $story->free_chapters)
-                                <span class="badge" style="background:#1d9e75;">Miễn phí</span>
+                                <span class="badge bg-success">Miễn phí</span>
                             @else
-                                <span class="badge" style="background:#efb027;color:#3a2c00;">🔒 Khóa</span>
+                                <span class="badge bg-warning"><i class="bi bi-lock-fill"></i> Khóa</span>
                             @endif
                         </td>
                         <td class="text-center">
                             @if ($chapter->has_audio)
-                                <span class="badge bg-dark">🔊 Có</span>
+                                <span class="badge bg-dark"><i class="bi bi-volume-up-fill"></i> Có</span>
                             @elseif (! $chapter->audio_status_label)
-                                <span class="text-muted small">—</span>
+                                <span class="text-muted">—</span>
                             @endif
                             {{-- Tiến trình sinh giọng đọc AI (job chạy trong hàng đợi). --}}
                             @if ($chapter->audio_status_label && $chapter->audio_status !== 'done')
@@ -53,30 +54,24 @@
                             @endif
                         </td>
                         <td class="text-center">
-                            @if ($chapter->reactions_count === 0)
-                                <span class="text-muted">—</span>
-                            @else
-                                @php $avg = round((float) $chapter->reactions_avg_score, 1); @endphp
-                                <span class="badge bg-{{ $avg >= 4 ? 'success' : ($avg >= 3 ? 'secondary' : 'danger') }}">
-                                    {{ number_format($avg, 1) }}/5
-                                </span>
-                                <div class="small text-muted">{{ $chapter->reactions_count }} phiếu</div>
-                            @endif
+                            @include('admin.partials.score', ['count' => $chapter->reactions_count, 'avg' => $chapter->reactions_avg_score])
                         </td>
                         <td class="text-end">
-                            <a href="{{ route('admin.stories.chapters.edit', [$story, $chapter]) }}" class="btn btn-sm btn-outline-secondary">Sửa</a>
-                            <form method="POST" action="{{ route('admin.stories.chapters.destroy', [$story, $chapter]) }}" class="d-inline" onsubmit="return confirm('Xóa chương này?');">
-                                @csrf @method('DELETE')
-                                <button class="btn btn-sm btn-outline-danger">Xóa</button>
-                            </form>
+                            <div class="row-actions">
+                                <a href="{{ route('admin.stories.chapters.edit', [$story, $chapter]) }}" class="btn btn-sm btn-outline-secondary btn-icon" title="Sửa chương" aria-label="Sửa chương"><i class="bi bi-pencil"></i></a>
+                                <form method="POST" action="{{ route('admin.stories.chapters.destroy', [$story, $chapter]) }}" onsubmit="return confirm('Xóa chương này?');">
+                                    @csrf @method('DELETE')
+                                    <button class="btn btn-sm btn-outline-danger btn-icon" title="Xóa chương" aria-label="Xóa chương"><i class="bi bi-trash3"></i></button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="text-center text-muted py-4">Chưa có chương nào.</td></tr>
+                    <tr><td colspan="6" class="empty-row"><i class="bi bi-file-earmark-text"></i>Chưa có chương nào.</td></tr>
                 @endforelse
             </tbody>
         </table>
     </div>
 </div>
-<div class="mt-3">{{ $chapters->links() }}</div>
+<div class="pager">{{ $chapters->links('pagination::bootstrap-5') }}</div>
 @endsection

@@ -29,3 +29,30 @@ Schedule::command('seo:indexnow')->hourlyAt(5)->withoutOverlapping();
 // không chạy cùng IndexNow (phút 05) và lượt đăng truyện 13:00. Tắt khi chưa có token — xem
 // App\Services\FacebookPublisher.
 Schedule::command('facebook:post-next')->hourlyAt(30)->withoutOverlapping();
+
+// Gỡ 2FA của một tài khoản admin khi mất cả điện thoại lẫn mã khôi phục. Chạy trên server:
+//   sudo -u www-data php artisan admin:2fa-reset email@...
+// Lần đăng nhập sau (bằng mật khẩu) sẽ bị đưa thẳng tới trang Bảo mật để bật lại.
+Artisan::command('admin:2fa-reset {email}', function (string $email) {
+    $user = \App\Models\User::where('email', $email)->first();
+
+    if (! $user) {
+        $this->error("Không có tài khoản {$email}.");
+
+        return 1;
+    }
+
+    $user->forceFill([
+        'two_factor_secret' => null,
+        'two_factor_recovery_codes' => null,
+        'two_factor_confirmed_at' => null,
+        'two_factor_last_used_step' => null,
+    ]);
+    // Cookie "ghi nhớ đăng nhập" cũ cũng hết hiệu lực.
+    $user->setRememberToken(\Illuminate\Support\Str::random(60));
+    $user->save();
+
+    $this->info("Đã gỡ 2FA của {$email}. Đăng nhập lại để bật trên điện thoại mới.");
+
+    return 0;
+})->purpose('Gỡ xác thực 2 bước của một tài khoản admin (mất điện thoại)');

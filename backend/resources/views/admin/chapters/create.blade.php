@@ -1,17 +1,16 @@
 @extends('admin.layout')
 
 @section('title', 'Thêm chương')
-@section('heading', 'Thêm chương · ' . $story->title)
+@section('crumb')<a href="{{ route('admin.stories.index') }}">Truyện</a> / <a href="{{ route('admin.stories.chapters.index', $story) }}">{{ \Illuminate\Support\Str::limit($story->title, 50) }}</a> / Thêm chương @endsection
+@section('heading', 'Thêm chương')
 
 @section('content')
-<div class="card shadow-sm">
-    <div class="card-body">
-        <form method="POST" action="{{ route('admin.stories.chapters.store', $story) }}" enctype="multipart/form-data">
-            @csrf
-            @include('admin.chapters._form')
-            <button class="btn btn-primary" style="background:#534ab7;border-color:#534ab7;">Lưu</button>
-            <a href="{{ route('admin.stories.chapters.index', $story) }}" class="btn btn-link">Hủy</a>
-        </form>
+<form method="POST" action="{{ route('admin.stories.chapters.store', $story) }}" enctype="multipart/form-data">
+    @csrf
+    @include('admin.chapters._form')
+    <div class="d-flex gap-2 mt-4">
+        <button class="btn btn-primary"><i class="bi bi-check2"></i> Lưu chương</button>
+        <a href="{{ route('admin.stories.chapters.index', $story) }}" class="btn btn-link">Hủy</a>
     </div>
-</div>
+</form>
 @endsection

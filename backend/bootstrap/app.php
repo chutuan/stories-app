@@ -34,6 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'ingest' => \App\Http\Middleware\VerifyIngestToken::class,
+            'admin.2fa' => \App\Http\Middleware\EnsureTwoFactorEnabled::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

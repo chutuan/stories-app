@@ -1,7 +1,8 @@
 @extends('admin.layout')
 
 @section('title', 'Sửa chương')
-@section('heading', 'Sửa chương · ' . $story->title)
+@section('crumb')<a href="{{ route('admin.stories.index') }}">Truyện</a> / <a href="{{ route('admin.stories.chapters.index', $story) }}">{{ \Illuminate\Support\Str::limit($story->title, 50) }}</a> / Sửa chương @endsection
+@section('heading', 'Chương ' . $chapter->number)
 
 @section('content')
 {{-- Form xóa audio: đặt ngoài form chính, nút bấm ở trong _form trỏ tới bằng thuộc tính form="". --}}
@@ -18,14 +19,12 @@
     @csrf
 </form>
 
-<div class="card shadow-sm">
-    <div class="card-body">
-        <form method="POST" action="{{ route('admin.stories.chapters.update', [$story, $chapter]) }}" enctype="multipart/form-data">
-            @csrf @method('PUT')
-            @include('admin.chapters._form')
-            <button class="btn btn-primary" style="background:#534ab7;border-color:#534ab7;">Cập nhật</button>
-            <a href="{{ route('admin.stories.chapters.index', $story) }}" class="btn btn-link">Hủy</a>
-        </form>
+<form method="POST" action="{{ route('admin.stories.chapters.update', [$story, $chapter]) }}" enctype="multipart/form-data">
+    @csrf @method('PUT')
+    @include('admin.chapters._form')
+    <div class="d-flex gap-2 mt-4">
+        <button class="btn btn-primary"><i class="bi bi-check2"></i> Cập nhật</button>
+        <a href="{{ route('admin.stories.chapters.index', $story) }}" class="btn btn-link">Hủy</a>
     </div>
-</div>
+</form>
 @endsection
