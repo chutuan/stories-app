@@ -1,0 +1,23 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'com.chutuan.stories'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.storiesanalytics"
+  defaultConfig {
+    versionCode 1
+    versionName '1.0.0'
+  }
+}
+
+dependencies {
+  // Cùng "đời" với firebase-messaging 25.0.1 mà expo-notifications kéo về (Firebase BoM
+  // 34.4–34.6 ghép đúng cặp này), tránh hai thư viện Firebase lệch firebase-common.
+  // FirebaseApp tự khởi động từ google-services.json (plugin google-services đã bật vì
+  // android.googleServicesFile trong app.config.js).
+  implementation 'com.google.firebase:firebase-analytics:23.0.0'
+}

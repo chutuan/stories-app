@@ -433,7 +433,7 @@ export default function AudioPlayerScreen() {
     setAdResult(null);
     setWatchingAd(true);
     try {
-      const { rewarded, unavailable } = await showRewarded();
+      const { rewarded, unavailable } = await showRewarded('audio');
       if (unavailable) {
         setAdResult({ number, kind: 'unavailable' });
         return;

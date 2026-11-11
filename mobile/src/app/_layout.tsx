@@ -1,10 +1,12 @@
-import { Stack } from 'expo-router';
+import { Stack, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AppOpenPrompts } from '@/components/app-open-prompts';
 import { WindowControlsSafeArea } from '@/components/window-controls-safe-area';
 import { Palette } from '@/constants/theme';
+import { logScreenView } from '@/lib/analytics';
 import { AudioUnlocksProvider } from '@/store/audio-unlocks';
 import { ConfigProvider } from '@/store/config';
 import { HistoryProvider } from '@/store/history';
@@ -25,6 +27,20 @@ function readingAnimation(
   if (dir === 'prev') return 'slide_from_left';
   if (dir === 'next') return 'slide_from_right';
   return fallback;
+}
+
+/**
+ * Báo màn đang xem cho Google Analytics. Dùng MẪU route (vd. `reader/[storyId]/[number]`)
+ * chứ không dùng đường dẫn thật, để báo cáo gom theo loại màn thay vì tách theo từng truyện.
+ * Nhóm `(tabs)` bị bỏ; tab đầu (route rỗng) gọi là `home`.
+ */
+function ScreenTracker() {
+  const segments = useSegments() as string[];
+  const name = segments.filter((s) => !(s.startsWith('(') && s.endsWith(')'))).join('/') || 'home';
+  useEffect(() => {
+    logScreenView(name);
+  }, [name]);
+  return null;
 }
 
 export default function RootLayout() {
@@ -82,6 +98,7 @@ export default function RootLayout() {
                     </Stack>
                     {/* "Đọc tiếp" khi mở app và lời mời bật thông báo — bảng trượt nằm trên mọi màn. */}
                     <AppOpenPrompts />
+                    <ScreenTracker />
                   </AudioUnlocksProvider>
                 </NotificationsProvider>
               </RewardsProvider>

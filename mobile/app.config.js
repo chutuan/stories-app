@@ -34,6 +34,17 @@ const GOOGLE_SERVICES_FILE =
   process.env.GOOGLE_SERVICES_JSON ??
   (fs.existsSync(path.join(__dirname, 'google-services.json')) ? './google-services.json' : undefined);
 
+// GoogleService-Info.plist của cùng project Firebase, app iOS "Stories iOS" (thêm 11/11/2026),
+// cần cho Google Analytics (Firebase Analytics) — để Google Ads đếm được lượt cài từ quảng
+// cáo. KHÔNG commit, cùng cách với google-services.json: build tại máy đặt file cạnh
+// app.config.js, EAS dùng biến môi trường kiểu file GOOGLE_SERVICE_INFO_PLIST.
+// Thiếu file thì app vẫn chạy, chỉ là không gửi số liệu (modules/stories-analytics bỏ qua).
+const GOOGLE_SERVICE_INFO_PLIST =
+  process.env.GOOGLE_SERVICE_INFO_PLIST ??
+  (fs.existsSync(path.join(__dirname, 'GoogleService-Info.plist'))
+    ? './GoogleService-Info.plist'
+    : undefined);
+
 module.exports = {
   expo: {
     name: 'Stories',
@@ -41,7 +52,7 @@ module.exports = {
     // Phiên bản hiển thị cho người dùng. Tăng thủ công khi phát hành bản mới.
     // ios.buildNumber / android.versionCode KHÔNG khai ở đây: EAS tự quản lý
     // và tự tăng (cli.appVersionSource = "remote" + autoIncrement trong eas.json).
-    version: '1.0.5',
+    version: '1.0.6',
     orientation: 'portrait',
     icon: './assets/images/icon.png',
     scheme: 'stories',
@@ -54,6 +65,7 @@ module.exports = {
       // "Signing for Stories requires a development team" (đã dính 27/09/2026).
       // EAS tự quản lý chứng chỉ nên dòng này không ảnh hưởng build trên EAS.
       appleTeamId: '22W729ZRX2',
+      googleServicesFile: GOOGLE_SERVICE_INFO_PLIST,
       // Bản iPad native (từ 01/11/2026): bố cục co theo bề ngang cửa sổ, xem src/lib/responsive.ts.
       // requireFullScreen để mặc định false -> Expo tự khai đủ 4 hướng xoay cho iPad (Apple
       // bắt buộc khi hỗ trợ Split View, ITMS-90474); iPhone vẫn khoá dọc theo `orientation`.
@@ -63,6 +75,14 @@ module.exports = {
         // Tuân thủ xuất khẩu mã hoá: app chỉ dùng HTTPS/TLS tiêu chuẩn, thuộc diện
         // miễn trừ. Khai false để App Store Connect không hỏi lại mỗi lần nộp build.
         ITSAppUsesNonExemptEncryption: false,
+        // Google Analytics KHÔNG được dùng để cá nhân hoá quảng cáo (remarketing), khớp với
+        // quảng cáo không cá nhân hoá và nhãn App Privacy "không theo dõi". Đo lượt cài cho
+        // Google Ads không bị ảnh hưởng. Android: plugins/with-analytics-defaults.js.
+        GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_PERSONALIZATION_SIGNALS: false,
+        // Firebase tự đếm mỗi UIViewController là một màn; react-native-screens tạo một
+        // RNSScreen cho mỗi màn nên mọi lượt xem bị ghi hai lần (một lần tên "RNSScreen").
+        // JS đã tự báo screen_view theo route (src/app/_layout.tsx), tắt bản tự động đi.
+        FirebaseAutomaticScreenReportingEnabled: false,
         // CỐ Ý KHÔNG khai NSUserTrackingUsageDescription. App không gọi
         // requestTrackingAuthorization, không đọc IDFA, và quảng cáo chạy
         // requestNonPersonalizedAdsOnly. Bản 1.0.0 (2) từng khai chuỗi này mà
@@ -130,12 +150,21 @@ module.exports = {
             // tự adopt scene. Lên SDK 58 thì template tự có, cờ này thành no-op và
             // prebuild sẽ nhắc gỡ.
             enableSceneSupport: true,
+            // Framework dựng sẵn của Expo được biên dịch bằng Swift cũ hơn Xcode 27 ở máy, archive
+            // hỏng ("this SDK is not supported by the compiler") — dựng từ nguồn. Trước 11/11/2026
+            // cờ này sửa tay trong ios/Podfile.properties.json và mỗi lần prebuild lại bị ghi đè.
+            usePrecompiledModules: false,
+            // Firebase Analytics (modules/stories-analytics) có pod Swift FirebaseCoreInternal phụ
+            // thuộc GoogleUtilities; app không dùng use_frameworks nên GoogleUtilities phải sinh
+            // module map thì Swift mới import được, không thì `pod install` dừng hẳn.
+            extraPods: [{ name: 'GoogleUtilities', modular_headers: true }],
           },
         },
       ],
       // kotlinVersion ở trên KHÔNG đổi trình biên dịch Kotlin thật; plugin này mới đổi.
       // Xem giải thích trong plugins/with-kotlin-gradle-plugin.js.
       ['./plugins/with-kotlin-gradle-plugin', { version: KOTLIN_VERSION }],
+      './plugins/with-analytics-defaults',
       [
         'expo-splash-screen',
         {

@@ -40,6 +40,9 @@ yarn-error.*
 google-play-service-account.json
 # Firebase Android config: EAS lay tu bien moi truong kieu file GOOGLE_SERVICES_JSON
 google-services.json
+# Firebase iOS config (Google Analytics). Build iOS tai may doc file canh app.config.js;
+# EAS doc bien moi truong kieu file GOOGLE_SERVICE_INFO_PLIST.
+GoogleService-Info.plist
 # Khoa service account FCM V1 (chi upload len EAS, khong giu)
 *firebase-adminsdk*.json
 

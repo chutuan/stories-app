@@ -42,5 +42,7 @@ mobile/.env.*
 !mobile/.env.example
 # google-services.json đi qua biến môi trường kiểu file GOOGLE_SERVICES_JSON trên EAS.
 mobile/google-services.json
+# Tương tự cho Firebase iOS: GOOGLE_SERVICE_INFO_PLIST.
+mobile/GoogleService-Info.plist
 *firebase-adminsdk*.json
 mobile/google-play-service-account.json

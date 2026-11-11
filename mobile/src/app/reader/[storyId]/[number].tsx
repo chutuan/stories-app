@@ -32,6 +32,7 @@ import {
   Spacing,
 } from '@/constants/theme';
 import { BannerAd, InlineAd, showRewarded } from '@/lib/ads';
+import { logEvent } from '@/lib/analytics';
 import { API_URL, ApiError, getStory, type Chapter } from '@/lib/api';
 import { formatCoins, plural } from '@/lib/format';
 import { SHEET_MAX_WIDTH, useResponsive } from '@/lib/responsive';
@@ -322,6 +323,17 @@ function ReaderScreen() {
     });
   }, [chapter, canRead, storyMeta, recordHistory]);
 
+  // Google Analytics: MỘT sự kiện cho mỗi chương đọc được. Không gộp vào effect trên vì effect
+  // đó chạy lại khi bìa/số chương tải xong, sẽ đếm trùng.
+  const loggedChapterRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!chapter || !canRead) return;
+    const key = `${chapter.story.id}:${chapter.number}`;
+    if (loggedChapterRef.current === key) return;
+    loggedChapterRef.current = key;
+    logEvent('read_chapter', { story_id: chapter.story.id, chapter: chapter.number });
+  }, [chapter, canRead]);
+
   const notify = useCallback(
     (text: string, ok: boolean) => {
       setMessage({ number: chapterNumber, text, ok });
@@ -344,7 +356,7 @@ function ReaderScreen() {
     setMessage(null);
     setWatchingAd(true);
     try {
-      const { rewarded, unavailable } = await showRewarded();
+      const { rewarded, unavailable } = await showRewarded('reader');
 
       // KHÔNG CHIẾU ĐƯỢC QUẢNG CÁO (no-fill, chặn quảng cáo, lỗi mạng tới Google).
       //

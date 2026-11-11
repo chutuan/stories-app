@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 
 import { FontSize, FontWeight, Palette, Radius, Spacing } from '@/constants/theme';
+import { logEvent } from '@/lib/analytics';
 
 /**
  * Wrapper cho react-native-google-mobile-ads với fallback an toàn.
@@ -269,7 +270,10 @@ const AD_WATCH_TIMEOUT_MS = 300_000;
  * `setBusy(true) ... finally setBusy(false)`, nên một lần không kết thúc là nút bấm
  * kẹt vĩnh viễn ở trạng thái đang quay, không cách nào thoát ngoài đổi màn hình.
  */
-export function showRewarded(): Promise<RewardedResult> {
+/** Nơi chiếu quảng cáo có thưởng — chỉ để Google Analytics phân biệt (xem src/lib/analytics.ts). */
+export type RewardedPlacement = 'reader' | 'rewards' | 'audio';
+
+export function showRewarded(placement: RewardedPlacement): Promise<RewardedResult> {
   if (!adsModule || !nativeAvailable) {
     // KHÔNG có native module (Expo Go, web, hoặc build thiếu). Chỉ bản dev mới được
     // cấp thưởng giả để thử luồng xu; bản phát hành phải TỪ CHỐI.
@@ -307,6 +311,7 @@ export function showRewarded(): Promise<RewardedResult> {
           // đã gỡ rồi — bỏ qua
         }
       }
+      if (result.rewarded) logEvent('rewarded_ad_watched', { placement });
       resolve(result);
     };
 

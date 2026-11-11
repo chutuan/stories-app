@@ -41,7 +41,9 @@ export interface RewardedResult {
 }
 
 /** Trên web không có rewarded thật -> trả thưởng ngay để thử luồng xu. */
-export function showRewarded(): Promise<RewardedResult> {
+export type RewardedPlacement = 'reader' | 'rewards' | 'audio';
+
+export function showRewarded(_placement: RewardedPlacement): Promise<RewardedResult> {
   return Promise.resolve({ rewarded: true });
 }
 

@@ -271,7 +271,7 @@ function RewardsContent() {
     if (watchingAd) return;
     setWatchingAd(true);
     try {
-      const { rewarded, unavailable } = await showRewarded();
+      const { rewarded, unavailable } = await showRewarded('rewards');
 
       // KHÔNG CHIẾU ĐƯỢC QUẢNG CÁO -> KHÔNG CẤP XU Ở ĐÂY.
       //
