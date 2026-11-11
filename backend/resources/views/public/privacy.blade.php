@@ -108,6 +108,30 @@
   <p>Watching a rewarded ad is always your choice. You can read every free chapter without watching
     one.</p>
 
+  <h2>Analytics in the app</h2>
+  <p>From version 1.0.6 the app uses <strong>Google Analytics for Firebase</strong> to count
+    installs and app opens and to see how the app is used — which screens are opened, which
+    chapters are read and whether a rewarded video was watched to the end. We use it to learn which
+    stories readers enjoy and to measure whether our own Google Ads campaigns bring in new
+    readers.</p>
+  <ul>
+    <li><strong>App instance ID</strong> — Firebase gives each installation a random identifier.
+      It is not linked to a name, email address, account or advertising identifier. The app does
+      not include the part of Firebase that can read the advertising identifier, and never asks
+      for tracking permission.</li>
+    <li><strong>Approximate location</strong> — estimated by Google from your IP address, at the
+      level of a country or city. The app never reads your precise location.</li>
+    <li><strong>Product interaction</strong> — the screens, chapters and rewarded videos
+      described above, plus basic device information such as the model, operating system version
+      and language.</li>
+  </ul>
+  <p>Analytics data is <strong>not used to personalise ads</strong>: ad-personalisation signals
+    are switched off in the app, and every ad is still requested in non-personalised mode. We see
+    only aggregated reports; Google keeps the event data under the
+    <a href="https://policies.google.com/privacy" rel="noopener">Google Privacy Policy</a> and
+    deletes it after the retention period we set (two months). Uninstalling the app stops all
+    collection.</p>
+
   <h2>Advertising and analytics on this website</h2>
   <p>Separately from the app, the <strong>tunastory.com</strong> website serves ads through
     <strong>Google AdSense</strong> and measures traffic with <strong>Google Analytics</strong>.
@@ -116,10 +140,10 @@
     visit came from, and which browser was used. We use it only to see which stories people
     read; we never attach a name, an email address or any other identity to it, because we do
     not hold one.</p>
-  <p>This applies only to the website. It does <strong>not</strong> change what the mobile app
-    does: the app contains no analytics SDK of its own, and still requests every ad in
-    non-personalised mode. The Privacy Policy, Terms of Service and Contact pages, which the app
-    opens in an in-app browser, carry no ads and no analytics.</p>
+  <p>This applies only to the website. The mobile app's own analytics are described in
+    <em>Analytics in the app</em> above, and the app still requests every ad in non-personalised
+    mode. The Privacy Policy, Terms of Service and Contact pages, which the app opens in an in-app
+    browser, carry no ads and no analytics.</p>
   {{-- Ba câu dưới là phần AdSense BẮT BUỘC có trong chính sách quyền riêng tư của site
        chạy quảng cáo (nhà cung cấp bên thứ ba dùng cookie theo lượt truy cập trước, cookie
        quảng cáo của Google, cách tắt quảng cáo cá nhân hoá). Đừng rút gọn chúng. --}}
@@ -148,10 +172,10 @@
   </ul>
 
   <h2>What the app does not use</h2>
-  <p>Apart from the Google Mobile Ads SDK described above — which itself collects crash and
-    performance diagnostics about its own operation — the mobile app contains no analytics SDK,
-    no crash-reporting SDK and no social-network SDK. Advertising is the only third-party
-    component in the app.</p>
+  <p>Apart from the Google Mobile Ads SDK and Google Analytics for Firebase described above — the
+    ads SDK itself collects crash and performance diagnostics about its own operation — the mobile
+    app contains no crash-reporting SDK and no social-network SDK. Advertising and analytics are
+    the only third-party components in the app.</p>
 
   <h2>Who else receives data</h2>
   <p>We share data only with the service providers below, and only for the purposes described in
@@ -159,7 +183,8 @@
     us, which provide the same or equal protection of user data as this policy.</p>
   <ul>
     <li><strong>Google</strong> — advertising in the app (AdMob) and on the website (AdSense), and
-      website analytics, as described above. See the
+      analytics in the app (Google Analytics for Firebase) and on the website (Google Analytics),
+      as described above. See the
       <a href="https://policies.google.com/privacy" rel="noopener">Google Privacy Policy</a>.</li>
     <li><strong>Cloudflare</strong> — our website and API are delivered through Cloudflare, which
       processes IP addresses and request data to deliver the service and protect it from abuse.
