@@ -139,6 +139,12 @@ billionaire,ceo,romance,novel,webnovel,story,fiction,revenge,werewolf,drama,book
 
 ## 5. App Privacy — khai đúng theo hành vi thật của app
 
+> **Cập nhật 11/11/2026 (1.0.6):** app có thêm **Google Analytics for Firebase** (không IDFA).
+> Nhãn đang hiện trên App Store Connect (Tuấn đăng 01/11) đã rộng hơn bảng dưới đây: 7 loại dữ liệu
+> (Coarse Location, Device ID, Product Interaction, Advertising Data — mục đích có Analytics, khai
+> "linked"; cộng Crash/Performance/Other Diagnostic Data), KHÔNG có mục "Used to Track You". Bảng
+> chi tiết: `store/ASC_METADATA_1.0.6.md`. Phần dưới là ghi chú gốc thời 1.0.0, giữ để biết lý do.
+
 App **tự nó không thu thập gì**: không tài khoản, không đăng nhập, chỉ gửi request GET,
 không có SDK analytics hay crash-reporting. Xu, chương đã mở, truyện đã lưu và tuỳ chọn đọc
 đều nằm trong AsyncStorage trên máy.

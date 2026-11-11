@@ -1,0 +1,208 @@
+<!doctype html>
+<!--
+  Ghép màn hình app thật vào ảnh nền có điện thoại màn hình xanh (#00FF00) do ChatGPT tạo.
+  Tham số URL:
+    bg   = đường dẫn ảnh nền (ai/*.png)
+    shot = ảnh chụp màn hình app (src/*.png)
+    w,h  = kích thước ảnh xuất; ảnh nền được cắt theo kiểu "cover", lấy điện thoại làm tâm
+  Cách làm: tìm vùng xanh -> dò 4 cạnh màn hình (bỏ phần bo góc), giao 4 đường thẳng ra 4 góc ->
+  homography -> CSS matrix3d cho ảnh chụp; vùng xanh (nới 2px) làm mask nên ngón tay che màn hình
+  vẫn nằm trên, góc bo giữ đúng như ảnh gốc. #debug ghi số liệu để kiểm bằng --dump-dom.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<title>compose</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { overflow: hidden; background: #000; }
+  #view { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  #view > * { position: absolute; left: 0; top: 0; }
+  #screen { overflow: hidden; -webkit-mask-size: 100% 100%; mask-size: 100% 100%; }
+  #screen img { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  #glass { pointer-events: none; }
+  #debug { display: none; }
+</style>
+</head>
+<body>
+<div id="view">
+  <img id="bg" alt="">
+  <div id="screen"><img id="shot" alt=""><div id="glass"></div></div>
+</div>
+<pre id="debug"></pre>
+<script>
+const q = new URLSearchParams(location.search);
+const W = +q.get('w'), H = +q.get('h');
+document.documentElement.style.width = document.body.style.width = W + 'px';
+document.documentElement.style.height = document.body.style.height = H + 'px';
+const dbg = (o) => { document.getElementById('debug').textContent = JSON.stringify(o); document.title = 'done'; };
+
+const load = (src) => new Promise((ok, err) => { const i = new Image(); i.onload = () => ok(i); i.onerror = err; i.src = src; });
+
+// Giải hệ 8 ẩn: ánh xạ 4 điểm nguồn -> 4 điểm đích (homography), trả về matrix3d cho CSS.
+function homography(src, dst) {
+  const A = [], b = [];
+  for (let i = 0; i < 4; i++) {
+    const [x, y] = src[i], [u, v] = dst[i];
+    A.push([x, y, 1, 0, 0, 0, -u * x, -u * y]); b.push(u);
+    A.push([0, 0, 0, x, y, 1, -v * x, -v * y]); b.push(v);
+  }
+  const n = 8;
+  for (let c = 0; c < n; c++) {
+    let p = c; for (let r = c + 1; r < n; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r;
+    [A[c], A[p]] = [A[p], A[c]]; [b[c], b[p]] = [b[p], b[c]];
+    for (let r = 0; r < n; r++) if (r !== c) {
+      const f = A[r][c] / A[c][c];
+      for (let k = c; k < n; k++) A[r][k] -= f * A[c][k];
+      b[r] -= f * b[c];
+    }
+  }
+  const h = b.map((v, i) => v / A[i][i]);
+  // [h0 h1 h2; h3 h4 h5; h6 h7 1] -> matrix3d (column-major, z giữ nguyên)
+  return `matrix3d(${h[0]},${h[3]},0,${h[6]},${h[1]},${h[4]},0,${h[7]},0,0,1,0,${h[2]},${h[5]},0,1)`;
+}
+
+// Đường thẳng bình phương tối thiểu: trả về [a,b] cho t = a*s + b.
+function fit(pts) {
+  let n = pts.length, sx = 0, sy = 0, sxx = 0, sxy = 0;
+  for (const [s, t] of pts) { sx += s; sy += t; sxx += s * s; sxy += s * t; }
+  const a = (n * sxy - sx * sy) / (n * sxx - sx * sx || 1);
+  return [a, (sy - a * sx) / n];
+}
+
+(async () => {
+  const [bg, shot] = await Promise.all([load(q.get('bg')), load(q.get('shot'))]);
+  const bw = bg.naturalWidth, bh = bg.naturalHeight;
+  const cv = document.createElement('canvas'); cv.width = bw; cv.height = bh;
+  const cx = cv.getContext('2d'); cx.drawImage(bg, 0, 0);
+  const px = cx.getImageData(0, 0, bw, bh).data;
+  // Xanh chroma-key thật (#00FF00) rất bão hoà; lá cây xanh tối và ngả vàng hơn nhiều.
+  const isG = (i) => { const r = px[i], g = px[i + 1], b = px[i + 2]; return g > 150 && g - Math.max(r, b) > 90 && r < 140 && b < 140; };
+  const raw = new Uint8Array(bw * bh);
+  for (let p = 0; p < bw * bh; p++) raw[p] = isG(p * 4) ? 1 : 0;
+
+  // Chỉ giữ vùng xanh liền khối lớn nhất = màn hình điện thoại.
+  const lab = new Int32Array(bw * bh), stack = new Int32Array(bw * bh);
+  let best = 0, bestSize = 0, next = 0;
+  for (let p0 = 0; p0 < bw * bh; p0++) {
+    if (!raw[p0] || lab[p0]) continue;
+    next++; let sp = 0, size = 0; stack[sp++] = p0; lab[p0] = next;
+    while (sp) {
+      const p = stack[--sp]; size++;
+      const x = p % bw, y = (p / bw) | 0;
+      if (x > 0 && raw[p - 1] && !lab[p - 1]) { lab[p - 1] = next; stack[sp++] = p - 1; }
+      if (x < bw - 1 && raw[p + 1] && !lab[p + 1]) { lab[p + 1] = next; stack[sp++] = p + 1; }
+      if (y > 0 && raw[p - bw] && !lab[p - bw]) { lab[p - bw] = next; stack[sp++] = p - bw; }
+      if (y < bh - 1 && raw[p + bw] && !lab[p + bw]) { lab[p + bw] = next; stack[sp++] = p + bw; }
+    }
+    if (size > bestSize) { bestSize = size; best = next; }
+  }
+
+  const m = new Uint8Array(bw * bh);
+  let cnt = 0, tl = null, tr = null, br = null, bl = null;
+  for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
+    if (lab[y * bw + x] !== best) continue;
+    m[y * bw + x] = 1; cnt++;
+    if (!tl || x + y < tl[0] + tl[1]) tl = [x, y];
+    if (!br || x + y > br[0] + br[1]) br = [x, y];
+    if (!tr || x - y > tr[0] - tr[1]) tr = [x, y];
+    if (!bl || y - x > bl[1] - bl[0]) bl = [x, y];
+  }
+  if (cnt < 2000) { dbg({ error: 'no green', cnt }); return; }
+
+  // Dò 4 cạnh ở đoạn giữa (20%..80%) để tránh phần bo góc.
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const top = [], bottom = [], left = [], right = [];
+  for (let t = 0.2; t <= 0.8; t += 0.01) {
+    let x = Math.round(lerp(tl[0], tr[0], t));
+    for (let y = 0; y < bh; y++) if (m[y * bw + x]) { top.push([x, y]); break; }
+    x = Math.round(lerp(bl[0], br[0], t));
+    for (let y = bh - 1; y >= 0; y--) if (m[y * bw + x]) { bottom.push([x, y + 1]); break; }
+    let y = Math.round(lerp(tl[1], bl[1], t));
+    for (let xx = 0; xx < bw; xx++) if (m[y * bw + xx]) { left.push([y, xx]); break; }
+    y = Math.round(lerp(tr[1], br[1], t));
+    for (let xx = bw - 1; xx >= 0; xx--) if (m[y * bw + xx]) { right.push([y, xx + 1]); break; }
+  }
+  const T = fit(top), B = fit(bottom), Lf = fit(left), R = fit(right);
+  // Nới mỗi cạnh ra 2px để ảnh chụp phủ cả dải điểm ảnh chuyển tiếp xanh/viền máy.
+  T[1] -= 2; B[1] += 2; Lf[1] -= 2; R[1] += 2;
+  // y = a x + b  giao  x = c y + d
+  const meet = ([a, b], [c, d]) => { const y = (a * d + b) / (1 - a * c); return [c * y + d, y]; };
+  const corners = [meet(T, Lf), meet(T, R), meet(B, R), meet(B, Lf)];
+
+  // Nới vùng bằng hộp vuông bán kính r (tách 2 lượt ngang/dọc cho nhanh).
+  function dilate(src, r) {
+    const tmp = new Uint8Array(bw * bh), out = new Uint8Array(bw * bh);
+    for (let y = 0; y < bh; y++) {
+      let c = 0; const row = y * bw;
+      for (let x = 0; x < Math.min(r, bw); x++) c += src[row + x];
+      for (let x = 0; x < bw; x++) {
+        if (x + r < bw) c += src[row + x + r];
+        if (x - r - 1 >= 0) c -= src[row + x - r - 1];
+        tmp[row + x] = c > 0 ? 1 : 0;
+      }
+    }
+    for (let x = 0; x < bw; x++) {
+      let c = 0;
+      for (let y = 0; y < Math.min(r, bh); y++) c += tmp[y * bw + x];
+      for (let y = 0; y < bh; y++) {
+        if (y + r < bh) c += tmp[(y + r) * bw + x];
+        if (y - r - 1 >= 0) c -= tmp[(y - r - 1) * bw + x];
+        out[y * bw + x] = c > 0 ? 1 : 0;
+      }
+    }
+    return out;
+  }
+
+  // Khử ánh xanh (despill) trong dải 7px quanh màn hình: kênh xanh không vượt max(đỏ, lam),
+  // nên viền máy, ngón tay sát màn hình không còn ánh xanh lá.
+  const near = dilate(m, 7);
+  for (let p = 0; p < bw * bh; p++) {
+    if (!near[p] || m[p]) continue;
+    const i = p * 4, cap = Math.max(px[i], px[i + 2]);
+    if (px[i + 1] > cap) px[i + 1] = cap;
+  }
+  const img = cx.getImageData(0, 0, bw, bh); img.data.set(px); cx.putImageData(img, 0, 0);
+  const cleanBg = cv.toDataURL('image/png');
+
+  // Mask: vùng xanh nới 3px, giữ nguyên chỗ ngón tay đè lên.
+  const grown = dilate(m, 3);
+  const mk = document.createElement('canvas'); mk.width = bw; mk.height = bh;
+  const mc = mk.getContext('2d'); const md = mc.createImageData(bw, bh);
+  for (let p = 0; p < bw * bh; p++) if (grown[p]) md.data[p * 4 + 3] = 255;
+  mc.putImageData(md, 0, 0);
+  const maskUrl = `url(${mk.toDataURL('image/png')})`;
+
+  const view = document.getElementById('view');
+  const scr = document.getElementById('screen');
+  const bgEl = document.getElementById('bg');
+  // Chờ bằng sự kiện load (Chrome headless tính là đang tải, nên chưa chụp vội);
+  // decode()/requestAnimationFrame thì không được tính, ảnh chụp có thể ra trước khi xong.
+  bgEl.style.width = bw + 'px'; bgEl.style.height = bh + 'px';
+  await new Promise((ok) => { bgEl.onload = ok; bgEl.src = cleanBg; });
+  scr.style.width = bw + 'px'; scr.style.height = bh + 'px';
+  scr.style.webkitMaskImage = scr.style.maskImage = maskUrl;
+
+  const sw = shot.naturalWidth, sh = shot.naturalHeight;
+  const sEl = document.getElementById('shot');
+  sEl.src = q.get('shot'); sEl.style.width = sw + 'px'; sEl.style.height = sh + 'px';
+  sEl.style.transform = homography([[0, 0], [sw, 0], [sw, sh], [0, sh]], corners);
+
+  // Lớp kính: ánh sáng phản chiếu rất nhẹ + hạ độ sáng một chút cho hợp ánh sáng ảnh nền.
+  const g = document.getElementById('glass');
+  g.style.width = bw + 'px'; g.style.height = bh + 'px';
+  g.style.position = 'absolute';
+  g.style.background = 'linear-gradient(125deg, rgba(255,255,255,.10) 0%, rgba(255,255,255,0) 38%), rgba(40,20,0,.06)';
+
+  // Cắt kiểu cover theo khung W x H, tâm là tâm màn hình.
+  const s = Math.max(W / bw, H / bh);
+  const ccx = corners.reduce((a, c) => a + c[0], 0) / 4, ccy = corners.reduce((a, c) => a + c[1], 0) / 4;
+  let ox = ccx * s - W / 2, oy = ccy * s - H / 2;
+  ox = Math.max(0, Math.min(ox, bw * s - W)); oy = Math.max(0, Math.min(oy, bh * s - H));
+  view.style.transform = `translate(${-ox}px, ${-oy}px) scale(${s})`;
+
+  dbg({ bw, bh, cnt, corners: corners.map((c) => c.map(Math.round)), scale: +s.toFixed(3), crop: [Math.round(ox / s), Math.round(oy / s)] });
+})().catch((e) => dbg({ error: String(e) }));
+</script>
+</body>
+</html>
