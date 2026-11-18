@@ -64,6 +64,8 @@ class PublicPageCache
         'public.editor',
         'public.privacy',
         'public.terms',
+        'public.tiny-seasons',
+        'public.tiny-seasons.privacy',
         'public.sitemap',
         'public.feed',
         'public.indexnow-key',

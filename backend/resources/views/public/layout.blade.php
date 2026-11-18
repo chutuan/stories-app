@@ -117,7 +117,10 @@
      dạng một dòng là mở khối khi phía sau file còn một khối php khác, và in nguyên văn
      cả đoạn giữa hai cái ra trang. (Không viết dấu @ trước "php" trong comment này:
      Blade tách khối php TRƯỚC khi bỏ comment, nên chữ trong comment cũng bị bắt.) --}}
-@php $legalPage = request()->routeIs('public.privacy', 'public.terms', 'public.contact'); @endphp
+{{-- Hai trang của game Tiny Seasons (/tiny-seasons, /tiny-seasons/privacy) cũng tính là trang
+     pháp lý: chúng là Support URL và Privacy Policy URL của một app khác trên App Store, nên
+     không quảng cáo, không GA4 và không mời tải app Stories. --}}
+@php $legalPage = request()->routeIs('public.privacy', 'public.terms', 'public.contact', 'public.tiny-seasons', 'public.tiny-seasons.privacy'); @endphp
 {{-- Smart App Banner: Safari trên iPhone tự hiện thanh "Get/Open" của app ở đầu trang.
      Không gắn trên ba trang pháp lý: app mở chúng trong trình duyệt trong app. --}}
 @unless ($legalPage)

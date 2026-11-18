@@ -44,6 +44,10 @@ Route::get('/editorial', [ReadController::class, 'editorial'])->name('public.edi
 Route::get('/editor', [ReadController::class, 'editor'])->name('public.editor');
 Route::view('/privacy', 'public.privacy')->name('public.privacy');
 Route::view('/terms', 'public.terms')->name('public.terms');
+// Tiny Seasons: game iPhone/iPad khác của cùng người phát hành. App Store Connect của game
+// trỏ Support URL và Privacy Policy URL về hai trang này, nên đừng đổi đường dẫn.
+Route::view('/tiny-seasons', 'public.tiny-seasons.support')->name('public.tiny-seasons');
+Route::view('/tiny-seasons/privacy', 'public.tiny-seasons.privacy')->name('public.tiny-seasons.privacy');
 Route::get('/search', [ReadController::class, 'search'])->name('public.search');
 Route::get('/story/{story:slug}/chapter/{number}', [ReadController::class, 'chapter'])
     ->whereNumber('number')
