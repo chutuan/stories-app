@@ -31,8 +31,9 @@
     <li><strong>Frost</strong> freezes the lake so seeds can walk across it.</li>
     <li><strong>Mushrooms</strong> grow tall in the rain and block the way, then shrink in the sun.</li>
   </ul>
-  <p>Bloom a flower on every glowing soil tile, using exactly the weather cards you are given. The
-    "i" button on the title screen explains every rule with a small animation.</p>
+  <p>Bloom a flower on every glowing soil tile, using exactly the weather cards you are given. Each
+    new weather card or obstacle is shown with a small animation the first time you meet it, and
+    the first six levels light up the right card for you.</p>
 
   <h2>Common questions</h2>
   <ul>
