@@ -66,6 +66,8 @@ class PublicPageCache
         'public.terms',
         'public.tiny-seasons',
         'public.tiny-seasons.privacy',
+        'public.chibi-pet-quest',
+        'public.chibi-pet-quest.privacy',
         'public.sitemap',
         'public.feed',
         'public.indexnow-key',

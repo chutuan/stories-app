@@ -48,6 +48,10 @@ Route::view('/terms', 'public.terms')->name('public.terms');
 // trỏ Support URL và Privacy Policy URL về hai trang này, nên đừng đổi đường dẫn.
 Route::view('/tiny-seasons', 'public.tiny-seasons.support')->name('public.tiny-seasons');
 Route::view('/tiny-seasons/privacy', 'public.tiny-seasons.privacy')->name('public.tiny-seasons.privacy');
+// Chibi Pet Quest: game iPhone khác của cùng người phát hành. Thông điệp GDPR trong AdMob và
+// App Store Connect của game trỏ về hai trang này, nên đừng đổi đường dẫn.
+Route::view('/chibi-pet-quest', 'public.chibi-pet-quest.support')->name('public.chibi-pet-quest');
+Route::view('/chibi-pet-quest/privacy', 'public.chibi-pet-quest.privacy')->name('public.chibi-pet-quest.privacy');
 Route::get('/search', [ReadController::class, 'search'])->name('public.search');
 Route::get('/story/{story:slug}/chapter/{number}', [ReadController::class, 'chapter'])
     ->whereNumber('number')

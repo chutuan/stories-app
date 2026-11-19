@@ -117,10 +117,11 @@
      dạng một dòng là mở khối khi phía sau file còn một khối php khác, và in nguyên văn
      cả đoạn giữa hai cái ra trang. (Không viết dấu @ trước "php" trong comment này:
      Blade tách khối php TRƯỚC khi bỏ comment, nên chữ trong comment cũng bị bắt.) --}}
-{{-- Hai trang của game Tiny Seasons (/tiny-seasons, /tiny-seasons/privacy) cũng tính là trang
+{{-- Hai trang của game Tiny Seasons (/tiny-seasons, /tiny-seasons/privacy) và hai trang của game
+     Chibi Pet Quest (/chibi-pet-quest, /chibi-pet-quest/privacy) cũng tính là trang
      pháp lý: chúng là Support URL và Privacy Policy URL của một app khác trên App Store, nên
      không quảng cáo, không GA4 và không mời tải app Stories. --}}
-@php $legalPage = request()->routeIs('public.privacy', 'public.terms', 'public.contact', 'public.tiny-seasons', 'public.tiny-seasons.privacy'); @endphp
+@php $legalPage = request()->routeIs('public.privacy', 'public.terms', 'public.contact', 'public.tiny-seasons', 'public.tiny-seasons.privacy', 'public.chibi-pet-quest', 'public.chibi-pet-quest.privacy'); @endphp
 {{-- Smart App Banner: Safari trên iPhone tự hiện thanh "Get/Open" của app ở đầu trang.
      Không gắn trên ba trang pháp lý: app mở chúng trong trình duyệt trong app. --}}
 @unless ($legalPage)
