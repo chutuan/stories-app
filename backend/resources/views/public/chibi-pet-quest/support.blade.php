@@ -10,8 +10,9 @@
   <h1>Chibi Pet Quest</h1>
   <p class="updated">Cozy pet puzzles for iPhone</p>
 
-  <p>Guide three little pets through Sunny Park and Bubble Beach. Each pet has its own skill, and
-    every level needs them to work together. No timers, no account.</p>
+  <p>Guide three little pets through 70 levels in seven worlds, from Sunny Park to Firefly
+    Forest. Each pet has its own skill, and every level needs them to work together. No timers,
+    no ads, no account.</p>
 
   <div class="card">
     <p style="margin:0;font-size:18px">
@@ -35,16 +36,14 @@
 
   <h2>Common questions</h2>
   <ul>
-    <li><strong>I'm stuck.</strong> Tap the light bulb for a hint. Undo is always there, and every
-      level can be solved without hints.</li>
-    <li><strong>I ran out of hints.</strong> Tap the light bulb and watch a short video for two
-      more. Ads are optional and never interrupt a level.</li>
+    <li><strong>I'm stuck.</strong> Tap the light bulb for a hint. Hints are free: each tap shows a
+      little more. Undo and restart are always there.</li>
     <li><strong>My progress is gone.</strong> Progress is stored only on your device, so deleting
       the game or moving to a new phone starts it again.</li>
     <li><strong>Sound and music.</strong> Pause the level and tap the speaker button to turn them off or on.</li>
   </ul>
 
   <h2>Privacy</h2>
-  <p>No account, and the game itself collects nothing. Read the
+  <p>No account, no ads, and the game collects nothing. Read the
     <a href="{{ route('public.chibi-pet-quest.privacy') }}">Chibi Pet Quest Privacy Policy</a>.</p>
 @endsection
