@@ -3,8 +3,9 @@
   phát hành, chỉ mượn chỗ trên tunastory.com. App Store Connect của game trỏ Privacy Policy URL
   về trang này, nên đừng đổi đường dẫn. Nội dung phải khớp game (repo Chibi Pet Quest): từ
   25/11/2026 game không có quảng cáo, không có SDK bên thứ ba, không analytics, không server,
-  không mua trong app, không link ra ngoài; App Privacy khai "Data Not Collected"; game nằm
-  trong mục Kids. Thêm quảng cáo, mua trong app hay bất kỳ SDK nào thì sửa trang này trước.
+  không mua trong app, không link ra ngoài; App Privacy khai "Data Not Collected"; game KHÔNG
+  nằm trong mục Kids (4+, Games › Puzzle), nên không viết "made for children" ở đây hay trên
+  App Store. Thêm quảng cáo, mua trong app hay bất kỳ SDK nào thì sửa trang này trước.
   Không quảng cáo, không GA4, không quảng bá app Stories: route nằm trong $legalPage của layout.
 --}}
 @extends('public.layout')
@@ -50,9 +51,9 @@
     It has no in-app purchases and no links that lead out of the game.</p>
 
   <h2>Children</h2>
-  <p>Chibi Pet Quest is a gentle puzzle game made for children and the grown-ups who play with
-    them. We do not collect any personal information from players of any age: there is no
-    account, no chat, no sharing and no way to enter a name, photo or contact details.</p>
+  <p>Chibi Pet Quest is a gentle puzzle game for players of all ages. We do not collect any
+    personal information from anyone, including children: there is no account, no chat, no
+    sharing and no way to enter a name, photo or contact details.</p>
   <p>Parents and guardians: if you have a question about the game or about this policy, contact
     us below.</p>
 
