@@ -1,6 +1,5 @@
 /*!
- * Stories — mời người đọc trên iPhone/iPad (và Android, khi đã bật) tải app, dùng trên
- * trang web KHÁC tunastory.com.
+ * Stories — mời người đọc trên một trang web KHÁC tunastory.com mở truyện trong app.
  *
  * Nhúng (dán trước </body>, hoặc trong <head> cũng được vì có async):
  *   <script src="https://tunastory.com/embed/app-prompt.js" async></script>
@@ -9,11 +8,27 @@
  *   data-delay="8"          số giây chờ trước khi hiện, mặc định 8
  *   data-campaign="blog-a"  nhãn nguồn gắn vào link tải (?src=), mặc định là tên miền trang nhúng
  *
+ * Thiết kế (Tuấn duyệt 25/11/2026, "kiểu A"): hộp mời trước đây (icon app to + tên app)
+ * trông như quảng cáo nên ít người cài. Giờ hộp nói bằng giọng của CHÍNH trang đang đọc:
+ * icon + tên trang ở đầu, rồi thẻ truyện người ta đang đọc (bìa + tên, khớp bằng
+ * /embed/story), rồi badge chính thức của cửa hàng đúng theo máy ("Download on the App
+ * Store" / "GET IT ON Google Play" — Tuấn gửi ảnh mẫu, muốn đúng hình đó). Không ghi tên
+ * app (Tuấn chọn). Trang không khớp được truyện nào trong app thì mời chung, KHÔNG hứa đọc
+ * tiếp truyện đó.
+ *
+ * Chọn cửa hàng theo máy:
+ *   - iPhone / iPad / iPod (kể cả iPad ở chế độ "máy tính" và trình duyệt trong app
+ *     Facebook, Instagram, TikTok…) -> App Store;
+ *   - Android -> Google Play, chỉ khi server bật config app.android_public (route
+ *     /embed/app-prompt.js điền vào chỗ đánh dấu android_public bên dưới). HarmonyOS
+ *     (không có Google Play) thì không mời;
+ *   - điện thoại / máy tính bảng không nhận ra hệ điều hành (vd. Android bật "trang cho
+ *     máy tính") -> hiện CẢ HAI nút (Tuấn dặn); khi chưa bật Android thì thôi không mời,
+ *     vì máy đó nhiều khả năng là Android;
+ *   - máy tính -> không mời (không cài app từ máy tính được).
+ *
  * Cùng quy tắc với lời mời trên tunastory.com (partials/app-prompt.blade.php), vì trang
  * nhúng cũng bị Google chấm "intrusive interstitials" y như vậy:
- *   - chỉ iPhone/iPad/iPod, và Android khi server bật config app.android_public (route
- *     /embed/app-prompt.js điền vào chỗ đánh dấu android_public bên dưới); máy khác thì
- *     script thoát ngay, không thêm gì vào trang;
  *   - vào từ máy tìm kiếm thì không hiện ở trang đó;
  *   - là bottom sheet hiện sau vài giây, không che kín màn hình ngay khi vào;
  *   - đóng hay bấm tải thì 1 giờ sau mới hiện lại (nhớ theo từng trang nhúng; Tuấn đổi từ
@@ -21,8 +36,8 @@
  *     không bấm gì mà rời trang thì chưa tính, trang sau vẫn có thể hiện.
  *
  * Giao diện nằm trong Shadow DOM: CSS của trang nhúng không làm vỡ hộp mời, và CSS của
- * hộp mời không lọt ra làm hỏng trang nhúng. Không gọi mạng gì ngoài ảnh icon và badge
- * của cửa hàng (App Store hoặc Google Play).
+ * hộp mời không lọt ra làm hỏng trang nhúng. Gọi mạng: một yêu cầu /embed/story (tựa bài
+ * của trang, không cookie), ảnh bìa truyện (hay icon app) và icon của chính trang nhúng.
  */
 (function () {
   'use strict';
@@ -38,18 +53,31 @@
   // Google Play công khai. Đừng đổi chữ ở chỗ này: route tìm đúng chuỗi đó để thay.
   var ANDROID = false /*android_public*/;
 
+  // ---------- Máy nào, cửa hàng nào ----------
   var ua = navigator.userAgent || '';
+  var touch = navigator.maxTouchPoints || 0;
+  var uaData = navigator.userAgentData || {};
   // iPadOS 13+ tự xưng là Mac: nhận ra nhờ màn cảm ứng nhiều điểm.
-  var isIOS = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
-  var os = isIOS ? 'ios' : (ANDROID && /Android/.test(ua) ? 'android' : '');
+  var isIOS = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && touch > 1);
+  // Chrome bật "trang cho máy tính" vẫn khai platform thật qua User-Agent Client Hints.
+  var isAndroid = /Android/.test(ua) || /Android/i.test(String(uaData.platform || ''));
+  var noPlay = /OpenHarmony|ArkWeb|HarmonyOS/.test(ua);
+  var coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  var shortSide = Math.min(screen.width || 0, screen.height || 0);
+  // Cảm ứng + con trỏ thô + màn không quá lớn = điện thoại / máy tính bảng.
+  var handheld = touch > 0 && coarse && shortSide > 0 && shortSide <= 1100 &&
+    !/Windows|CrOS/.test(ua);
+
+  var os = '';
+  if (isIOS) os = 'ios';
+  else if (isAndroid) os = ANDROID && !noPlay ? 'android' : '';
+  else if (handheld && ANDROID && !noPlay) os = 'both';
   if (!os) return;
+
   // Đang chạy như app đã cài ra màn hình chính (PWA của trang nhúng): không mời.
   var standalone = navigator.standalone ||
     (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
   if (standalone) return;
-  var STORE = os === 'android'
-    ? { name: 'Google Play', badge: '/images/google-play-badge.png', w: 188, alt: 'Get it on Google Play' }
-    : { name: 'the App Store', badge: '/images/app-store-badge.svg', w: 168, alt: 'Download on the App Store' };
 
   // Gốc lấy theo chính địa chỉ đã tải script, nên chạy được cả ở máy dev lẫn production.
   var BASE = 'https://tunastory.com';
@@ -77,53 +105,121 @@
   if (!(delay >= 0)) delay = 8;
   // Cùng bộ ký tự với route /app (ct của App Store chỉ nhận tối đa 40 ký tự).
   var campaign = String(data.campaign || location.hostname || '').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 40);
-  // Nói rõ os cho route /app thay vì để nó đoán qua User-Agent.
-  var href = BASE + '/app' + '?os=' + os + (campaign ? '&src=' + encodeURIComponent(campaign) : '');
+
+  // ---------- Trang đang đọc: tên site, icon, màu, tựa bài, chương ----------
+  function meta(sel) {
+    var m = document.querySelector(sel);
+    return m && m.content ? String(m.content).trim() : '';
+  }
+  function clean(s) { return String(s || '').replace(/\s+/g, ' ').trim(); }
+  function prettyHost(host) {
+    var first = host.replace(/^www\./, '').split('.')[0] || host;
+    return first.charAt(0).toUpperCase() + first.slice(1);
+  }
+  function httpUrl(href) {
+    try {
+      var u = new URL(href, location.href);
+      return /^https?:$/.test(u.protocol) ? u.href : '';
+    } catch (e) { return ''; }
+  }
+
+  var siteName = clean(meta('meta[property="og:site_name"]') || meta('meta[name="application-name"]') ||
+    meta('meta[name="apple-mobile-web-app-title"]')) || prettyHost(location.hostname);
+  if (siteName.length > 40) siteName = siteName.slice(0, 39) + '…';
+
+  var iconLink = document.querySelector('link[rel~="apple-touch-icon"]') ||
+    document.querySelector('link[rel~="icon"]');
+  var siteIcon = iconLink ? httpUrl(iconLink.getAttribute('href')) : '';
+
+  // Nút mang màu của chính trang (theme-color) nếu đủ tối cho chữ trắng; không thì gần đen.
+  var color = '#1A1614';
+  var theme = meta('meta[name="theme-color"]');
+  if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(theme)) {
+    var hex = theme.length === 4 ? theme.replace(/[0-9a-f]/gi, '$&$&').slice(1) : theme.slice(1);
+    var r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16);
+    if ((0.299 * r + 0.587 * g + 0.114 * b) / 255 < 0.55) color = '#' + hex;
+  }
+
+  var h1 = document.querySelector('article h1, main h1, h1');
+  var titles = [];
+  [h1 && h1.textContent, meta('meta[property="og:title"]'), document.title].forEach(function (t) {
+    t = clean(t).slice(0, 200);
+    if (t && titles.indexOf(t) < 0) titles.push(t);
+  });
+  var chapter = 0;
+  (titles.join(' ') + ' ' + decodeURIComponent(location.pathname).replace(/[-_/]+/g, ' '))
+    .replace(/\b(?:chapter|chap|ch|part|pt|episode|ep)\.?\s*(\d{1,3})\b/i, function (_, n) {
+      chapter = parseInt(n, 10);
+    });
+
+  // Hỏi trước, trong lúc chờ hết thời gian trễ. Lỗi mạng hay không khớp -> null (mời chung).
+  var storyReq = null;
+  if (titles.length && window.fetch && window.Promise) {
+    var qs = titles.map(function (t) { return 't[]=' + encodeURIComponent(t); }).join('&');
+    storyReq = fetch(BASE + '/embed/story?' + qs, { credentials: 'omit' })
+      .then(function (res) { return res.ok ? res.json() : null; })
+      .then(function (d) { return d && d.story && d.story.id ? d.story : null; })
+      .catch(function () { return null; });
+  }
+
+  function storeHref(which, story) {
+    return BASE + '/app?os=' + which + (campaign ? '&src=' + encodeURIComponent(campaign) : '') +
+      (story ? '&story=' + story.id : '');
+  }
 
   var CSS =
     '.ap{position:fixed;top:0;right:0;bottom:0;left:0;z-index:2147483647;color:#1A1614;' +
-      'font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;' +
-      '-webkit-text-size-adjust:100%;text-align:left}' +
+      'font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;' +
+      '-webkit-text-size-adjust:100%;text-align:left;--c:#1A1614}' +
     '.bd{position:absolute;top:0;right:0;bottom:0;left:0;background:rgba(26,22,20,.38);opacity:0;transition:opacity .22s ease}' +
     '.sh{position:absolute;left:0;right:0;bottom:0;max-width:480px;margin:0 auto;background:#fff;box-sizing:border-box;' +
-      'border-radius:20px 20px 0 0;padding:22px 20px calc(18px + env(safe-area-inset-bottom));' +
+      'border-radius:20px 20px 0 0;padding:18px 18px calc(12px + env(safe-area-inset-bottom));' +
       'box-shadow:0 -10px 34px rgba(26,22,20,.18);transform:translateY(100%);transition:transform .26s ease}' +
     '.sh:focus{outline:none}' +
     '.ap.open .bd{opacity:1}' +
     '.ap.open .sh{transform:translateY(0)}' +
-    '.x{position:absolute;top:10px;right:12px;width:36px;height:36px;padding:0;border:0;border-radius:50%;' +
+    '.x{position:absolute;top:8px;right:10px;width:36px;height:36px;padding:0;border:0;border-radius:50%;' +
       'background:transparent;color:#6E635C;font:26px/1 sans-serif;cursor:pointer}' +
-    '.hd{display:flex;align-items:center;margin:0 36px 14px 0}' +
-    '.hd img{width:60px;height:60px;margin-right:14px;border-radius:14px;border:1px solid rgba(26,22,20,.10);flex:none}' +
-    '.hd strong{display:block;font-size:18px;line-height:1.25;font-weight:700}' +
-    '.hd span{color:#6E635C;font-size:14px}' +
-    'ul{margin:0 0 18px;padding-left:20px}' +
-    'li{margin:0}' +
-    // Badge gốc của Apple/Google: chỉ được đổi kích thước (xem ghi chú .store-badge trong layout).
-    '.get{display:block;width:max-content;margin:0 auto;line-height:0;border-radius:8px}' +
-    '.get img{display:block;width:auto;height:56px}' +
-    '.later{display:block;width:100%;margin-top:8px;padding:12px;border:0;background:transparent;' +
-      'color:#6E635C;font:inherit;cursor:pointer}' +
+    '.site{display:flex;align-items:center;margin:0 40px 12px 0;font-size:13.5px;font-weight:600;color:#4A433E;' +
+      'white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+    '.fv,.fl{width:22px;height:22px;margin-right:8px;border-radius:6px;flex:none}' +
+    '.fv{object-fit:cover}' +
+    '.fl{background:var(--c);color:#fff;font:700 12px/22px sans-serif;text-align:center}' +
+    '.card{display:flex;align-items:center;padding:10px;border:1px solid rgba(26,22,20,.09);border-radius:14px;background:#FAF7F4}' +
+    '.cv{width:54px;height:76px;margin-right:12px;border-radius:7px;object-fit:cover;flex:none;background:#E9E2DB}' +
+    '.cv.ic{height:54px;border-radius:13px}' +
+    '.lb{display:block;font-size:12.5px;color:#6E635C}' +
+    '.tt{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;' +
+      'font-size:16px;line-height:1.3;font-weight:700;color:#1A1614}' +
+    '.tx{margin:12px 2px 14px;font-size:14.5px;color:#3B3632}' +
+    '.acts{display:flex;justify-content:center;align-items:center}' +
+    '.st{display:block;line-height:0;border-radius:8px;text-decoration:none}' +
+    '.st+.st{margin-left:10px}' +
+    '.st img{display:block}' +
+    // Ảnh badge không tải được (CSP của trang nhúng chặn ảnh ngoài...) thì hiện chữ thay.
+    '.st .alt{display:block;line-height:1.25;background:#000;color:#fff;border-radius:8px;' +
+      'padding:13px 16px;font-weight:700;font-size:15px}' +
+    '.fr{text-align:center;font-size:12.5px;color:#6E635C;margin-top:8px}' +
+    '.later{display:block;width:100%;margin-top:2px;padding:10px;border:0;background:transparent;' +
+      'color:#6E635C;font:inherit;font-size:14.5px;cursor:pointer}' +
     '@media (prefers-reduced-motion:reduce){.bd,.sh{transition:none}}';
 
+  // Khung tĩnh: mọi chữ lấy từ trang nhúng hay từ API được gán bằng textContent/thuộc
+  // tính sau đó, KHÔNG nối vào chuỗi HTML (tựa bài là dữ liệu của người khác).
   var HTML =
     '<div class="ap" hidden>' +
       '<div class="bd" data-close></div>' +
-      '<div class="sh" role="dialog" aria-modal="true" aria-labelledby="t" tabindex="-1">' +
+      '<div class="sh" role="dialog" aria-modal="true" aria-labelledby="tt" tabindex="-1">' +
         '<button class="x" type="button" aria-label="Close" data-close>&times;</button>' +
-        '<div class="hd">' +
-          '<img src="' + BASE + '/icons/icon-180.png" width="60" height="60" alt="">' +
-          '<div><strong id="t">Read Stories in the app</strong><span>Free on ' + STORE.name + '</span></div>' +
+        '<div class="site"><span class="fl" aria-hidden="true"></span><span class="sn"></span></div>' +
+        '<div class="card">' +
+          '<img class="cv" alt="" width="54" height="76">' +
+          '<div><span class="lb"></span><strong class="tt" id="tt"></strong></div>' +
         '</div>' +
-        '<ul>' +
-          '<li>Adjust font size, line spacing and page theme</li>' +
-          '<li>Listen to narrated stories</li>' +
-          '<li>Keep a library on your phone, no account needed</li>' +
-        '</ul>' +
-        '<a class="get" href="">' +
-          '<img src="' + BASE + STORE.badge + '" width="' + STORE.w + '" height="56" alt="' + STORE.alt + '">' +
-        '</a>' +
-        '<button class="later" type="button" data-close>Continue in browser</button>' +
+        '<p class="tx"></p>' +
+        '<div class="acts"></div>' +
+        '<div class="fr"></div>' +
+        '<button class="later" type="button" data-close>Not now</button>' +
       '</div>' +
     '</div>';
 
@@ -138,7 +234,75 @@
     return Math.abs(r.top) <= 2 && r.height > vh * 0.5 && r.height < vh * 1.5;
   }
 
-  function show() {
+  function fill(shadow, story) {
+    var $ = function (s) { return shadow.querySelector(s); };
+    $('.ap').style.setProperty('--c', color);
+
+    // Đầu hộp: icon + tên của CHÍNH trang đang đọc. Không có icon (hay icon lỗi) thì chữ cái đầu.
+    $('.sn').textContent = siteName;
+    var letter = $('.fl');
+    letter.textContent = siteName.charAt(0).toUpperCase();
+    if (siteIcon) {
+      var fv = document.createElement('img');
+      fv.className = 'fv';
+      fv.alt = '';
+      fv.onerror = function () { if (fv.parentNode) fv.parentNode.replaceChild(letter, fv); };
+      fv.src = siteIcon;
+      letter.parentNode.replaceChild(fv, letter);
+    }
+
+    // Bìa (hay icon app) thiếu hoặc tải lỗi thì bỏ hẳn, không để khung ảnh vỡ.
+    var cover = $('.cv');
+    var dropCover = function () { if (cover.parentNode) cover.parentNode.removeChild(cover); };
+    cover.onerror = dropCover;
+    if (story) {
+      if (story.cover && /^https?:\/\//.test(story.cover)) cover.src = story.cover;
+      else dropCover();
+      $('.lb').textContent = chapter ? "You're on chapter " + chapter : 'Continue reading';
+      $('.tt').textContent = story.title;
+      // Nghe audio là điểm app có mà blog không có (Tuấn dặn thêm 25/11).
+      $('.tx').textContent = (chapter && story.chapters > chapter
+        ? 'The next chapters are waiting in the app. '
+        : 'Pick up this story in the app. ') +
+        'Listen as audio or read in bigger text, and it keeps your place.';
+    } else {
+      // Không khớp được truyện: mời chung, không hứa có truyện này trong app.
+      cover.className = 'cv ic';
+      cover.width = cover.height = 54;
+      cover.src = BASE + '/icons/icon-180.png';
+      $('.lb').textContent = 'On your phone';
+      $('.tt').textContent = 'New short stories every day';
+      $('.tx').textContent = 'Read them in the app, or listen as audio. Bigger text, night mode, and it keeps your place.';
+    }
+
+    // Badge chính thức của cửa hàng theo máy (cùng file với tunastory.com); máy không rõ hệ
+    // điều hành thì hai badge cạnh nhau, nhỏ hơn một chút cho vừa màn điện thoại.
+    var acts = $('.acts');
+    var height = os === 'both' ? 46 : 54;
+    function badge(which, file, ratio, alt) {
+      var a = document.createElement('a');
+      a.className = 'st';
+      a.href = storeHref(which, story);
+      var img = document.createElement('img');
+      img.alt = alt;
+      img.height = height;
+      img.width = Math.round(height * ratio);
+      img.onerror = function () {
+        var t = document.createElement('span');
+        t.className = 'alt';
+        t.textContent = alt;
+        if (img.parentNode) a.replaceChild(t, img);
+      };
+      img.src = BASE + '/images/' + file;
+      a.appendChild(img);
+      acts.appendChild(a);
+    }
+    if (os !== 'android') badge('ios', 'app-store-badge.svg', 119.66407 / 40, 'Download on the App Store');
+    if (os !== 'ios') badge('android', 'google-play-badge.png', 564 / 168, 'Get it on Google Play');
+    $('.fr').textContent = 'Free to download';
+  }
+
+  function show(story) {
     var host = document.createElement('div');
     if (!host.attachShadow) return; // iOS quá cũ (< 10): bỏ qua còn hơn vẽ lệch.
     // Gán qua CSSOM, không qua thuộc tính style: CSP chặn thuộc tính, không chặn CSSOM.
@@ -158,8 +322,7 @@
     } else {
       shadow.innerHTML = '<style>' + CSS + '</style>' + HTML;
     }
-    // Gán href bằng thuộc tính chứ không nối vào chuỗi HTML: khỏi lo thoát ký tự.
-    shadow.querySelector('.get').href = href;
+    fill(shadow, story);
     // Gắn vào <html> chứ không vào <body>: Turbo/pjax thay cả <body> khi chuyển trang (hộp
     // mất mà trang vẫn bị khoá cuộn), và transform/filter đặt trên <body> không ảnh hưởng tới.
     document.documentElement.appendChild(host);
@@ -191,7 +354,7 @@
       if (t.closest('[data-close]')) close(1);
       // Không chặn link: cửa hàng vẫn mở. Đóng luôn hộp để quay lại trình duyệt không gặp lại nó
       // (thẻ chứa chỉ bị gỡ sau 260ms, sau khi trình duyệt đã đi theo link).
-      else if (t.closest('.get')) close(1);
+      else if (t.closest('.st')) close(1);
     });
 
     html.style.overflow = 'hidden';
@@ -209,14 +372,26 @@
     return !!a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
   }
 
+  var shown = false;
   function trigger() {
+    if (shown) return;
     // Trang khác có thể cũng đã đặt hẹn trong lúc chờ (vd. hai tab): kiểm lại lần nữa.
     if (snoozedUntil() > Date.now()) return;
     if (typing()) {
       document.addEventListener('focusout', function () { setTimeout(trigger, 3000); }, { once: true });
       return;
     }
-    show();
+    if (!storyReq) { shown = true; show(null); return; }
+    // API chậm quá 2,5 giây sau thời gian trễ thì mời chung, không bắt người đọc chờ.
+    var done = false;
+    var go = function (story) {
+      if (done) return;
+      done = true;
+      shown = true;
+      show(story);
+    };
+    storyReq.then(go);
+    setTimeout(function () { go(null); }, 2500);
   }
 
   function schedule() {

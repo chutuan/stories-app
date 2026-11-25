@@ -156,9 +156,20 @@
         · <a href="{{ route('public.contact') }}">Contact</a>
         · <a href="{{ route('public.editorial') }}">Editorial standards</a></p>
     </div>
-    <a class="store-badge" href="{{ route('public.app') }}">
-      <img src="{{ asset('images/app-store-badge.svg') }}" width="156" height="52" alt="Download on the App Store">
-    </a>
+    @if (config('app.android_public'))
+      <div class="store-badges">
+        <a class="store-badge" href="{{ route('public.app', ['os' => 'ios']) }}">
+          <img src="{{ asset('images/app-store-badge.svg') }}" width="156" height="52" alt="Download on the App Store">
+        </a>
+        <a class="store-badge" href="{{ route('public.app', ['os' => 'android']) }}">
+          <img src="{{ asset('images/google-play-badge.png') }}" width="175" height="52" alt="Get it on Google Play">
+        </a>
+      </div>
+    @else
+      <a class="store-badge" href="{{ route('public.app') }}">
+        <img src="{{ asset('images/app-store-badge.svg') }}" width="156" height="52" alt="Download on the App Store">
+      </a>
+    @endif
   </section>
 
 <script>

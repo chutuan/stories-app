@@ -363,6 +363,10 @@ window.StoriesHistory = {
   .app-promo strong{display:block;color:var(--text);font-size:15px;margin-bottom:2px}
   .app-promo .qr-hint{display:block}
   .foot-grid a.store-badge{display:inline-block;padding:0;margin-top:8px}
+  /* Hai badge cạnh nhau (App Store + Google Play) khi bật config app.android_public */
+  .store-badges{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+  .foot-grid .store-badges{margin-top:8px}
+  .foot-grid .store-badges a.store-badge{margin-top:0}
   @media (max-width:600px), (hover:none) and (pointer:coarse){
     .app-promo .qr, .app-promo .qr-hint{display:none}
   }
@@ -913,6 +917,28 @@ window.StoriesHistory = {
       </a>
       <p>Short serials you can finish in one sitting. Every chapter free to read on the web.</p>
       @unless ($legalPage)
+      {{-- Bật config app.android_public (app đã lên Google Play) thì thêm badge Google Play.
+           Mã QR vẫn trỏ /app: route tự chọn cửa hàng theo máy quét (iPhone hay Android). --}}
+      @if (config('app.android_public'))
+      <div class="app-promo">
+        <a class="qr" href="{{ route('public.app') }}" aria-label="Download the Stories app">
+          <img src="{{ asset('images/app-qr.svg') }}" width="88" height="88" loading="lazy"
+               alt="QR code to download the Stories app for iPhone or Android">
+        </a>
+        <div>
+          <strong>Read Stories on your phone</strong>
+          <span class="qr-hint">Scan with your phone's camera</span>
+          <div class="store-badges">
+            <a class="store-badge" href="{{ route('public.app', ['os' => 'ios']) }}">
+              <img src="{{ asset('images/app-store-badge.svg') }}" width="120" height="40" loading="lazy" alt="Download on the App Store">
+            </a>
+            <a class="store-badge" href="{{ route('public.app', ['os' => 'android']) }}">
+              <img src="{{ asset('images/google-play-badge.png') }}" width="134" height="40" loading="lazy" alt="Get it on Google Play">
+            </a>
+          </div>
+        </div>
+      </div>
+      @else
       <div class="app-promo">
         <a class="qr" href="{{ route('public.app') }}" aria-label="Download Stories on the App Store">
           <img src="{{ asset('images/app-qr.svg') }}" width="88" height="88" loading="lazy"
@@ -926,6 +952,7 @@ window.StoriesHistory = {
           </a>
         </div>
       </div>
+      @endif
       @endunless
     </div>
     <div>

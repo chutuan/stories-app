@@ -111,11 +111,15 @@ class StructuredData
             'publishingPrinciples' => $publishingPrinciples,
             'founder' => self::editor(),
             // Những nơi khác cũng là của chính site này: Page Facebook và app trên App
-            // Store. Google gộp chúng thành một thực thể (cùng tên, cùng logo) thay vì
-            // coi tunastory.com là một site vô danh.
+            // Store (và Google Play khi bật config app.android_public). Google gộp chúng
+            // thành một thực thể (cùng tên, cùng logo) thay vì coi tunastory.com là một
+            // site vô danh.
             'sameAs' => array_values(array_filter([
                 config('services.facebook.page_url'),
                 config('app.ios_app_id') ? 'https://apps.apple.com/app/id'.config('app.ios_app_id') : null,
+                config('app.android_public')
+                    ? 'https://play.google.com/store/apps/details?id='.config('app.android_package')
+                    : null,
             ])),
         ]));
     }

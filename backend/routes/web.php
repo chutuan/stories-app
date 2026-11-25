@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\TwoFactorChallengeController;
 use App\Http\Controllers\Web\ReactionController;
 use App\Http\Controllers\Web\ReadController;
 use App\Services\IndexNow;
+use App\Support\EmbedStoryMatcher;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -137,6 +138,30 @@ Route::get('/embed/app-prompt.js', fn () => response(
     200,
     ['Content-Type' => 'application/javascript; charset=UTF-8'],
 ))->name('public.embed.app-prompt');
+
+// Script nhúng hỏi: tựa bài trang này đang hiện có phải một truyện trong app không?
+//   GET /embed/story?t[]=<h1>&t[]=<og:title>   (tối đa 3 chuỗi, mỗi chuỗi cắt 200 ký tự)
+// Khớp -> {"story":{id,title,cover,chapters}}, không -> {"story":null}. Hộp mời dựa vào
+// đó mới hiện bìa + "đọc tiếp trong app"; không khớp thì chỉ mời chung. Xem EmbedStoryMatcher.
+// Mở CORS cho mọi trang (dữ liệu công khai, không cookie). Cùng URL thì Cloudflare trả bản
+// đã cache (s-maxage của PublicPageCache), nên một trang nhiều lượt đọc chỉ hỏi DB vài lần.
+Route::get('/embed/story', function (Request $request) {
+    $titles = collect((array) $request->query('t', []))
+        ->filter(fn ($t) => is_string($t) && trim($t) !== '')
+        ->map(fn (string $t) => mb_substr($t, 0, 200))
+        ->take(3)->values()->all();
+
+    $story = $titles === [] ? null : EmbedStoryMatcher::match($titles);
+
+    return response()->json([
+        'story' => $story ? [
+            'id' => $story->id,
+            'title' => $story->title,
+            'cover' => $story->coverSmallUrl(),
+            'chapters' => $story->chapters()->count(),
+        ] : null,
+    ])->header('Access-Control-Allow-Origin', '*');
+})->name('public.embed.story');
 
 Route::get('/app-ads.txt', function () {
     $pub = config('app.admob_publisher_id');

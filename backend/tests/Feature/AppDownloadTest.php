@@ -77,8 +77,55 @@ class AppDownloadTest extends TestCase
         config(['app.android_public' => true]);
         $body = $this->get('/embed/app-prompt.js')->getContent();
         $this->assertStringContainsString('var ANDROID = true /*android_public*/;', $body);
-        $this->assertStringContainsString('/images/google-play-badge.png', $body);
+        // Chỉ thay đúng một chỗ: phần nhận diện máy vẫn giữ nguyên.
+        $this->assertSame(1, substr_count($body, '/*android_public*/'));
+        $this->assertStringContainsString("os = 'both'", $body);
         $this->assertFileExists(public_path('images/google-play-badge.png'));
+    }
+
+    public function test_embed_story_khop_truyen_theo_tua_hoac_hook(): void
+    {
+        $story = \App\Models\Story::create([
+            'title' => "The Maid He Ignored Owned the Building",
+            'hook' => 'My husband laughed at me at the gala, then the owner walked in',
+            'slug' => 'the-maid-he-ignored',
+            'author' => 'Tuan',
+            'status' => 'ongoing',
+        ]);
+        $story->chapters()->create(['number' => 1, 'title' => 'One', 'content' => 'x']);
+
+        // Tựa bài trên blog thường ghép số chương và tên site.
+        $this->get('/embed/story?'.http_build_query(['t' => ['The Maid He Ignored Owned The Building – Chapter 3 | Life Drama']]))
+            ->assertOk()
+            ->assertHeader('Access-Control-Allow-Origin', '*')
+            ->assertJsonPath('story.id', $story->id)
+            ->assertJsonPath('story.title', 'The Maid He Ignored Owned the Building')
+            ->assertJsonPath('story.chapters', 1);
+        // Khớp theo hook (blog dùng câu mở đầu làm tựa); thẻ h1 không khớp thì thử og:title.
+        $this->get('/embed/story?'.http_build_query(['t' => ['Life Drama', 'My husband laughed at me at the gala, then the owner walked in (Part 2)']]))
+            ->assertJsonPath('story.id', $story->id);
+        // Không khớp gần đúng, không khớp chuỗi quá ngắn, tham số hỏng không lỗi 500.
+        $this->get('/embed/story?'.http_build_query(['t' => ['The Maid He Ignored']]))->assertJsonPath('story', null);
+        $this->get('/embed/story?t=Revenge')->assertJsonPath('story', null);
+        $this->get('/embed/story')->assertOk()->assertJsonPath('story', null);
+        $this->get('/embed/story?t[x][y]=1')->assertOk()->assertJsonPath('story', null);
+    }
+
+    public function test_chuan_hoa_tua_de_khop(): void
+    {
+        $m = \App\Support\EmbedStoryMatcher::class;
+        // Nháy cong = nháy thẳng = không nháy; bỏ số chương và dấu câu.
+        $this->assertSame('moms secret', $m::normalize('Mom’s Secret — Ch. 12'));
+        $this->assertSame('moms secret', $m::normalize("Mom's Secret (Part 3)"));
+        $this->assertSame('tom jerry', $m::normalize('Tom &amp; Jerry'));
+        // Cả chuỗi trước, rồi từng đoạn quanh " | ", đoạn dài trước; đoạn ngắn hơn 10 ký tự bỏ.
+        $this->assertSame(
+            ['the billionaires maid life drama', 'the billionaires maid', 'life drama'],
+            $m::candidateKeys("The Billionaire's Maid | Life Drama"),
+        );
+        $this->assertSame(['the forgotten wife blog', 'the forgotten wife'], $m::candidateKeys('The Forgotten Wife - Blog'));
+        // Gạch nối trong từ không phải dấu ngăn.
+        $this->assertSame(['my ex husband came back'], $m::candidateKeys('My Ex-Husband Came Back'));
     }
 
     public function test_modal_chi_co_badge_google_play_khi_da_bat(): void
@@ -104,7 +151,42 @@ class AppDownloadTest extends TestCase
         $this->assertEmpty($response->headers->getCookies(), 'Cloudflare không cache response có Set-Cookie');
         $body = file_get_contents(resource_path('embed/app-prompt.js'));
         $this->assertStringContainsString('iPhone|iPad|iPod', $body);
-        $this->assertStringContainsString("'/app'", $body);
+        $this->assertStringContainsString("'/app?os='", $body);
+        // Badge chính thức theo máy, cùng file với tunastory.com.
+        foreach (['app-store-badge.svg', 'google-play-badge.png'] as $file) {
+            $this->assertStringContainsString("'".$file."'", $body);
+            $this->assertFileExists(public_path('images/'.$file));
+        }
+        $this->assertStringContainsString("'Download on the App Store'", $body);
+        $this->assertStringContainsString("'Get it on Google Play'", $body);
+        // Lời mời có nhắc nghe audio.
+        $this->assertStringContainsString('Listen as audio', $body);
+    }
+
+    public function test_chan_trang_khoi_app_va_json_ld_chi_co_google_play_khi_da_bat(): void
+    {
+        $play = 'https://play.google.com/store/apps/details?id=com.chutuan.stories';
+
+        config(['app.android_public' => false]);
+        $this->get('/')->assertOk()
+            ->assertSee('Read Stories on iPhone')
+            ->assertDontSee('Read Stories on your phone')
+            ->assertDontSee('class="store-badges"', false)
+            ->assertDontSee($play, false);
+
+        config(['app.android_public' => true]);
+        $this->get('/')->assertOk()
+            // Chân trang: tiêu đề chung, QR nói cả hai nền tảng, hai badge cao 40px.
+            ->assertSee('Read Stories on your phone')
+            ->assertDontSee('Read Stories on iPhone')
+            ->assertSee('alt="QR code to download the Stories app for iPhone or Android"', false)
+            ->assertSee('width="134" height="40" loading="lazy" alt="Get it on Google Play"', false)
+            // Khối app ở trang chủ: badge Google Play cao 52px cạnh badge App Store.
+            ->assertSee('width="175" height="52" alt="Get it on Google Play"', false)
+            ->assertSee('/app?os=ios', false)
+            // JSON-LD Organization: sameAs có trang Google Play.
+            ->assertSee('"sameAs":[', false)
+            ->assertSee($play, false);
     }
 
     public function test_trang_thuong_co_ma_qr_va_smart_banner(): void
